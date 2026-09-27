@@ -5280,11 +5280,11 @@ dependencies = [
  "tokio-tungstenite",
  "url",
  "uuid",
- "vox-sms-schema",
+ "vox-shared",
 ]
 
 [[package]]
-name = "vox-sms-schema"
+name = "vox-shared"
 version = "0.1.0"
 dependencies = [
  "serde",

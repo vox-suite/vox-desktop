@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
-pub use vox_sms_schema::ExtractedSmsEvent;
+pub use vox_shared::sms::ExtractedSmsEvent;
 
 const MODEL_URL: &str =
     "https://huggingface.co/lmstudio-ai/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf";
@@ -104,7 +104,7 @@ fn classification_prompt(sender: &str, body: &str) -> String {
          Sender: {sender}\n\
          Message: {body}<end_of_turn>\n\
          <start_of_turn>model\n",
-        categories = vox_sms_schema::SMS_CATEGORIES_PROMPT,
+        categories = vox_shared::sms::SMS_CATEGORIES_PROMPT,
     )
 }
 
