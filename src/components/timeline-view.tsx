@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, PanelLeftClose } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LocalLlmCard } from "@/components/local-llm-card";
 import { SpanCalendar } from "@/components/span-calendar";
 import { daysFrom, formatMoney } from "@/lib/span-format";
 import { SpanDialog } from "@/components/span-dialog";
@@ -160,8 +164,6 @@ export function TimelineView({
         </div>
       </header>
 
-      {collection ? null : <LocalLlmCard />}
-
       <div className="flex min-h-0 flex-1">
         <div className="no-drag flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="flex items-center justify-between px-4 py-2">
@@ -170,7 +172,11 @@ export function TimelineView({
               <p className="text-xs text-coral-pulse">{scheduled.error}</p>
             ) : null}
           </div>
-          <SpanCalendar days={days} spans={scheduled.spans} onSelect={setSelected} />
+          <SpanCalendar
+            days={days}
+            spans={scheduled.spans}
+            onSelect={setSelected}
+          />
         </div>
 
         <aside className="no-drag flex w-64 shrink-0 flex-col border-l border-border bg-obsidian/40">

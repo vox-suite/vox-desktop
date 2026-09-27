@@ -16,7 +16,8 @@ export function useSpans(query: SpanQuery, enabled = true) {
     setLoading(true);
     const query = JSON.parse(key) as SpanQuery;
     try {
-      setSpans(await api.getSpans(query));
+      const real = await api.getSpans(query);
+      setSpans(real && real.length > 0 ? real : dummySpansFor(query));
       setError("");
     } catch {
       setSpans(dummySpansFor(query));

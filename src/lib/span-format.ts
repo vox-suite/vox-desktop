@@ -19,6 +19,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   delivery: "#ffb454",
   meal: "#ff9e64",
   food: "#ff9e64",
+  game: "#a855f7",
+  gaming: "#a855f7",
   todo: "#e6e6e6",
 };
 const FALLBACK_COLORS = ["#9c9c9d", "#7fdbca", "#f78c6c", "#82aaff", "#c3e88d"];

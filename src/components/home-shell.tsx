@@ -132,7 +132,7 @@ export function HomeShell({
       <ActivityLogs />
 
       {/* Foreground layout: Sidebar on the left + Main stage over the map */}
-      <div className="pointer-events-none absolute inset-1 z-20 flex gap-1 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-20 flex overflow-hidden">
         <AppSidebar
           activeTab={activeTab}
           onTabChange={onTabChange}
@@ -140,22 +140,23 @@ export function HomeShell({
           userName={userName}
           avatarUrl={avatarUrl}
           onSignOut={onSignOut}
+          joined
         />
 
         <div
           data-tauri-drag-region
           onMouseDown={handleMainDragMouseDown}
           onDoubleClick={handleMainDoubleClick}
-          className="pointer-events-auto relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg"
+          className="pointer-events-auto relative flex h-full min-w-0 flex-1 flex-col overflow-hidden"
         >
           {/* Main Stage over Map */}
-          <div className="pointer-events-none relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {activeTab === "agent" ? (
               <div className="pointer-events-none flex h-full w-full flex-col p-4 pt-0">
                 {body}
               </div>
             ) : (
-              <div className="pointer-events-auto flex h-full w-full flex-col overflow-hidden bg-[#07080a]">
+              <div className="flex h-full w-full flex-col overflow-hidden bg-[#07080a]">
                 {body}
               </div>
             )}

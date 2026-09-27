@@ -32,6 +32,7 @@ export function AppSidebar({
   userName,
   avatarUrl,
   onSignOut,
+  joined = false,
 }: {
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
@@ -41,6 +42,7 @@ export function AppSidebar({
   userName?: string | null;
   avatarUrl?: string | null;
   onSignOut: () => void;
+  joined?: boolean;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -82,8 +84,11 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "pointer-events-auto relative z-20 flex h-full w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-white/10 select-none",
-        "bg-[#07080a]/75 backdrop-blur-md shadow-2xl",
+        "pointer-events-auto relative z-20 flex h-full w-72 shrink-0 flex-col overflow-hidden select-none",
+        "bg-[#07080a]/75 backdrop-blur-md",
+        joined
+          ? "border-r border-white/10"
+          : "rounded-lg border border-white/10 shadow-2xl",
       )}
     >
       {/* Top Window Chrome / Drag Area */}
