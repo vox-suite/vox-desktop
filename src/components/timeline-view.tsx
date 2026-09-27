@@ -1,102 +1,124 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  PanelLeftClose,
-} from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SpanCalendar } from "@/components/span-calendar";
-import { daysFrom, formatMoney } from "@/lib/span-format";
+import { SpanMonthView } from "@/components/span-month-view";
+import { daysFrom } from "@/lib/span-format";
 import { SpanDialog } from "@/components/span-dialog";
 import { useSpans } from "@/hooks/use-spans";
-import { addDays, startOfDay } from "@/lib/span-layout";
-import { api, type Collection, type Span } from "@/lib/tauri";
+import {
+  addDays,
+  addMonths,
+  monthGridDays,
+  startOfDay,
+  startOfMonth,
+} from "@/lib/span-layout";
+import type { Collection, Span } from "@/lib/tauri";
 
-type Range = 1 | 3 | 7;
+export type ViewMode = "day" | "week" | "month";
 
-function rangeLabel(days: Date[]): string {
+function rangeLabel(mode: ViewMode, anchor: Date, days: Date[]): string {
+  if (mode === "day") {
+    return anchor.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  if (mode === "month") {
+    const start = days[0].toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    const end = days[days.length - 1].toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return `${start} – ${end}`;
+  }
+  // Week mode
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const first = days[0].toLocaleDateString(undefined, opts);
-  if (days.length === 1) {
-    return days[0].toLocaleDateString(undefined, { weekday: "long", ...opts });
-  }
-  return `${first} – ${days[days.length - 1].toLocaleDateString(undefined, opts)}`;
+  const last = days[days.length - 1].toLocaleDateString(undefined, {
+    ...opts,
+    year: "numeric",
+  });
+  return `${first} – ${last}`;
 }
 
 function initialAnchor(
   collection: Collection | null | undefined,
-  range: Range,
+  mode: ViewMode,
 ): Date {
   if (collection?.starts_at) return startOfDay(new Date(collection.starts_at));
   const today = startOfDay(new Date());
-  return range === 7 ? addDays(today, -today.getDay()) : today;
-}
-
-function collectionDays(
-  collection: Collection | null | undefined,
-): number | null {
-  if (!collection?.starts_at || !collection.ends_at) return null;
-  const ms =
-    startOfDay(new Date(collection.ends_at)).getTime() -
-    startOfDay(new Date(collection.starts_at)).getTime();
-  return Math.round(ms / 86_400_000) + 1;
+  if (mode === "week") return addDays(today, -today.getDay());
+  if (mode === "month") return startOfMonth(today);
+  return today;
 }
 
 export function TimelineView({
   collection,
   collections,
   onBack,
-  onCollapse,
 }: {
   collection?: Collection | null;
   collections: Collection[];
   onBack?: () => void;
-  onCollapse: () => void;
+  onCollapse?: () => void;
 }) {
-  const tripDays = collectionDays(collection);
-  const [range, setRange] = useState<Range>(() =>
-    tripDays ? (tripDays <= 1 ? 1 : tripDays <= 3 ? 3 : 7) : 7,
-  );
-  const [anchor, setAnchor] = useState(() => initialAnchor(collection, range));
+  // One day view mode as default
+  const [mode, setMode] = useState<ViewMode>("day");
+  const [anchor, setAnchor] = useState(() => initialAnchor(collection, "day"));
   const [selected, setSelected] = useState<Span | null>(null);
 
-  const days = useMemo(() => daysFrom(anchor, range), [anchor, range]);
+  const days = useMemo(() => {
+    if (mode === "day") return [anchor];
+    if (mode === "month") return monthGridDays(anchor);
+    return daysFrom(anchor, 7);
+  }, [anchor, mode]);
+
   const from = days[0].toISOString();
   const to = addDays(days[days.length - 1], 1).toISOString();
 
   const scheduled = useSpans({ from, to, collectionId: collection?.id });
-  const unscheduled = useSpans({
-    unscheduled: true,
-    collectionId: collection?.id,
-  });
-  const openTodos = unscheduled.spans.filter(
-    (s) => s.status !== "done" && s.status !== "cancelled",
-  );
 
   const reload = () => {
     void scheduled.reload();
-    void unscheduled.reload();
   };
 
-  const spent = scheduled.spans.reduce(
-    (sum, s) => sum + (typeof s.data?.amount === "number" ? s.data.amount : 0),
-    0,
-  );
-
-  async function toggleDone(span: Span) {
-    await api.updateSpan(span.id, {
-      status: span.status === "done" ? "planned" : "done",
+  const handleModeChange = (newMode: ViewMode) => {
+    setMode(newMode);
+    setAnchor((prev) => {
+      const today = startOfDay(new Date());
+      if (newMode === "day") return prev;
+      if (newMode === "week") return addDays(prev, -prev.getDay());
+      if (newMode === "month") return startOfMonth(prev);
+      return today;
     });
-    reload();
-  }
+  };
+
+  const handlePrev = () => {
+    if (mode === "day") setAnchor((a) => addDays(a, -1));
+    else if (mode === "month") setAnchor((a) => addMonths(a, -1));
+    else setAnchor((a) => addDays(a, -7));
+  };
+
+  const handleNext = () => {
+    if (mode === "day") setAnchor((a) => addDays(a, 1));
+    else if (mode === "month") setAnchor((a) => addMonths(a, 1));
+    else setAnchor((a) => addDays(a, 7));
+  };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-border bg-ink px-6 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#07080a]">
+      {/* View Header */}
+      <header className="flex items-center justify-between gap-4 border-b border-white/[0.06] bg-ink/80 px-6 py-3">
+        <div className="flex min-w-0 items-center gap-3.5">
           {onBack ? (
             <Button
               variant="secondary"
@@ -107,126 +129,118 @@ export function TimelineView({
               <ArrowLeft className="size-4" />
             </Button>
           ) : null}
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            {collection ? collection.name : "Span"}
-          </h1>
+
+          {/* Mini Calendar Date Badge as in Screenshot */}
+          <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border border-white/10 bg-obsidian/90 shadow-sm">
+            <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-coral-pulse leading-none">
+              {anchor.toLocaleDateString(undefined, { month: "short" })}
+            </span>
+            <span className="font-mono text-[14px] font-bold text-white leading-tight">
+              {anchor.getDate()}
+            </span>
+          </div>
+
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold tracking-tight text-pure-white leading-tight">
+              {collection
+                ? collection.name
+                : anchor.toLocaleDateString(undefined, {
+                    month: "long",
+                    year: "numeric",
+                  })}
+            </h1>
+            <p className="mt-0.5 truncate font-mono text-[10.5px] text-white/40 leading-tight">
+              {rangeLabel(mode, anchor, days)}
+            </p>
+          </div>
+
           {collection ? (
-            <Badge variant="outline">{collection.kind}</Badge>
-          ) : null}
-          {spent > 0 ? (
-            <Badge variant="secondary" className="font-mono">
-              {formatMoney(spent)} spent
+            <Badge variant="outline" className="border-white/15 text-white/70">
+              {collection.kind}
             </Badge>
           ) : null}
         </div>
-        <div className="no-drag flex items-center gap-2">
+
+        <div className="no-drag flex items-center gap-2.5">
+          {/* Segmented [ < ] | [ > ] Nav Group */}
+          <div className="flex h-8 items-center rounded-lg border border-white/10 bg-obsidian/70 p-0.5 shadow-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+              title="Previous"
+              onClick={handlePrev}
+            >
+              <ChevronLeft className="size-3.5" />
+            </Button>
+            <div className="w-px self-stretch bg-white/10" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+              title="Next"
+              onClick={handleNext}
+            >
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+
+          {/* Day / Week / Month Mode Tabs */}
           <Tabs
-            value={String(range)}
-            onValueChange={(v) => setRange(Number(v) as Range)}
+            value={mode}
+            onValueChange={(v) => handleModeChange(v as ViewMode)}
           >
-            <TabsList>
-              <TabsTrigger value="1">Day</TabsTrigger>
-              <TabsTrigger value="3">3 days</TabsTrigger>
-              <TabsTrigger value="7">Week</TabsTrigger>
+            <TabsList className="h-8 border border-white/10 bg-obsidian/70 p-0.5">
+              <TabsTrigger value="day" className="h-7 px-3 text-[11.5px]">
+                Day
+              </TabsTrigger>
+              <TabsTrigger value="week" className="h-7 px-3 text-[11.5px]">
+                Week
+              </TabsTrigger>
+              <TabsTrigger value="month" className="h-7 px-3 text-[11.5px]">
+                Month
+              </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAnchor(initialAnchor(collection, range))}
-          >
-            {collection ? "Start" : "Today"}
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Previous"
-            onClick={() => setAnchor((a) => addDays(a, -range))}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            title="Next"
-            onClick={() => setAnchor((a) => addDays(a, range))}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            title="Collapse to Dashboard (Esc)"
-            onClick={onCollapse}
-          >
-            <PanelLeftClose className="size-4" />
-          </Button>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="no-drag flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex items-center justify-between px-4 py-2">
-            <p className="font-mono text-xs text-smoke">{rangeLabel(days)}</p>
-            {scheduled.error ? (
+      {/* Main Content Area - Full width without right To-do sidebar */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div
+          data-no-drag
+          className="no-drag flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        >
+          {scheduled.error ? (
+            <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#07080a] px-5 py-2">
               <p className="text-xs text-coral-pulse">{scheduled.error}</p>
-            ) : null}
-          </div>
-          <SpanCalendar
-            days={days}
-            spans={scheduled.spans}
-            onSelect={setSelected}
-          />
-        </div>
+            </div>
+          ) : null}
 
-        <aside className="no-drag flex w-64 shrink-0 flex-col border-l border-border bg-obsidian/40">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <p className="text-[12.5px] font-medium text-mist">To-do</p>
-            <span className="font-mono text-[10px] text-smoke">
-              {openTodos.length} open
-            </span>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {openTodos.length === 0 ? (
-              <p className="px-2 py-6 text-center text-xs text-smoke">
-                Nothing unscheduled. Anything without a time lands here.
-              </p>
+          {/* Calendar Body: Day/Week Grid or Month Grid */}
+          <div
+            data-no-drag
+            className="flex flex-1 min-h-0 flex-col overflow-hidden"
+          >
+            {mode === "month" ? (
+              <SpanMonthView
+                anchorDate={anchor}
+                spans={scheduled.spans}
+                onSelectSpan={setSelected}
+                onSelectDay={(day) => {
+                  setMode("day");
+                  setAnchor(startOfDay(day));
+                }}
+              />
             ) : (
-              openTodos.map((span) => (
-                <div
-                  key={span.id}
-                  className="group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-white/[0.04]"
-                >
-                  <input
-                    type="checkbox"
-                    aria-label={`Mark ${span.title} done`}
-                    checked={span.status === "done"}
-                    onChange={() => void toggleDone(span)}
-                    className="mt-0.5 size-3.5 accent-electric-sky"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelected(span)}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <p className="truncate text-[12.5px] text-mist">
-                      {span.title}
-                    </p>
-                    {span.due_at ? (
-                      <p className="font-mono text-[10px] text-smoke">
-                        due{" "}
-                        {new Date(span.due_at).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </p>
-                    ) : null}
-                  </button>
-                </div>
-              ))
+              <SpanCalendar
+                days={days}
+                spans={scheduled.spans}
+                onSelect={setSelected}
+              />
             )}
           </div>
-        </aside>
+        </div>
       </div>
 
       <SpanDialog

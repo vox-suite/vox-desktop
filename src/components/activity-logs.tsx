@@ -5,7 +5,7 @@ import { api, type LocalEvent } from "@/lib/tauri";
 export function ActivityLogs() {
   const [events, setEvents] = useState<LocalEvent[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -32,34 +32,41 @@ export function ActivityLogs() {
     };
   }, []);
 
-  // Auto-scroll to bottom on new event if user hasn't scrolled up
+  // When latest logs are at the top, keep scroll at top unless user has scrolled down
   useEffect(() => {
-    if (!isScrolledUp && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!isScrolledDown && scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
     }
-  }, [events, isScrolledUp]);
+  }, [events, isScrolledDown]);
 
   const handleScroll = () => {
     if (!scrollRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const atBottom = scrollHeight - scrollTop - clientHeight < 40;
-    setIsScrolledUp(!atBottom);
+    const { scrollTop } = scrollRef.current;
+    setIsScrolledDown(scrollTop > 20);
   };
 
   if (events.length === 0) return null;
 
+  const displayEvents = [...events].reverse();
+
   return (
     <div
       aria-label="Activity Logs"
-      className="pointer-events-auto absolute right-4 top-4 z-30 flex max-h-[55vh] w-[340px] flex-col overflow-hidden bg-transparent select-text opacity-50 transition-opacity duration-300 hover:opacity-90"
+      className="pointer-events-auto absolute right-4 top-0 z-30 flex max-h-[50vh] w-[340px] flex-col overflow-hidden bg-transparent select-text opacity-60 transition-opacity duration-300 hover:opacity-95"
+      style={{
+        maskImage:
+          "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)",
+        WebkitMaskImage:
+          "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)",
+      }}
     >
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1 pt-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex flex-col space-y-1.5">
-          {events.map((ev) => {
+        <div className="flex flex-col space-y-1.5 pb-10">
+          {displayEvents.map((ev) => {
             if (ev.kind === "command") {
               const cleanCmd = ev.text.startsWith("$ ")
                 ? ev.text.slice(2)

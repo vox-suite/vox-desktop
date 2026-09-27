@@ -1,36 +1,186 @@
 import { addDays, startOfDay } from "@/lib/span-layout";
 import type { Span } from "@/lib/tauri";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  cycling: "#59d499",
-  ride: "#59d499",
-  walking: "#8bd5a8",
-  running: "#8bd5a8",
-  driving: "#63a1ff",
-  travel: "#63a1ff",
-  commute: "#63a1ff",
-  visit: "#c792ea",
-  appointment: "#c792ea",
-  meeting: "#56c2ff",
-  call: "#56c2ff",
-  reminder: "#56c2ff",
-  expense: "#ffb454",
-  payment: "#ffb454",
-  delivery: "#ffb454",
-  meal: "#ff9e64",
-  food: "#ff9e64",
-  game: "#a855f7",
-  gaming: "#a855f7",
-  todo: "#e6e6e6",
+export type CategoryStyle = {
+  bg: string;
+  border: string;
+  dot: string;
+  text: string;
+  subtext: string;
 };
-const FALLBACK_COLORS = ["#9c9c9d", "#7fdbca", "#f78c6c", "#82aaff", "#c3e88d"];
+
+const CATEGORY_STYLES: Record<string, CategoryStyle> = {
+  // Meetings / Calls (Deep Indigo / Violet)
+  meeting: {
+    bg: "rgba(35, 25, 72, 0.88)",
+    border: "rgba(139, 92, 246, 0.35)",
+    dot: "#a78bfa",
+    text: "#ffffff",
+    subtext: "rgba(196, 181, 253, 0.75)",
+  },
+  call: {
+    bg: "rgba(35, 25, 72, 0.88)",
+    border: "rgba(139, 92, 246, 0.35)",
+    dot: "#a78bfa",
+    text: "#ffffff",
+    subtext: "rgba(196, 181, 253, 0.75)",
+  },
+  reminder: {
+    bg: "rgba(35, 25, 72, 0.88)",
+    border: "rgba(139, 92, 246, 0.35)",
+    dot: "#a78bfa",
+    text: "#ffffff",
+    subtext: "rgba(196, 181, 253, 0.75)",
+  },
+
+  // Focus work & Commute & Travel (Deep Cobalt / Navy)
+  commute: {
+    bg: "rgba(20, 38, 70, 0.88)",
+    border: "rgba(59, 130, 246, 0.35)",
+    dot: "#60a5fa",
+    text: "#ffffff",
+    subtext: "rgba(147, 197, 253, 0.75)",
+  },
+  travel: {
+    bg: "rgba(20, 38, 70, 0.88)",
+    border: "rgba(59, 130, 246, 0.35)",
+    dot: "#60a5fa",
+    text: "#ffffff",
+    subtext: "rgba(147, 197, 253, 0.75)",
+  },
+  driving: {
+    bg: "rgba(20, 38, 70, 0.88)",
+    border: "rgba(59, 130, 246, 0.35)",
+    dot: "#60a5fa",
+    text: "#ffffff",
+    subtext: "rgba(147, 197, 253, 0.75)",
+  },
+
+  // Cycling & Outdoor (Forest / Emerald Green)
+  cycling: {
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
+    text: "#ffffff",
+    subtext: "rgba(110, 231, 183, 0.75)",
+  },
+  ride: {
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
+    text: "#ffffff",
+    subtext: "rgba(110, 231, 183, 0.75)",
+  },
+  running: {
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
+    text: "#ffffff",
+    subtext: "rgba(110, 231, 183, 0.75)",
+  },
+  walking: {
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
+    text: "#ffffff",
+    subtext: "rgba(110, 231, 183, 0.75)",
+  },
+
+  // Social / Visits / Appointments (Deep Plum / Wine)
+  visit: {
+    bg: "rgba(60, 20, 38, 0.88)",
+    border: "rgba(244, 63, 94, 0.35)",
+    dot: "#fb7185",
+    text: "#ffffff",
+    subtext: "rgba(253, 164, 175, 0.75)",
+  },
+  appointment: {
+    bg: "rgba(60, 20, 38, 0.88)",
+    border: "rgba(244, 63, 94, 0.35)",
+    dot: "#fb7185",
+    text: "#ffffff",
+    subtext: "rgba(253, 164, 175, 0.75)",
+  },
+
+  // Expenses & Shopping (Warm Amber / Ochre)
+  expense: {
+    bg: "rgba(58, 32, 10, 0.88)",
+    border: "rgba(245, 158, 11, 0.35)",
+    dot: "#fbbf24",
+    text: "#ffffff",
+    subtext: "rgba(253, 230, 138, 0.75)",
+  },
+  payment: {
+    bg: "rgba(58, 32, 10, 0.88)",
+    border: "rgba(245, 158, 11, 0.35)",
+    dot: "#fbbf24",
+    text: "#ffffff",
+    subtext: "rgba(253, 230, 138, 0.75)",
+  },
+  delivery: {
+    bg: "rgba(58, 32, 10, 0.88)",
+    border: "rgba(245, 158, 11, 0.35)",
+    dot: "#fbbf24",
+    text: "#ffffff",
+    subtext: "rgba(253, 230, 138, 0.75)",
+  },
+
+  // Food & Meals (Warm Terracotta / Burnt Orange)
+  meal: {
+    bg: "rgba(56, 26, 14, 0.88)",
+    border: "rgba(249, 115, 22, 0.35)",
+    dot: "#fb923c",
+    text: "#ffffff",
+    subtext: "rgba(254, 215, 170, 0.75)",
+  },
+  food: {
+    bg: "rgba(56, 26, 14, 0.88)",
+    border: "rgba(249, 115, 22, 0.35)",
+    dot: "#fb923c",
+    text: "#ffffff",
+    subtext: "rgba(254, 215, 170, 0.75)",
+  },
+
+  // PS5 Gaming (Deep Violet / Neon Purple)
+  game: {
+    bg: "rgba(42, 18, 76, 0.88)",
+    border: "rgba(168, 85, 247, 0.38)",
+    dot: "#c084fc",
+    text: "#ffffff",
+    subtext: "rgba(233, 213, 255, 0.75)",
+  },
+  gaming: {
+    bg: "rgba(42, 18, 76, 0.88)",
+    border: "rgba(168, 85, 247, 0.38)",
+    dot: "#c084fc",
+    text: "#ffffff",
+    subtext: "rgba(233, 213, 255, 0.75)",
+  },
+
+  // Tasks / Standups (Dark Zinc / Slate)
+  todo: {
+    bg: "rgba(24, 26, 32, 0.9)",
+    border: "rgba(148, 163, 184, 0.25)",
+    dot: "#94a3b8",
+    text: "#ffffff",
+    subtext: "rgba(203, 213, 225, 0.75)",
+  },
+};
+
+export function categoryStyle(category: string): CategoryStyle {
+  const known = CATEGORY_STYLES[category.toLowerCase()];
+  if (known) return known;
+  return {
+    bg: "rgba(26, 30, 42, 0.88)",
+    border: "rgba(100, 116, 139, 0.3)",
+    dot: "#94a3b8",
+    text: "#ffffff",
+    subtext: "rgba(255, 255, 255, 0.65)",
+  };
+}
 
 export function categoryColor(category: string): string {
-  const known = CATEGORY_COLORS[category.toLowerCase()];
-  if (known) return known;
-  let hash = 0;
-  for (const ch of category) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
+  return categoryStyle(category).dot;
 }
 
 export function formatTime(iso: string | null): string {

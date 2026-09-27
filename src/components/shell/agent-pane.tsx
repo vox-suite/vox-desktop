@@ -32,7 +32,7 @@ export function AgentPane({
         : "Talk to Vox";
 
   return (
-    <div className="pointer-events-none flex h-full w-full flex-col items-center justify-end pb-8">
+    <div className="pointer-events-none flex h-full w-full flex-col items-center justify-end pb-2">
       <button
         type="button"
         onClick={onToggleCall}

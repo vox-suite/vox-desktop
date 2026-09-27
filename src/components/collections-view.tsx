@@ -126,7 +126,7 @@ export function CollectionsView({
         <p className="px-7 pt-3 text-xs text-coral-pulse">{error}</p>
       ) : null}
 
-      <div className="no-drag min-h-0 flex-1 overflow-auto px-7 py-6">
+      <div className="no-drag min-h-0 flex-1 overflow-auto px-7 py-6 [scrollbar-width:thin] [scrollbar-color:theme(colors.white/15)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 hover:[&::-webkit-scrollbar-thumb]:bg-white/25">
         {collections.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <VoxLogo size={54} />

@@ -5,14 +5,19 @@ import {
   startOfDay,
   type PlacedSpan,
 } from "@/lib/span-layout";
-import { categoryColor, formatAmount, formatTime } from "@/lib/span-format";
+import {
+  categoryColor,
+  categoryStyle,
+  formatAmount,
+  formatTime,
+} from "@/lib/span-format";
 import type { Span } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
-const HOUR_PX = 48;
+const HOUR_PX = 56;
 const PX_PER_MIN = HOUR_PX / 60;
-const INDENT_PX = 12;
-const GUTTER_PX = 52;
+const INDENT_PX = 10;
+const GUTTER_PX = 54;
 
 function isSameDay(a: Date, b: Date) {
   return startOfDay(a).getTime() === startOfDay(b).getTime();
@@ -28,12 +33,13 @@ function SpanBlock({
   onSelect: (span: Span) => void;
 }) {
   const { span, top, height, left, width, depth, instant } = placed;
-  const color = categoryColor(span.category);
+  const style = categoryStyle(span.category);
   const inset = depth * INDENT_PX;
-  const heightPx = Math.max(height * PX_PER_MIN - 2, 18);
+  const heightPx = Math.max(height * PX_PER_MIN - 2, 22);
   const amount = formatAmount(span);
-  const planned = span.status === "planned" || span.status === "waiting_user";
   const muted = span.status === "cancelled";
+  // Only show time line if height is at least 48px to prevent vertical text collision
+  const showTime = !instant && heightPx >= 48;
 
   return (
     <button
@@ -47,65 +53,80 @@ function SpanBlock({
         onSelect(span);
       }}
       className={cn(
-        "absolute overflow-hidden text-left transition hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-electric-sky",
+        "group absolute overflow-hidden text-left transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-electric-sky",
         instant
-          ? "flex items-center gap-1.5 rounded-full px-2"
-          : "flex flex-col justify-start rounded-md px-2 py-1",
-        planned && "border-dashed",
-        muted && "opacity-45",
-        span.status === "active" && "ring-1 ring-white/40",
+          ? "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
+          : cn(
+              "flex flex-col rounded-lg shadow-md hover:brightness-125",
+              showTime ? "justify-between p-2.5" : "justify-center px-2 py-1",
+            ),
+        muted && "opacity-40 line-through",
+        span.status === "active" &&
+          "ring-1 ring-white/50 shadow-[0_0_14px_rgba(255,255,255,0.2)]",
         span.status === "failed" && "ring-1 ring-coral-pulse",
       )}
       style={{
-        top: top * PX_PER_MIN + 1,
-        height: instant ? 20 : heightPx,
-        left: `calc(${left * 100}% + ${inset + 2}px)`,
+        top: top * PX_PER_MIN + 2,
+        height: instant ? 22 : heightPx,
+        left: `calc(${left * 100}% + ${inset + 3}px)`,
         width: instant
           ? "fit-content"
-          : `calc(${width * 100}% - ${inset + 4}px)`,
+          : `calc(${width * 100}% - ${inset + 6}px)`,
         maxWidth: instant
-          ? `calc(${width * 100}% - ${inset + 4}px)`
+          ? `calc(${width * 100}% - ${inset + 6}px)`
           : undefined,
         zIndex: instant ? depth + 50 : depth + 1,
-        background: `color-mix(in srgb, ${color} ${hasChildren ? 10 : instant ? 30 : 22}%, #111214)`,
-        border: `1px ${planned ? "dashed" : "solid"} color-mix(in srgb, ${color} 45%, transparent)`,
-        borderLeft: instant ? undefined : `3px solid ${color}`,
+        backgroundColor: hasChildren
+          ? `color-mix(in srgb, ${style.bg} 60%, #111215)`
+          : style.bg,
+        border: `1px solid ${style.border}`,
       }}
     >
       {instant ? (
         <>
           <span
             className="size-1.5 shrink-0 rounded-full"
-            style={{ background: color }}
+            style={{
+              background: style.dot,
+              boxShadow: `0 0 5px ${style.dot}88`,
+            }}
           />
-          <span
-            className={cn(
-              "truncate text-[11px] text-mist",
-              muted && "line-through",
-            )}
-          >
-            {amount ? (
-              <strong className="mr-1 font-semibold">{amount}</strong>
-            ) : null}
+          <span className="truncate text-[11px] font-medium text-white">
             {span.title}
           </span>
+          {amount ? (
+            <span className="ml-1 shrink-0 rounded bg-white/[0.14] px-1 py-0.2 font-mono text-[9px] font-semibold text-white">
+              {amount}
+            </span>
+          ) : null}
         </>
       ) : (
         <>
-          <p
-            className={cn(
-              "truncate text-[11.5px] font-medium leading-tight text-pure-white",
-              muted && "line-through",
-            )}
-          >
-            {span.title}
-          </p>
-          {heightPx > 34 ? (
-            <p className="truncate font-mono text-[10px] text-white/55">
-              {formatTime(span.start_at)}
-              {span.end_at ? `–${formatTime(span.end_at)}` : ""}
-              {amount ? ` · ${amount}` : ""}
+          <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
+            <p className="truncate text-[11.5px] font-semibold leading-tight text-white min-w-0 flex-1">
+              {span.title}
             </p>
+            {/* Top-right Accent Dot as in screenshot */}
+            <span
+              className="size-1.5 shrink-0 rounded-full ml-1"
+              style={{
+                background: style.dot,
+                boxShadow: `0 0 6px ${style.dot}aa`,
+              }}
+            />
+          </div>
+          {showTime ? (
+            <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
+              <span className="truncate" style={{ color: style.subtext }}>
+                {formatTime(span.start_at)}
+                {span.end_at ? ` – ${formatTime(span.end_at)}` : ""}
+              </span>
+              {amount ? (
+                <span className="ml-auto shrink-0 rounded bg-white/[0.14] px-1 py-0.2 text-[9px] font-semibold text-white">
+                  {amount}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </>
       )}
@@ -165,10 +186,17 @@ export function SpanCalendar({
   const allDayRows = allDay.reduce((max, r) => Math.max(max, r.row + 1), 0);
   const columns = `${GUTTER_PX}px repeat(${days.length}, minmax(0, 1fr))`;
 
+  // Compute current time position for laser indicator
+  const nowTop = (now.getHours() * 60 + now.getMinutes()) * PX_PER_MIN;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      data-no-drag
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#07080a] select-none"
+    >
+      {/* Column Headers (Day + Date, as in SS: "Mon 6", "Fri 10") */}
       <div
-        className="grid border-b border-border"
+        className="grid shrink-0 border-b border-white/[0.06] bg-ink/75"
         style={{ gridTemplateColumns: columns }}
       >
         <div />
@@ -177,19 +205,26 @@ export function SpanCalendar({
           return (
             <div
               key={day.toISOString()}
-              className="border-l border-border px-2 py-2"
+              className="flex items-center justify-center gap-1.5 border-l border-white/[0.04] py-2"
             >
-              <p className="font-mono text-[10px] uppercase tracking-wider text-smoke">
-                {day.toLocaleDateString(undefined, { weekday: "short" })}
-              </p>
-              <p
+              <span
                 className={cn(
-                  "text-lg leading-tight font-semibold",
-                  today ? "text-electric-sky" : "text-mist",
+                  "font-mono text-[11px] uppercase tracking-wide",
+                  today ? "text-white/60 font-semibold" : "text-white/40",
+                )}
+              >
+                {day.toLocaleDateString(undefined, { weekday: "short" })}
+              </span>
+              <span
+                className={cn(
+                  "font-mono text-[12px] font-semibold transition",
+                  today
+                    ? "rounded-md bg-white/15 px-1.5 py-0.5 text-white ring-1 ring-white/20 shadow-sm"
+                    : "text-white/80",
                 )}
               >
                 {day.getDate()}
-              </p>
+              </span>
             </div>
           );
         })}
@@ -197,7 +232,7 @@ export function SpanCalendar({
 
       {allDayRows > 0 ? (
         <div
-          className="relative grid border-b border-border"
+          className="relative grid shrink-0 border-b border-white/[0.06]"
           style={{ gridTemplateColumns: columns, height: allDayRows * 24 + 6 }}
         >
           <p className="self-center pr-2 text-right font-mono text-[9px] uppercase text-smoke">
@@ -222,16 +257,22 @@ export function SpanCalendar({
         </div>
       ) : null}
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      {/* Main Time Grid Scroll Container without layout-stealing scrollbars */}
+      <div
+        ref={scrollRef}
+        data-no-drag
+        className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         <div
           className="relative grid"
           style={{ gridTemplateColumns: columns, height: 24 * HOUR_PX }}
         >
+          {/* Time Gutter with Labels (Current time label removed as requested) */}
           <div className="relative">
             {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
               <span
                 key={h}
-                className="absolute right-2 -translate-y-1/2 font-mono text-[10px] text-smoke"
+                className="absolute right-3 -translate-y-1/2 font-mono text-[10px] font-medium text-white/35 select-none"
                 style={{ top: h * HOUR_PX }}
               >
                 {new Date(2000, 0, 1, h).toLocaleTimeString(undefined, {
@@ -240,18 +281,19 @@ export function SpanCalendar({
               </span>
             ))}
           </div>
+
+          {/* Days Columns */}
           {perDay.map(({ day, placed, parents }) => {
             const today = isSameDay(day, now);
-            const nowTop = (now.getTime() - startOfDay(day).getTime()) / 60_000;
             return (
               <div
                 key={day.toISOString()}
                 className={cn(
-                  "relative border-l border-border",
-                  today && "bg-white/[0.015]",
+                  "relative border-l border-white/[0.04]",
+                  today && "bg-white/[0.01]",
                 )}
                 style={{
-                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.06) ${HOUR_PX - 1}px, rgba(255,255,255,0.06) ${HOUR_PX}px)`,
+                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.035) ${HOUR_PX - 1}px, rgba(255,255,255,0.035) ${HOUR_PX}px)`,
                 }}
               >
                 {placed.map((p) => (
@@ -262,17 +304,15 @@ export function SpanCalendar({
                     onSelect={onSelect}
                   />
                 ))}
-                {today ? (
-                  <div
-                    className="pointer-events-none absolute right-0 left-0 z-50 h-px bg-coral-pulse"
-                    style={{ top: nowTop * PX_PER_MIN }}
-                  >
-                    <span className="absolute -top-1 -left-1 size-2 rounded-full bg-coral-pulse" />
-                  </div>
-                ) : null}
               </div>
             );
           })}
+
+          {/* Dotted Laser Current Time Line across the entire grid */}
+          <div
+            className="pointer-events-none absolute right-0 left-[54px] z-40 border-t border-dashed border-coral-pulse/70"
+            style={{ top: nowTop }}
+          />
         </div>
       </div>
     </div>

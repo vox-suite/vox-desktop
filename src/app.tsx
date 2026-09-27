@@ -5,7 +5,6 @@ import type { ShellTab } from "@/components/shell/shell-tabs";
 import { SignInScreen } from "@/components/sign-in-screen";
 import { useAuth } from "@/hooks/use-auth";
 import { useCallSession } from "@/hooks/use-call-session";
-import { useCollections } from "@/hooks/use-collections";
 import { statusLabel } from "@/lib/status";
 
 export default function App() {
@@ -13,7 +12,6 @@ export default function App() {
   const callSession = useCallSession(auth.auth.signed_in);
 
   const [activeTab, setActiveTab] = useState<ShellTab>("agent");
-  const collectionsHook = useCollections(auth.auth.signed_in);
 
   const {
     auth: authState,
@@ -33,7 +31,6 @@ export default function App() {
     toggleCall,
     endCall,
   } = callSession;
-  const { collections, selectedId, setSelectedId } = collectionsHook;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -46,18 +43,17 @@ export default function App() {
       ) {
         void toggleCall();
       } else if (e.key === "Escape") {
-        if (activeTab === "collections" && selectedId) setSelectedId(null);
-        else if (activeTab !== "agent") setActiveTab("agent");
+        if (activeTab !== "agent") setActiveTab("agent");
         else if (isActive || callState === "connecting") void endCall();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers use latest state via closure refresh
-  }, [authState.signed_in, activeTab, isActive, isBusy, callState, selectedId]);
+  }, [authState.signed_in, activeTab, isActive, isBusy, callState]);
 
   async function handleGoogleSignIn() {
-    await googleSignIn(collectionsHook.reload);
+    await googleSignIn();
   }
 
   const label = statusLabel(callState, callError);
@@ -119,12 +115,7 @@ export default function App() {
         subLabel={subLabel}
         callError={callError}
         onToggleCall={() => void toggleCall()}
-        collections={collections}
-        collectionsError={collectionsHook.error}
-        selectedCollectionId={selectedId}
-        onSelectCollection={setSelectedId}
-        onCreateCollection={collectionsHook.create}
-        onArchiveCollection={(id) => void collectionsHook.archive(id)}
+        collections={[]}
       />
     </main>
   );
