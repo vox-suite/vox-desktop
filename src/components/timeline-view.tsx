@@ -1,18 +1,12 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  PanelLeftClose,
-  Plus,
-} from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, PanelLeftClose } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LocalLlmCard } from "@/components/local-llm-card";
 import { SpanCalendar } from "@/components/span-calendar";
 import { daysFrom, formatMoney } from "@/lib/span-format";
-import { SpanDialog, type SpanDraft } from "@/components/span-dialog";
+import { SpanDialog } from "@/components/span-dialog";
 import { useSpans } from "@/hooks/use-spans";
 import { addDays, startOfDay } from "@/lib/span-layout";
 import { api, type Collection, type Span } from "@/lib/tauri";
@@ -64,7 +58,6 @@ export function TimelineView({
   );
   const [anchor, setAnchor] = useState(() => initialAnchor(collection, range));
   const [selected, setSelected] = useState<Span | null>(null);
-  const [draft, setDraft] = useState<SpanDraft | null>(null);
 
   const days = useMemo(() => daysFrom(anchor, range), [anchor, range]);
   const from = days[0].toISOString();
@@ -111,7 +104,7 @@ export function TimelineView({
             </Button>
           ) : null}
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            {collection ? collection.name : "Timeline"}
+            {collection ? collection.name : "Span"}
           </h1>
           {collection ? (
             <Badge variant="outline">{collection.kind}</Badge>
@@ -157,16 +150,6 @@ export function TimelineView({
             <ChevronRight className="size-4" />
           </Button>
           <Button
-            size="sm"
-            className="shadow-btn-lift gap-1.5"
-            onClick={() =>
-              setDraft({ start: null, collectionId: collection?.id })
-            }
-          >
-            <Plus className="size-4" />
-            New
-          </Button>
-          <Button
             variant="secondary"
             size="icon"
             title="Collapse to Dashboard (Esc)"
@@ -187,14 +170,7 @@ export function TimelineView({
               <p className="text-xs text-coral-pulse">{scheduled.error}</p>
             ) : null}
           </div>
-          <SpanCalendar
-            days={days}
-            spans={scheduled.spans}
-            onSelect={setSelected}
-            onCreateAt={(start) =>
-              setDraft({ start, collectionId: collection?.id })
-            }
-          />
+          <SpanCalendar days={days} spans={scheduled.spans} onSelect={setSelected} />
         </div>
 
         <aside className="no-drag flex w-64 shrink-0 flex-col border-l border-border bg-obsidian/40">
@@ -249,12 +225,9 @@ export function TimelineView({
 
       <SpanDialog
         span={selected}
-        draft={draft}
+        draft={null}
         collections={collections}
-        onClose={() => {
-          setSelected(null);
-          setDraft(null);
-        }}
+        onClose={() => setSelected(null)}
         onSaved={reload}
       />
     </div>

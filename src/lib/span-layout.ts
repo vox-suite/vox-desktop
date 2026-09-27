@@ -54,7 +54,12 @@ function pack(
   depth: number,
   out: PlacedSpan[],
 ) {
-  const sorted = [...nodes].sort((a, b) => a.start - b.start || b.end - a.end);
+  const instants = nodes.filter((n) => n.instant);
+  const durations = nodes.filter((n) => !n.instant);
+
+  const sorted = [...durations].sort(
+    (a, b) => a.start - b.start || b.end - a.end,
+  );
   let cluster: { node: Node; col: number }[] = [];
   let columnEnds: number[] = [];
   let clusterEnd = -Infinity;
@@ -71,7 +76,7 @@ function pack(
         left: l,
         width: w,
         depth,
-        instant: node.instant,
+        instant: false,
       });
       for (const child of node.children) {
         child.start = Math.max(child.start, node.start + CHILD_HEADER_MINUTES);
@@ -99,6 +104,19 @@ function pack(
     clusterEnd = Math.max(clusterEnd, node.end);
   }
   flush();
+
+  for (const node of instants) {
+    out.push({
+      span: node.span,
+      top: node.start,
+      height: node.end - node.start,
+      left,
+      width,
+      depth,
+      instant: true,
+    });
+    pack(node.children, left, width, depth + 1, out);
+  }
 }
 
 export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {

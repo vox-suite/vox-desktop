@@ -3,8 +3,8 @@ import {
   BarChart3,
   BookOpen,
   Bot,
-  CalendarDays,
   ChevronDown,
+  GanttChart,
   Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "pointer-events-auto relative z-20 flex h-full w-72 shrink-0 flex-col overflow-hidden border-r border-white/10 select-none",
+        "pointer-events-auto relative z-20 flex h-full w-72 shrink-0 flex-col overflow-hidden rounded-lg border border-white/10 select-none",
         "bg-[#07080a]/75 backdrop-blur-md shadow-2xl",
       )}
     >
@@ -142,8 +142,8 @@ export function AppSidebar({
                 : "text-white/65 hover:bg-white/[0.06] hover:text-pure-white",
             )}
           >
-            <CalendarDays className="size-4 shrink-0 text-white/60" />
-            <span>Timeline</span>
+            <GanttChart className="size-4 shrink-0 text-white/60" />
+            <span>Span</span>
           </button>
           <button
             type="button"

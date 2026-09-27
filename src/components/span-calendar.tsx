@@ -60,8 +60,13 @@ function SpanBlock({
         top: top * PX_PER_MIN + 1,
         height: instant ? 20 : heightPx,
         left: `calc(${left * 100}% + ${inset + 2}px)`,
-        width: `calc(${width * 100}% - ${inset + 4}px)`,
-        zIndex: depth + 1,
+        width: instant
+          ? "fit-content"
+          : `calc(${width * 100}% - ${inset + 4}px)`,
+        maxWidth: instant
+          ? `calc(${width * 100}% - ${inset + 4}px)`
+          : undefined,
+        zIndex: instant ? depth + 50 : depth + 1,
         background: `color-mix(in srgb, ${color} ${hasChildren ? 10 : instant ? 30 : 22}%, #111214)`,
         border: `1px ${planned ? "dashed" : "solid"} color-mix(in srgb, ${color} 45%, transparent)`,
         borderLeft: instant ? undefined : `3px solid ${color}`,
@@ -112,12 +117,10 @@ export function SpanCalendar({
   days,
   spans,
   onSelect,
-  onCreateAt,
 }: {
   days: Date[];
   spans: Span[];
   onSelect: (span: Span) => void;
-  onCreateAt: (start: Date) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => new Date());
@@ -249,14 +252,6 @@ export function SpanCalendar({
                 )}
                 style={{
                   backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.06) ${HOUR_PX - 1}px, rgba(255,255,255,0.06) ${HOUR_PX}px)`,
-                }}
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const minutes =
-                    Math.floor((e.clientY - rect.top) / PX_PER_MIN / 15) * 15;
-                  onCreateAt(
-                    new Date(startOfDay(day).getTime() + minutes * 60_000),
-                  );
                 }}
               >
                 {placed.map((p) => (

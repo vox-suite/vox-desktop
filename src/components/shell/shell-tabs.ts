@@ -3,8 +3,8 @@ import {
   BarChart3,
   Bot,
   BookOpen,
-  CalendarDays,
   Database,
+  GanttChart,
   Home,
   Layers,
 } from "lucide-react";
@@ -15,7 +15,7 @@ export type ShellTab =
 export const SHELL_TABS: { id: ShellTab; label: string; icon: LucideIcon }[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "agent", label: "Agent", icon: Bot },
-  { id: "timeline", label: "Timeline", icon: CalendarDays },
+  { id: "timeline", label: "Span", icon: GanttChart },
   { id: "collections", label: "Collections", icon: Layers },
   { id: "lms", label: "LMS", icon: BookOpen },
   { id: "data", label: "Data", icon: Database },
