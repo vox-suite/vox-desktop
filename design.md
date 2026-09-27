@@ -27,16 +27,15 @@ Vox shares the design DNA of Raycast: high-density, keyboard-first, ultra-respon
 ### Text & Accents
 
 | Token             | Hex       | Role                  | Usage                                            |
-| ----------------- | --------- | --------------------- | ------------------------------------------------ |
+| ----------------- | --------- | ---------------------- | ------------------------------------------------ |
 | **Pure White**    | `#ffffff` | Primary High-Emphasis | Headings, active text, key titles                |
 | **Mist**          | `#e6e6e6` | Primary Action Fill   | Primary action buttons (`btn-primary-mist`)      |
 | **Iron**          | `#454647` | Action Text           | Contrast text on light fills                     |
 | **Ash**           | `#9c9c9d` | Secondary Text        | Subtitles, metadata, inactive icons              |
 | **Smoke**         | `#6a6b6c` | Tertiary / Labels     | Field labels, timestamps, shortcuts              |
-| **Coral Pulse**   | `#ff6363` | Brand Neon Accent     | Voice active state, agent highlights, indicators |
-| **Ember Hush**    | `#452324` | Danger / Call State   | End call button fill, error callouts             |
-| **Electric Sky**  | `#63a1ff` | Interactive Mode      | Interactive task badges, secondary actions       |
-| **Success Green** | `#59d499` | Completion State      | Completed task badges, live socket dot           |
+| **Coral Pulse**   | `#ff6363` | Brand Neon Accent     | Voice active state, agent highlights, errors      |
+| **Electric Sky**  | `#63a1ff` | Interactive Mode      | Focus rings, checkbox accents, secondary actions |
+| **Success Green** | `#59d499` | Completion State      | Completed span/task states, live socket dot     |
 
 ### Radii & Elevation
 
@@ -52,118 +51,91 @@ Vox shares the design DNA of Raycast: high-density, keyboard-first, ultra-respon
 
 ---
 
-## 3. Desktop Application Architecture & Sizing
+## 3. Application Architecture
+
+Vox Desktop is a Tauri app: a React/TypeScript frontend (`src/`) driven by a Rust backend (`src-tauri/src/`). The Rust side owns auth, the voice session, and all network I/O; the frontend never talks to any backend directly — every data or account operation goes through a `#[tauri::command]` invoked via `src/lib/tauri.ts`.
+
+- **Auth** (`auth.rs`): Google sign-in via Supabase Auth (PKCE), used only to obtain a Supabase session and mint a Vox Core-scoped token (`vox_token`). Supabase is never queried directly for app data — no PostgREST (`/rest/v1/...`) calls exist anywhere in the app.
+- **Data access** (`sync_client.rs`): all Spans and Collections CRUD goes through Vox Core's own HTTP API (`/v1/spans`, `/v1/collections`, and their sub-resources), authenticated with the bearer `vox_token`. There is no local disk cache of this data — every read is a live request to Vox Core, and the frontend re-polls / re-fetches on demand (see `use-spans.ts`, `use-collections.ts`).
+- **Voice session** (`session.rs`, `client.rs`, `audio.rs`, `codec.rs`): a duplex realtime audio link to the Vox bridge, driven by CPAL mic input and a WebSocket/WebRTC session loop.
+- **Device link** (`device_link.rs`): an opt-in WebSocket bridge to Vox Core that lets the cloud agent run terminal commands and shell sessions on this Mac during a call, and locally classify incoming SMS messages. See §6.
+- **Local LLM** (`local_llm.rs`): a locally-downloaded Gemma GGUF model (via `llama_cpp_2`) used to classify SMS text on-device — see §6.
 
 ### Window Lifecycle & Sizing
 
 - **Unauthenticated (Sign In) State**:
-  - Window Dimension: `800 x 600 px`, **automatically centered on the screen**.
-  - Window Chrome: Frameless with 36px top drag region (`.window-drag-bar` / `data-tauri-drag-region`).
-  - Hero Section: Large animated Vox orb (`120px`), "Continue with Google" action button (`btn-primary-mist`).
+  - Window Dimension: `800 x 600 px`, animated and centered on screen.
+  - Window Chrome: Frameless with a top drag region (`data-tauri-drag-region`).
+  - Hero Section: "Continue with Google" primary action.
+  - After Google sign-in, a user without a linked phone number sees a Phone Entry screen before reaching the main app.
 - **Authenticated (Signed In) State**:
-  - Window Dimension: **Scaled dynamically to `1200 x 800 px`** via Tauri IPC `set_window_size`.
-  - Window Chrome: Full width/height workspace layout (`.raycast-shell.authenticated-workspace`).
-  - On sign out, the window automatically scales back down to `800 x 600 px` and **re-centers directly to the middle of the screen** (`window.center()` via Tauri `center_window`).
+  - Window Dimension: animated to `1290 x 800 px` via the `set_window_size` Tauri command.
+  - Window Chrome: full-width/height workspace layout.
+  - On sign out, the window animates back down to `800 x 600 px` and re-centers (`center_window`).
 
 ---
 
 ## 4. Layout & Navigation
 
-### Persistent Left Icon Sidebar Rail (`.sidebar-rail`)
+### Persistent Left Sidebar (`AppSidebar`, `w-72`)
 
-- **Width**: `64px` fixed, Void Black / Ink background with right hairline border.
-- **Top Group**:
-  1. **Brand Diamond**: Mini Vox Coral Diamond (`CoralDiamond`), clicks to reset to Cockpit Dashboard.
-  2. **Dashboard Icon** (`DashboardIcon`): Switches to the central Voice Cockpit.
-  3. **Tasks Icon** (`TasksIcon`): Expands the full-width Tasks Drawer to the right edge. Features a dynamic notification badge indicating pending/executing background tasks.
-- **Bottom Group**:
-  1. **User Profile Avatar** (`UserAvatarIcon`): Shows user status.
-  2. **Profile Popover**: Clicking toggles a Raycast popover displaying account email, bridge WebRTC endpoint (`bridge.voxagent.in`), audio codec status (`Opus 48kHz`), and a "Sign Out" button.
+- **Top**: macOS-style traffic-light window controls (close/minimize/fullscreen) and the Vox wordmark + app version.
+- **Nav list**: Agent, Timeline, Collections, Artifacts, Analytics. (Artifacts and Analytics currently render a placeholder pane — they are reserved nav slots, not built-out features.)
+- **Bottom**: user avatar/initial, opens a profile popover with display name, account email, app version, and "Sign Out".
+
+### Background
+
+The main window renders a persistent 3D map (MapLibre, via `useMissionMap`) as ambient background chrome behind the active view, with live local-agent activity logs (`ActivityLogs`) overlaid top-right.
 
 ---
 
 ## 5. Main Stage Views
 
-### View 1: Center Voice Cockpit (Dashboard)
+### View 1: Agent (Voice Cockpit) — default view
 
-When active view is `Dashboard`:
+- Center-stage animating orb, the primary voice-call control.
+- Clicking the orb (or pressing Return when idle) starts a realtime duplex voice session with the Vox agent (`start_call`/`end_call`/`call_status` in `session.rs`); Escape ends an active call.
+- **Dynamic Audio Reactive Speed**, driven by the mic level reported from the native session:
+  - _Idle / Quiet_: slow, tranquil animation.
+  - _Connecting_: ramps up with a connecting tone.
+  - _User Speaking_: CPAL mic input crossing an RMS threshold (`mic_level > 0.012`) drives `is_speaking = true` and an amplified coral neon aura.
+  - _User Quiet / Listening_: eases back to a gentle steady speed.
 
-- **Stage Container**: Center-aligned within the 1200px workspace.
-- **Interactive Hero Animating Orb (240px)**:
-  - Big slow-animating canvas orb (`size: 240px`) serving as the central interactive control.
-  - Centered Frosted Mic Button (`.orb-center-mic`): Centered inside the orb with a frosted glass backdrop and hairline border.
-  - **Dynamic Audio Reactive Speed**:
-    - _Idle / Quiet_: Animates slowly and tranquilly at `0.35x` speed.
-    - _Connecting_: Ramps up to `1.8x` speed with connecting gold/amber tone.
-    - _User Speaking_: Continuous audio RMS detector monitors CPAL input stream (`mic_level > 0.012`) and triggers `is_speaking = true`. The orb animates **violently and fast at `3.5x` speed** with an amplified coral neon aura (`#ff6363`) and expanded center mic icon.
-    - _User Quiet / Listening_: Automatically eases back down to gentle `1.0x` speed.
-  - Clicking anywhere on the orb starts or ends the duplex voice communication session.
+### View 2: Timeline (`TimelineView`)
 
-### View 2: Expanded Tasks Drawer (`.tasks-expanded-view`)
+The calendar-style view over a collection's (or the user's overall) Spans:
 
-When active view is `Tasks`:
+- Day / 3-day / Week range tabs, with prev/next/today navigation.
+- A calendar grid (`SpanCalendar`) of scheduled Spans for the visible range, and a "To-do" side panel of unscheduled, not-yet-done Spans.
+- Clicking empty calendar space or "New" opens `SpanDialog` to create a Span; clicking an existing Span opens the same dialog to edit or complete it.
+- Spans carry a flexible `data` payload (e.g. an `amount` for spend tracking) — the header shows total spend for the visible range when present.
+- When viewing the unscoped Timeline (no collection selected), a `LocalLlmCard` is shown offering to download the local Gemma model (see §6).
 
-- **Expansion Behavior**:
-  - Expands from the 64px sidebar rail completely across to the far right edge of the window (`flex: 1`, full remaining 1136px).
-  - The left sidebar icons remain visible and interactive on the left rail.
-- **Top Right Corner Collapse Button**:
-  - Dedicated collapse button with `CollapseIcon` in the top right corner (`.btn-collapse-drawer`).
-  - Tooltip: "Collapse to Dashboard (Esc)".
-  - Clicking collapses the view back to the Center Voice Cockpit.
-- **Header & Filter Bar**:
-  - Title: "Agent Tasks" with total task counter pill.
-  - Quick reload button (`RefreshIcon`) and "+ New Task" button (`PlusIcon`).
-  - Filter pills: "All", "Pending", "Executing", "Completed".
-  - Instant text filter input for title, instruction, and project.
-- **Dedicated Tasks Table**:
-  - Strictly aligned with `vox-core` database table (`tasks`) and agent tool schemas (`CreateTask`, `ListTasks`, `UpdateTask`):
-    - `STATUS`: Pill badges for `pending`, `executing` (with pulsing coral dot), `completed` (with checkmark), and `failed`.
-    - `TASK & INSTRUCTION`: Title in bold pure white, instruction text snippet in ash.
-    - `EXECUTION TYPE`: Badges for `autonomous` (AI sparkles badge), `interactive`, and `manual_human`.
-    - `PROJECT`: Linked project/collection name tag.
-    - `DUE`: Clock icon with due window or timestamp.
-    - `ACTIONS`: Quick checkmark toggle button to complete/reopen task, plus "View" button to open the full detail inspector.
-- **Database Querying & Raycast Pagination Bar**:
-  - Direct integration with Supabase PostgREST database endpoint (`/rest/v1/tasks?select=*&order=created_at.desc&limit=...&offset=...`) using JWT session tokens, with fallback to Vox Core API and persistent local JSON disk cache (`~/.config/vox/tasks_db.json`).
-  - Total database record count extracted via HTTP `Content-Range` (`0-9/42`) and SQL `count(*)`.
-  - Raycast Pagination Footer Bar (`.tasks-pagination-bar`):
-    - Info: "Showing X–Y of Z tasks" or "No tasks found".
-    - Controls: Previous button (`← Prev`), interactive numbered page pills (`[1]`, `[2]`, `[3]`), and Next button (`Next →`).
-    - Reset to page 1 on search or filter change.
+### View 3: Collections (`CollectionsView`)
+
+A grid of Collections (trip / event / course / area / custom), each showing its date range and Span count. Selecting one opens that Collection's own `TimelineView` scoped to it; "New Collection" opens a create dialog (name, kind, date range, description); each card has an inline archive action.
 
 ---
 
-## 6. Modals & Inspectors
+## 6. Local SMS Classification & Device Link
 
-### 1. Create Agent Task Modal
+Two related but independent opt-in capabilities, both gated behind explicit user consent and both requiring the same live WebSocket bridge to Vox Core (`device_link.rs`):
 
-- Inputs:
-  - Task Title
-  - Detailed Instruction (textarea for autonomous worker)
-  - Execution Mode dropdown (`Autonomous (Agent)`, `Interactive`, `Manual Tracking`)
-  - Project / Collection
-  - Due Date / Target window
-- Actions: "Cancel" and "Create Task".
+- **Remote control** (`RemoteControl`, toggled via `set_remote_control`): lets the cloud agent open an interactive shell (`open_shell`) or run a one-off command (`run_command`) on this Mac during a call, via `TerminalManager`. Every command run is appended to a local log and mirrored into the in-app Activity Logs; commands only ever run while this consent is on, and the socket is not opened at all while both this and local-LLM readiness are off.
+- **Local SMS classification** (`classify_sms`): incoming SMS is classified on-device by a locally downloaded Gemma model (`local_llm.rs`, `gemma-2b-it-q4_k_m.gguf` via `llama_cpp_2`) rather than sent to the cloud — the frame only carries the classification result (relevant/category/title) back to Core. The model is downloaded once (`download_local_llm`) and cached in memory after first use to avoid reloading it per message.
 
-### 2. Task Details Inspector Modal
-
-- Inspects complete agent execution telemetry:
-  - Status and Title
-  - Full instructions
-  - Agent Feasibility Reasoning (`feasibility_reasoning` generated by `vox-core` agent)
-  - Formatted JSON Execution Result payload (`execution_result`)
-  - Task ID and creation timestamps
+The device socket (`connect_and_serve`) speaks a small typed JSON frame protocol: each inbound frame has a `type` (`open_shell` | `run_command` | `classify_sms`) which the desktop parses into a typed `FrameType` before dispatch, so an unrecognized frame type is logged distinctly from a rejected/failed known command rather than silently swallowed.
 
 ---
 
 ## 7. Keyboard Navigation & Shortcuts
 
-| Key        | Context              | Action                           |
-| ---------- | -------------------- | -------------------------------- |
-| `↵ Return` | Dashboard (Idle)     | Start voice session / unmute mic |
-| `Esc`      | Active Voice Session | End call / mute voice channel    |
-| `Esc`      | Tasks View           | Collapse back to Dashboard view  |
-| `Esc`      | Modals Open          | Close active modal / inspector   |
+| Key        | Context                | Action                            |
+| ---------- | ----------------------- | --------------------------------- |
+| `↵ Return` | Agent view (Idle)      | Start voice session / unmute mic  |
+| `Esc`      | Active Voice Session   | End call / mute voice channel     |
+| `Esc`      | Collections (drilled in) | Back to Collections grid        |
+| `Esc`      | Any non-Agent view     | Collapse back to Agent view       |
 
 ---
 
@@ -172,18 +144,18 @@ When active view is `Tasks`:
 - Design tokens and typography (`Inter` for UI, `Geist Mono` for IDs, timestamps, and status tags) are shared between `vox-web` and `vox-desktop`.
 - Window controls and frame behavior conform to native macOS design guidelines while maintaining the Raycast dark palette.
 
-## 9. Component Library (shadcn-style Dioxus primitives)
+## 9. Component Library (shadcn/ui primitives)
 
-Desktop UI is composed from `src/ui/` primitives that mirror shadcn/ui APIs, styled with Raycast tokens:
+Desktop UI is composed from `src/components/ui/` primitives following shadcn/ui APIs, styled with Raycast tokens:
 
 | Primitive                           | Variants / Notes                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------- |
-| `Button`                            | `Default` (Mist/Iron), `Secondary`, `Ghost`, `Outline`, `Destructive` (Ember/Coral), `Icon` |
-| `Badge`                             | `Default`, `Secondary`, `Outline`, `Success`, `Info`, `Accent` (coral), `Destructive`       |
-| `Card`                              | Ink surface + optional `elevated` keyboard-key shadow                                       |
-| `Dialog`                            | Overlay + key-elevated panel (create task, inspector)                                       |
-| `Input` / `Textarea` / `Select`     | Recessed wells (`rgba(255,255,255,0.05)`)                                                   |
-| `Tabs` / `TabsList` / `TabsTrigger` | Filter strip on Tasks view                                                                  |
-| `Label` / `Separator` / `Kbd`       | Form labels, dividers, shortcut caps                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `Button`                            | `Default` (Mist/Iron), `Secondary`, `Ghost`, `Outline`, `Destructive` (Ember/Coral), `Icon`   |
+| `Badge`                             | `Default`, `Secondary`, `Outline`, `Success`, `Info`, `Accent` (coral), `Destructive`         |
+| `Card`                              | Ink surface + optional `elevated` keyboard-key shadow                                         |
+| `Dialog`                            | Overlay + key-elevated panel (Span dialog, new-Collection dialog)                            |
+| `Input` / `Textarea` / `Select`     | Recessed wells (`rgba(255,255,255,0.05)`)                                                    |
+| `Tabs` / `TabsList` / `TabsTrigger` | Day/3-day/Week range switcher on Timeline                                                    |
+| `Label` / `Separator`               | Form labels, dividers                                                                        |
 
 Primary actions never use chromatic fills — Mist on Void is the only filled CTA.

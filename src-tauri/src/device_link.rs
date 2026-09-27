@@ -283,12 +283,40 @@ fn socket_url(api_url: &str, device_id: &str) -> String {
     format!("{base}/v1/devices/{device_id}/socket")
 }
 
+/// The set of frame `type`s Vox Core is allowed to send over the device
+/// socket. The wire format is still a bare JSON string — this only makes the
+/// desktop side's handling of it type-safe instead of stringly-typed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrameType {
+    OpenShell,
+    RunCommand,
+    ClassifySms,
+}
+
+impl std::str::FromStr for FrameType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "open_shell" => Ok(Self::OpenShell),
+            "run_command" => Ok(Self::RunCommand),
+            "classify_sms" => Ok(Self::ClassifySms),
+            _ => Err(()),
+        }
+    }
+}
+
 async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value) -> Value {
     let id = frame.get("id").cloned().unwrap_or(Value::Null);
     let kind = frame.get("type").and_then(Value::as_str).unwrap_or("");
 
-    match kind {
-        "open_shell" => {
+    let Ok(frame_type) = kind.parse::<FrameType>() else {
+        eprintln!("Vox device link: unrecognized frame type: {kind:?}");
+        return json!({ "id": id, "ok": false, "error": format!("unrecognized frame type: {kind}") });
+    };
+
+    match frame_type {
+        FrameType::OpenShell => {
             emit_local_event(app, "system", "Vox requested interactive terminal shell");
             let terminal = terminal.clone();
             let result = tokio::task::spawn_blocking(move || terminal.open_shell()).await;
@@ -307,7 +335,7 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
                 }
             }
         }
-        "run_command" => {
+        FrameType::RunCommand => {
             let command = frame
                 .get("command")
                 .and_then(Value::as_str)
@@ -343,8 +371,7 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
             log_remote_command(&logged, outcome);
             response
         }
-        "classify_sms" => classify_sms_frame(id, &frame).await,
-        _ => json!({ "id": id, "ok": false, "error": "unknown command" }),
+        FrameType::ClassifySms => classify_sms_frame(id, &frame).await,
     }
 }
 

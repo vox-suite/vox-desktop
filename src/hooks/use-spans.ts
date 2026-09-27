@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { api, type Span, type SpanQuery } from "@/lib/tauri";
 
 const POLL_INTERVAL_MS = 15_000;
+const SPAN_EVENT_PREFIX = "span_";
 
 export function useSpans(query: SpanQuery, enabled = true) {
   const [spans, setSpans] = useState<Span[]>([]);
@@ -35,7 +36,7 @@ export function useSpans(query: SpanQuery, enabled = true) {
     void listen<string>("vox-live-update", (event) => {
       try {
         const payload = JSON.parse(event.payload) as { type?: string };
-        if (payload.type?.startsWith("span_")) void load();
+        if (payload.type?.startsWith(SPAN_EVENT_PREFIX)) void load();
       } catch {
         /* ignore malformed frame */
       }

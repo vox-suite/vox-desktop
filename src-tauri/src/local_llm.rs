@@ -1,25 +1,13 @@
 use futures_util::StreamExt;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter};
 use tokio::io::AsyncWriteExt;
+pub use vox_sms_schema::ExtractedSmsEvent;
 
 const MODEL_URL: &str =
     "https://huggingface.co/lmstudio-ai/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf";
 const MODEL_FILENAME: &str = "gemma-2b-it-q4_k_m.gguf";
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ExtractedSmsEvent {
-    pub relevant: bool,
-    #[serde(default)]
-    pub category: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(default)]
-    pub amount: Option<f64>,
-    #[serde(default)]
-    pub currency: Option<String>,
-}
 
 #[derive(Clone, Serialize)]
 pub struct DownloadProgress {
@@ -107,7 +95,7 @@ fn classification_prompt(sender: &str, body: &str) -> String {
         "<start_of_turn>user\n\
          You classify a single SMS message for a personal activity timeline. \
          Output ONLY a valid JSON object with this schema: \
-         {{\"relevant\": true|false, \"category\": \"payment\"|\"delivery\"|\"appointment\"|\"travel\"|\"otp\"|\"other\", \
+         {{\"relevant\": true|false, \"category\": {categories}, \
          \"title\": \"short human-readable title, under 80 characters\"}}. \
          Set relevant to false for personal/social messages, spam, or anything with no concrete \
          real-world activity to log. Set category to \"otp\" for any one-time password or \
@@ -115,7 +103,8 @@ fn classification_prompt(sender: &str, body: &str) -> String {
          response. Do not include any extra text or markdown outside of the JSON.\n\n\
          Sender: {sender}\n\
          Message: {body}<end_of_turn>\n\
-         <start_of_turn>model\n"
+         <start_of_turn>model\n",
+        categories = vox_sms_schema::SMS_CATEGORIES_PROMPT,
     )
 }
 
