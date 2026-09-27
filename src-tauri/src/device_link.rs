@@ -98,6 +98,18 @@ pub fn get_local_events(state: State<'_, EventLog>) -> Vec<LocalEvent> {
     events
 }
 
+/// Lets the local UI exercise a GUI action without waiting on a Core-sent
+/// frame — same code path `gui_action` frames use, just invoked directly.
+#[tauri::command]
+pub fn run_gui_action_locally(command: String) -> Result<Value, String> {
+    vox_desktop_control::execute(&command).map(|outcome| match outcome {
+        vox_desktop_control::GuiOutcome::Done(msg) => json!({ "ok": true, "output": msg }),
+        vox_desktop_control::GuiOutcome::NeedsFallback(candidates) => {
+            json!({ "ok": false, "needs_llm_fallback": true, "candidates": candidates })
+        }
+    })
+}
+
 #[tauri::command]
 pub fn get_device_link_status(state: State<'_, DeviceLinkState>) -> DeviceLinkStatus {
     DeviceLinkStatus {
@@ -291,6 +303,7 @@ enum FrameType {
     OpenShell,
     RunCommand,
     ClassifySms,
+    GuiAction,
 }
 
 impl std::str::FromStr for FrameType {
@@ -301,6 +314,7 @@ impl std::str::FromStr for FrameType {
             "open_shell" => Ok(Self::OpenShell),
             "run_command" => Ok(Self::RunCommand),
             "classify_sms" => Ok(Self::ClassifySms),
+            "gui_action" => Ok(Self::GuiAction),
             _ => Err(()),
         }
     }
@@ -369,6 +383,42 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
             };
             let outcome = if response["ok"] == true { "ran" } else { "failed" };
             log_remote_command(&logged, outcome);
+            response
+        }
+        FrameType::GuiAction => {
+            let command = frame
+                .get("command")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            emit_local_event(app, "command", &format!("gui: {command}"));
+            let logged = command.clone();
+            let app_clone = app.clone();
+            let result = tokio::task::spawn_blocking(move || vox_desktop_control::execute(&command)).await;
+            let response = match result {
+                Ok(Ok(vox_desktop_control::GuiOutcome::Done(outcome))) => {
+                    emit_local_event(&app_clone, "success", &outcome);
+                    json!({ "id": id, "ok": true, "output": outcome })
+                }
+                Ok(Ok(vox_desktop_control::GuiOutcome::NeedsFallback(candidates))) => {
+                    emit_local_event(
+                        &app_clone,
+                        "system",
+                        &format!("no local match, {} on-screen candidates need a model decision", candidates.len()),
+                    );
+                    json!({ "id": id, "ok": false, "needs_llm_fallback": true, "candidates": candidates })
+                }
+                Ok(Err(err)) => {
+                    emit_local_event(&app_clone, "error", &format!("GUI action failed: {err}"));
+                    json!({ "id": id, "ok": false, "error": err })
+                }
+                Err(err) => {
+                    emit_local_event(&app_clone, "error", &format!("GUI execution error: {err}"));
+                    json!({ "id": id, "ok": false, "error": err.to_string() })
+                }
+            };
+            let outcome = if response["ok"] == true { "ran" } else { "failed" };
+            log_remote_command(&format!("gui: {logged}"), outcome);
             response
         }
         FrameType::ClassifySms => classify_sms_frame(id, &frame).await,

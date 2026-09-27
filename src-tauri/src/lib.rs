@@ -135,6 +135,7 @@ pub fn run() {
             device_link::set_remote_control,
             device_link::get_local_events,
             device_link::is_local_model_ready,
+            device_link::run_gui_action_locally,
             system_stats::get_system_stats,
             local_llm::is_local_llm_downloaded,
             local_llm::download_local_llm,

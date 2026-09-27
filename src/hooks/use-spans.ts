@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { dummySpansFor } from "@/lib/dummy-spans";
 import { api, type Span, type SpanQuery } from "@/lib/tauri";
 
 const POLL_INTERVAL_MS = 15_000;
@@ -16,12 +15,10 @@ export function useSpans(query: SpanQuery, enabled = true) {
     setLoading(true);
     const query = JSON.parse(key) as SpanQuery;
     try {
-      const real = await api.getSpans(query);
-      setSpans(real && real.length > 0 ? real : dummySpansFor(query));
+      setSpans(await api.getSpans(query));
       setError("");
-    } catch {
-      setSpans(dummySpansFor(query));
-      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
