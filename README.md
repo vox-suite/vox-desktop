@@ -93,6 +93,15 @@ Quit any other Vox window before signing in so port `17843` is free.
 
 Nothing secret to Vox servers (service tokens, host secrets, JWT signing keys) is shipped in the app.
 
+### Build locally
+
+```sh
+npm run build:app        # release build + installer (.app/.dmg, .msi, ...)
+npm run build:app:debug  # faster, unoptimized build for local testing
+```
+
+Without the `VOX_*` variables from the table below exported first, the build picks up whatever's in `.env` (loopback dev values). Without an Apple signing cert configured locally, the output is unsigned — same Gatekeeper quarantine step as the CI builds below applies.
+
 ### Release pipeline
 
 GitHub Actions workflow `.github/workflows/release.yml` builds installers when you push a `v*` tag or run the workflow manually.
