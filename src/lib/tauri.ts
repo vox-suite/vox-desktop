@@ -107,13 +107,6 @@ export type NewCollection = {
   ends_at?: string | null;
 };
 
-export type LocalLlmDownloadProgress = {
-  downloaded_bytes: number;
-  total_bytes?: number | null;
-  done: boolean;
-  error?: string | null;
-};
-
 export const api = {
   getAuthState: () => invoke<AuthState>("get_auth_state"),
   signInWithGoogle: () => invoke<AuthState>("sign_in_with_google"),
@@ -135,11 +128,8 @@ export const api = {
   updateSpan: (id: string, patch: SpanPatch) =>
     invoke<Span>("update_span", { id, patch }),
   deleteSpan: (id: string) => invoke<void>("delete_span", { id }),
-  isLocalLlmDownloaded: () => invoke<boolean>("is_local_llm_downloaded"),
-  downloadLocalLlm: () => invoke<void>("download_local_llm"),
   isLocalSttDownloaded: () => invoke<boolean>("is_local_stt_downloaded"),
   downloadLocalStt: () => invoke<void>("download_local_stt"),
-  isLocalModelReady: () => invoke<boolean>("is_local_model_ready"),
   startCall: () => invoke<CallStatus>("start_call"),
   endCall: () => invoke<CallStatus>("end_call"),
   callStatus: () => invoke<CallStatus>("call_status"),
