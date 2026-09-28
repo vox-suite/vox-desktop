@@ -5,29 +5,54 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::codec::{resample_8k_mulaw_to_output, resample_input_to_8k_mulaw};
+use crate::codec::{resample_pcm_to_output, resample_to_16k_mono};
+
+/// Feeds `minimp3::Decoder` from a growable shared byte queue instead of a
+/// fixed buffer, so one `Decoder` instance can be reused across many
+/// WebSocket chunks: `Decoder::next_frame` keeps any bytes it couldn't yet
+/// assemble into a full frame in its own internal ring buffer between
+/// calls, which is what lets an MP3 frame split across two chunks decode
+/// correctly instead of losing its tail every time.
+struct QueueReader {
+    queue: Arc<Mutex<VecDeque<u8>>>,
+}
+
+impl std::io::Read for QueueReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let mut queue = self.queue.lock().unwrap();
+        let n = buf.len().min(queue.len());
+        for slot in buf.iter_mut().take(n) {
+            *slot = queue.pop_front().unwrap();
+        }
+        Ok(n)
+    }
+}
+
+fn new_mp3_decoder(queue: &Arc<Mutex<VecDeque<u8>>>) -> minimp3::Decoder<QueueReader> {
+    minimp3::Decoder::new(QueueReader {
+        queue: Arc::clone(queue),
+    })
+}
 
 pub struct AudioEngine {
     output_queue: Arc<Mutex<VecDeque<f32>>>,
-    pending_marks: Arc<Mutex<VecDeque<(usize, String)>>>,
     playback_epoch: Arc<AtomicU64>,
     stop_tx: Mutex<Option<oneshot::Sender<()>>>,
     out_rate: u32,
     out_channels: u16,
+    mp3_queue: Arc<Mutex<VecDeque<u8>>>,
+    mp3_decoder: Mutex<minimp3::Decoder<QueueReader>>,
 }
 
 impl AudioEngine {
     pub fn start(
-        mic_tx: mpsc::UnboundedSender<Vec<u8>>,
-        mark_tx: mpsc::UnboundedSender<String>,
+        mic_tx: mpsc::UnboundedSender<Vec<f32>>,
         mic_level: Arc<AtomicU32>,
     ) -> Result<Self, String> {
         let output_queue = Arc::new(Mutex::new(VecDeque::<f32>::new()));
-        let pending_marks = Arc::new(Mutex::new(VecDeque::<(usize, String)>::new()));
         let playback_epoch = Arc::new(AtomicU64::new(0));
 
         let queue_clone = Arc::clone(&output_queue);
-        let marks_clone = Arc::clone(&pending_marks);
 
         let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<(u32, u16), String>>();
         let (thread_stop_tx, thread_stop_rx) = oneshot::channel::<()>();
@@ -94,9 +119,9 @@ impl AudioEngine {
                         let rms = (sum_sq / data.len().max(1) as f32).sqrt();
                         mic_level_f32.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let mulaw = resample_input_to_8k_mulaw(data, in_rate, in_channels);
-                        if !mulaw.is_empty() {
-                            let _ = mic_tx.send(mulaw);
+                        let samples_16k = resample_to_16k_mono(data, in_rate, in_channels);
+                        if !samples_16k.is_empty() {
+                            let _ = mic_tx.send(samples_16k);
                         }
                     },
                     |err| eprintln!("Input audio stream error: {err}"),
@@ -111,9 +136,9 @@ impl AudioEngine {
                         let rms = (sum_sq / f32_samples.len().max(1) as f32).sqrt();
                         mic_level_i16.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let mulaw = resample_input_to_8k_mulaw(&f32_samples, in_rate, in_channels);
-                        if !mulaw.is_empty() {
-                            let _ = mic_tx.send(mulaw);
+                        let samples_16k = resample_to_16k_mono(&f32_samples, in_rate, in_channels);
+                        if !samples_16k.is_empty() {
+                            let _ = mic_tx.send(samples_16k);
                         }
                     },
                     |err| eprintln!("Input audio stream error: {err}"),
@@ -138,12 +163,10 @@ impl AudioEngine {
             let output_stream = match out_default_config.sample_format() {
                 SampleFormat::F32 => {
                     let queue = Arc::clone(&queue_clone);
-                    let marks = Arc::clone(&marks_clone);
-                    let mark_tx = mark_tx.clone();
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [f32], _| {
-                            drain_output_f32(data, &queue, &marks, &mark_tx);
+                            drain_output_f32(data, &queue);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,
@@ -151,12 +174,10 @@ impl AudioEngine {
                 }
                 SampleFormat::I16 => {
                     let queue = Arc::clone(&queue_clone);
-                    let marks = Arc::clone(&marks_clone);
-                    let mark_tx = mark_tx.clone();
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [i16], _| {
-                            drain_output_i16(data, &queue, &marks, &mark_tx);
+                            drain_output_i16(data, &queue);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,
@@ -197,42 +218,82 @@ impl AudioEngine {
             .recv()
             .map_err(|e| format!("Audio engine initialization channel closed: {e}"))??;
 
+        let mp3_queue = Arc::new(Mutex::new(VecDeque::<u8>::new()));
+        let mp3_decoder = Mutex::new(new_mp3_decoder(&mp3_queue));
+
         Ok(Self {
             output_queue,
-            pending_marks,
             playback_epoch,
             stop_tx: Mutex::new(Some(thread_stop_tx)),
             out_rate,
             out_channels,
+            mp3_queue,
+            mp3_decoder,
         })
     }
 
-    pub fn enqueue_audio(&self, mulaw_bytes: &[u8]) {
-        let epoch = self.playback_epoch.load(Ordering::SeqCst);
-        let samples = resample_8k_mulaw_to_output(mulaw_bytes, self.out_rate, self.out_channels);
-        if samples.is_empty() {
+    pub fn enqueue_mp3_chunk(&self, mp3_bytes: &[u8]) {
+        if mp3_bytes.is_empty() {
             return;
         }
+        let epoch = self.playback_epoch.load(Ordering::SeqCst);
+        self.mp3_queue.lock().unwrap().extend(mp3_bytes.iter().copied());
+
+        let mut pcm_samples: Vec<f32> = Vec::new();
+        let mut src_rate = 44100;
+        let mut decoder = self.mp3_decoder.lock().unwrap();
+
+        loop {
+            match decoder.next_frame() {
+                Ok(frame) => {
+                    src_rate = frame.sample_rate as u32;
+                    let channels = frame.channels.max(1);
+                    let samples_per_channel = frame.data.len() / channels;
+                    if channels == 1 {
+                        pcm_samples.extend(frame.data.iter().map(|&s| s as f32 / 32768.0));
+                    } else {
+                        for i in 0..samples_per_channel {
+                            let mut sum = 0.0f32;
+                            for c in 0..channels {
+                                sum += frame.data[i * channels + c] as f32 / 32768.0;
+                            }
+                            pcm_samples.push(sum / channels as f32);
+                        }
+                    }
+                }
+                Err(minimp3::Error::Eof) | Err(minimp3::Error::InsufficientData) => break,
+                Err(minimp3::Error::SkippedData) => continue,
+                Err(err) => {
+                    eprintln!("MP3 decoding warning: {err}");
+                    break;
+                }
+            }
+        }
+        drop(decoder);
+
+        if pcm_samples.is_empty() {
+            return;
+        }
+
+        let output_samples = resample_pcm_to_output(
+            &pcm_samples,
+            src_rate,
+            self.out_rate,
+            self.out_channels,
+        );
+
         let mut queue = self.output_queue.lock().unwrap();
         if self.playback_epoch.load(Ordering::SeqCst) != epoch {
             return;
         }
-        queue.extend(samples);
+        queue.extend(output_samples);
     }
 
-    pub fn enqueue_mark(&self, name: String) {
-        let epoch = self.playback_epoch.load(Ordering::SeqCst);
-        let queue = self.output_queue.lock().unwrap();
-        if self.playback_epoch.load(Ordering::SeqCst) != epoch {
-            return;
-        }
-        let remaining_samples = queue.len();
-        drop(queue);
-        let mut marks = self.pending_marks.lock().unwrap();
-        if self.playback_epoch.load(Ordering::SeqCst) != epoch {
-            return;
-        }
-        marks.push_back((remaining_samples, name));
+    pub fn is_playing(&self) -> bool {
+        self.output_queue
+            .lock()
+            .map(|q| !q.is_empty())
+            .unwrap_or(false)
     }
 
     pub fn clear_playback(&self) {
@@ -240,8 +301,8 @@ impl AudioEngine {
         let mut queue = self.output_queue.lock().unwrap();
         queue.clear();
         drop(queue);
-        let mut marks = self.pending_marks.lock().unwrap();
-        marks.clear();
+        self.mp3_queue.lock().unwrap().clear();
+        *self.mp3_decoder.lock().unwrap() = new_mp3_decoder(&self.mp3_queue);
     }
 }
 
@@ -255,70 +316,19 @@ impl Drop for AudioEngine {
     }
 }
 
-fn advance_marks(
-    samples_played: usize,
-    marks: &Mutex<VecDeque<(usize, String)>>,
-    mark_tx: &mpsc::UnboundedSender<String>,
-) {
-    if samples_played == 0 {
-        return;
-    }
-    let mut marks = marks.lock().unwrap();
-    if marks.is_empty() {
-        return;
-    }
-    let mut ready_marks = Vec::new();
-    for (remaining, name) in marks.iter_mut() {
-        if *remaining <= samples_played {
-            *remaining = 0;
-            ready_marks.push(name.clone());
-        } else {
-            *remaining -= samples_played;
-        }
-    }
-    marks.retain(|(remaining, _)| *remaining > 0);
-    for name in ready_marks {
-        let _ = mark_tx.send(name);
+fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>) {
+    let mut queue = queue.lock().unwrap();
+    for sample in data.iter_mut() {
+        *sample = queue.pop_front().unwrap_or(0.0);
     }
 }
 
-fn drain_output_f32(
-    data: &mut [f32],
-    queue: &Mutex<VecDeque<f32>>,
-    marks: &Mutex<VecDeque<(usize, String)>>,
-    mark_tx: &mpsc::UnboundedSender<String>,
-) {
+fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>) {
     let mut queue = queue.lock().unwrap();
-    let mut samples_played = 0;
     for sample in data.iter_mut() {
-        if let Some(val) = queue.pop_front() {
-            *sample = val;
-            samples_played += 1;
-        } else {
-            *sample = 0.0;
-        }
+        *sample = match queue.pop_front() {
+            Some(val) => (val.clamp(-1.0, 1.0) * 32767.0) as i16,
+            None => 0,
+        };
     }
-    drop(queue);
-    advance_marks(samples_played, marks, mark_tx);
-}
-
-fn drain_output_i16(
-    data: &mut [i16],
-    queue: &Mutex<VecDeque<f32>>,
-    marks: &Mutex<VecDeque<(usize, String)>>,
-    mark_tx: &mpsc::UnboundedSender<String>,
-) {
-    let mut queue = queue.lock().unwrap();
-    let mut samples_played = 0;
-    for sample in data.iter_mut() {
-        if let Some(val) = queue.pop_front() {
-            let clamped = val.clamp(-1.0, 1.0);
-            *sample = (clamped * 32767.0) as i16;
-            samples_played += 1;
-        } else {
-            *sample = 0;
-        }
-    }
-    drop(queue);
-    advance_marks(samples_played, marks, mark_tx);
 }

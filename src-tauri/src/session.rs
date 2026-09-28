@@ -57,7 +57,7 @@ pub async fn start_call(
     let session = auth
         .current_session()
         .ok_or_else(|| "Sign in before starting a call".to_string())?;
-    let bridge_url = auth.state().bridge_url;
+    let api_url = auth.state().api_url;
 
     {
         let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
@@ -76,6 +76,7 @@ pub async fn start_call(
     let is_running_clone = Arc::clone(&is_running);
     let phase_clone = Arc::clone(&phase);
     let mic_level_clone = Arc::clone(&mic_level);
+    let app_handle = app.clone();
 
     {
         let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
@@ -89,7 +90,8 @@ pub async fn start_call(
 
     tokio::spawn(async move {
         let result = client::run_session_loop(
-            bridge_url,
+            app_handle,
+            api_url,
             session,
             is_running_clone.clone(),
             ready_tx,

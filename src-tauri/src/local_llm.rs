@@ -1,27 +1,11 @@
-use futures_util::StreamExt;
-use serde::Serialize;
+use crate::model_download::{download_model_file, models_dir};
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter};
-use tokio::io::AsyncWriteExt;
+use tauri::AppHandle;
 pub use vox_shared::sms::ExtractedSmsEvent;
 
 const MODEL_URL: &str =
     "https://huggingface.co/lmstudio-ai/gemma-2b-it-GGUF/resolve/main/gemma-2b-it-q4_k_m.gguf";
 const MODEL_FILENAME: &str = "gemma-2b-it-q4_k_m.gguf";
-
-#[derive(Clone, Serialize)]
-pub struct DownloadProgress {
-    pub downloaded_bytes: u64,
-    pub total_bytes: Option<u64>,
-    pub done: bool,
-    pub error: Option<String>,
-}
-
-fn models_dir() -> PathBuf {
-    let dir = crate::device_link::vox_config_dir().join("models");
-    let _ = std::fs::create_dir_all(&dir);
-    dir
-}
 
 pub fn model_path() -> PathBuf {
     models_dir().join(MODEL_FILENAME)
@@ -32,62 +16,7 @@ pub fn is_model_downloaded() -> bool {
 }
 
 pub async fn download_model(app: AppHandle) -> Result<(), String> {
-    if is_model_downloaded() {
-        return Ok(());
-    }
-
-    let tmp_path = models_dir().join(format!("{MODEL_FILENAME}.part"));
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(MODEL_URL)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("model download failed: {}", resp.status()));
-    }
-    let total = resp.content_length();
-
-    let mut file = tokio::fs::File::create(&tmp_path)
-        .await
-        .map_err(|e| e.to_string())?;
-    let mut stream = resp.bytes_stream();
-    let mut downloaded: u64 = 0;
-    let mut last_emit = std::time::Instant::now();
-
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| e.to_string())?;
-        file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-        downloaded += chunk.len() as u64;
-        if last_emit.elapsed().as_millis() > 200 {
-            let _ = app.emit(
-                "local-llm-download-progress",
-                DownloadProgress {
-                    downloaded_bytes: downloaded,
-                    total_bytes: total,
-                    done: false,
-                    error: None,
-                },
-            );
-            last_emit = std::time::Instant::now();
-        }
-    }
-    file.flush().await.map_err(|e| e.to_string())?;
-    drop(file);
-    tokio::fs::rename(&tmp_path, model_path())
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let _ = app.emit(
-        "local-llm-download-progress",
-        DownloadProgress {
-            downloaded_bytes: downloaded,
-            total_bytes: total,
-            done: true,
-            error: None,
-        },
-    );
-    Ok(())
+    download_model_file(&app, MODEL_URL, model_path(), "local-llm-download-progress").await
 }
 
 fn classification_prompt(sender: &str, body: &str) -> String {

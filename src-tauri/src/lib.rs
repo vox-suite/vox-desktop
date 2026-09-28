@@ -7,8 +7,10 @@ mod deep_link;
 mod device_link;
 mod live_link;
 mod local_llm;
+mod local_stt;
 #[cfg(target_os = "macos")]
 mod macos_location;
+mod model_download;
 mod pkce;
 mod session;
 mod session_store;
@@ -141,6 +143,8 @@ pub fn run() {
             system_stats::get_system_stats,
             local_llm::is_local_llm_downloaded,
             local_llm::download_local_llm,
+            local_stt::is_local_stt_downloaded,
+            local_stt::download_local_stt,
             #[cfg(any(target_os = "macos", windows))]
             local_llm::test_local_llm,
             #[cfg(target_os = "macos")]
