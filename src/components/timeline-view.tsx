@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -162,6 +162,18 @@ export function TimelineView({
         </div>
 
         <div className="no-drag flex items-center gap-2.5">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => void scheduled.reload()}
+            disabled={scheduled.loading}
+            title="Refresh"
+          >
+            <RotateCw
+              className={`size-3.5 ${scheduled.loading ? "animate-spin" : ""}`}
+            />
+          </Button>
+
           {/* Segmented [ < ] | [ > ] Nav Group */}
           <div className="flex h-8 items-center rounded-lg border border-white/10 bg-obsidian/70 p-0.5 shadow-sm">
             <Button
