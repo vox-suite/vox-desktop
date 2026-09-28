@@ -23,6 +23,9 @@ async fn core_request(
     }
     let resp = req.send().await.map_err(|e| e.to_string())?;
     let status = resp.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        auth.handle_unauthorized();
+    }
     if !status.is_success() {
         return Err(format!("{path} failed: {status}"));
     }

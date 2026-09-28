@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import {
   animateWindowSize,
@@ -42,6 +43,24 @@ export function useAuth() {
       });
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let active = true;
+    void listen<AuthState>("auth-state", (event) => {
+      setAuth(event.payload);
+      setAuthBusy(false);
+      if (!event.payload.signed_in)
+        setAuthError("Your session expired. Sign in again.");
+    }).then((fn) => {
+      if (active) unlisten = fn;
+      else fn();
+    });
+    return () => {
+      active = false;
+      if (unlisten) unlisten();
     };
   }, []);
 

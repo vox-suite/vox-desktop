@@ -95,6 +95,8 @@ pub fn run() {
                 }
             }
 
+            app.state::<AuthManager>().set_app_handle(app.handle().clone());
+
             let handle = app.handle().clone();
             if let Ok(Some(urls)) = app.deep_link().get_current() {
                 let vox_urls = filter_vox_urls(urls);

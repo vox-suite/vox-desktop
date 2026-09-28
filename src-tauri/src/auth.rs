@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_opener::OpenerExt;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -151,6 +151,7 @@ pub struct AuthManager {
     /// Serializes callback handling so duplicate macOS Opened/on_open_url events
     /// cannot clear pending mid-flight and race the waiting Google sign-in.
     oauth_finish: tokio::sync::Mutex<()>,
+    app: Mutex<Option<tauri::AppHandle>>,
 }
 
 impl AuthManager {
@@ -169,6 +170,7 @@ impl AuthManager {
             oauth_in_progress: AtomicBool::new(false),
             pending_oauth: Mutex::new(None),
             oauth_finish: tokio::sync::Mutex::new(()),
+            app: Mutex::new(None),
         })
     }
 
@@ -440,6 +442,20 @@ impl AuthManager {
                         .to_string(),
                 )
             }
+        }
+    }
+
+    pub fn set_app_handle(&self, handle: tauri::AppHandle) {
+        if let Ok(mut guard) = self.app.lock() {
+            *guard = Some(handle);
+        }
+    }
+
+    pub fn handle_unauthorized(&self) {
+        let Ok(state) = self.sign_out() else { return };
+        let handle = self.app.lock().ok().and_then(|guard| guard.clone());
+        if let Some(handle) = handle {
+            let _ = handle.emit("auth-state", &state);
         }
     }
 
