@@ -41,17 +41,21 @@ pub async fn get_spans(
     unscheduled: Option<bool>,
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
-    let query: Vec<(&str, String)> = [
+    let mut body = serde_json::Map::new();
+    for (key, value) in [
         ("from", from),
         ("to", to),
         ("collection_id", collection_id),
         ("status", status),
-        ("unscheduled", unscheduled.map(|u| u.to_string())),
-    ]
-    .into_iter()
-    .filter_map(|(k, v)| v.filter(|v| !v.is_empty()).map(|v| (k, v)))
-    .collect();
-    core_request(&auth, reqwest::Method::GET, "/v1/spans", &query, None).await
+    ] {
+        if let Some(value) = value.filter(|v| !v.is_empty()) {
+            body.insert(key.to_string(), Value::String(value));
+        }
+    }
+    if let Some(unscheduled) = unscheduled {
+        body.insert("unscheduled".to_string(), Value::Bool(unscheduled));
+    }
+    core_request(&auth, reqwest::Method::POST, "/v1/spans/list", &[], Some(Value::Object(body))).await
 }
 
 #[tauri::command]
@@ -65,21 +69,21 @@ pub async fn update_span(
     patch: Value,
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
-    let path = format!("/v1/spans/{id}");
-    core_request(&auth, reqwest::Method::PATCH, &path, &[], Some(patch)).await
+    let path = format!("/v1/spans/{id}/update");
+    core_request(&auth, reqwest::Method::POST, &path, &[], Some(patch)).await
 }
 
 #[tauri::command]
 pub async fn delete_span(id: String, auth: State<'_, AuthManager>) -> Result<(), String> {
-    let path = format!("/v1/spans/{id}");
-    core_request(&auth, reqwest::Method::DELETE, &path, &[], None)
+    let path = format!("/v1/spans/{id}/delete");
+    core_request(&auth, reqwest::Method::POST, &path, &[], None)
         .await
         .map(|_| ())
 }
 
 #[tauri::command]
 pub async fn get_collections(auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::GET, "/v1/collections", &[], None).await
+    core_request(&auth, reqwest::Method::POST, "/v1/collections/list", &[], Some(serde_json::json!({}))).await
 }
 
 #[tauri::command]
@@ -96,14 +100,14 @@ pub async fn update_collection(
     patch: Value,
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
-    let path = format!("/v1/collections/{id}");
-    core_request(&auth, reqwest::Method::PATCH, &path, &[], Some(patch)).await
+    let path = format!("/v1/collections/{id}/update");
+    core_request(&auth, reqwest::Method::POST, &path, &[], Some(patch)).await
 }
 
 #[tauri::command]
 pub async fn archive_collection(id: String, auth: State<'_, AuthManager>) -> Result<(), String> {
-    let path = format!("/v1/collections/{id}");
-    core_request(&auth, reqwest::Method::DELETE, &path, &[], None)
+    let path = format!("/v1/collections/{id}/archive");
+    core_request(&auth, reqwest::Method::POST, &path, &[], None)
         .await
         .map(|_| ())
 }
@@ -115,11 +119,7 @@ pub async fn set_span_collection(
     member: bool,
     auth: State<'_, AuthManager>,
 ) -> Result<(), String> {
-    let path = format!("/v1/collections/{collection_id}/spans/{span_id}");
-    let method = if member {
-        reqwest::Method::PUT
-    } else {
-        reqwest::Method::DELETE
-    };
-    core_request(&auth, method, &path, &[], None).await.map(|_| ())
+    let action = if member { "add" } else { "remove" };
+    let path = format!("/v1/collections/{collection_id}/spans/{span_id}/{action}");
+    core_request(&auth, reqwest::Method::POST, &path, &[], None).await.map(|_| ())
 }

@@ -683,13 +683,6 @@ fn is_allowed_oauth_callback(callback: &url::Url) -> bool {
         let host = callback.host_str().unwrap_or("");
         return (host == "127.0.0.1" || host == "localhost") && callback.path() == "/auth/callback";
     }
-    // Browsers can't render a page at a vox:// URL, so release builds redirect
-    // through this public HTTPS bridge page first (vox-bridge/src/auth_bridge.rs),
-    // which then forwards to vox://auth/callback itself.
-    if callback.scheme() == "https" {
-        return callback.host_str().unwrap_or("") == "api.voxagent.in"
-            && callback.path() == "/auth/bridge";
-    }
     false
 }
 
@@ -774,7 +767,7 @@ async fn exchange_with_core(
 
     let me_url = format!("{}/v1/me", config.api_url);
     let me_response = reqwest::Client::new()
-        .get(&me_url)
+        .post(&me_url)
         .header("authorization", format!("Bearer {access_token}"))
         .send()
         .await
