@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Activity,
   Bot,
   ChevronDown,
   GanttChart,
@@ -27,6 +28,7 @@ const CONTROLS = [
 const NAV_ITEMS = [
   { id: "agent" as ShellTab, label: "Agent", icon: Bot },
   { id: "timeline" as ShellTab, label: "Span", icon: GanttChart },
+  { id: "pulse" as ShellTab, label: "Pulse", icon: Activity },
 ];
 
 export function AppSidebar({
