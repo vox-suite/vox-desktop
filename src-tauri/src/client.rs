@@ -162,6 +162,14 @@ pub async fn run_session_loop(
     let silence_timeout = Duration::from_millis(650);
     let mut current_turn_id: Option<String> = None;
 
+    // Debounce for barge-in: without echo cancellation, Vox's own speaker output
+    // leaking into the mic reads as speech above `speech_threshold`, which would
+    // otherwise self-interrupt playback the instant it starts. Require a short
+    // run of consecutive loud mic chunks (genuine speech is sustained; leaked
+    // echo of a single word usually isn't) before treating it as a real interrupt.
+    const INTERRUPT_DEBOUNCE_CHUNKS: u32 = 4;
+    let mut consecutive_loud_chunks: u32 = 0;
+
     let mut ping_interval = tokio::time::interval(Duration::from_secs(15));
     ping_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
@@ -182,8 +190,13 @@ pub async fn run_session_loop(
                 let rms = (sum_sq / samples_16k.len().max(1) as f32).sqrt();
 
                 if rms >= speech_threshold {
-                    // If user speaks while agent is playing speech, interrupt instantly!
-                    if audio_engine.is_playing() {
+                    consecutive_loud_chunks += 1;
+
+                    // If user speaks while agent is playing speech, interrupt --
+                    // but only once the mic has picked up sustained sound, not a
+                    // single chunk (which is usually Vox's own output leaking
+                    // back through the speakers rather than real speech).
+                    if consecutive_loud_chunks >= INTERRUPT_DEBOUNCE_CHUNKS && audio_engine.is_playing() {
                         audio_engine.clear_playback();
                         let interrupt_msg = serde_json::to_string(&VoiceClientMessage::Interrupt).unwrap_or_default();
                         let _ = ws_sender.send(Message::text(interrupt_msg)).await;
@@ -194,6 +207,7 @@ pub async fn run_session_loop(
                     last_speech_time = Instant::now();
                     is_in_speech = true;
                 } else if is_in_speech {
+                    consecutive_loud_chunks = 0;
                     speech_buffer.extend_from_slice(&samples_16k);
                     if last_speech_time.elapsed() >= silence_timeout {
                         is_in_speech = false;
