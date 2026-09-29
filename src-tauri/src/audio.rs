@@ -5,7 +5,54 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 
+use webrtc_audio_processing::config::EchoCanceller;
+use webrtc_audio_processing::{Config, Processor};
+
 use crate::codec::{StreamResampler, resample_to_16k_mono};
+
+const AEC_FRAME: usize = 160;
+
+struct Aec {
+    apm: Processor,
+    render_acc: Mutex<Vec<f32>>,
+    capture_acc: Mutex<Vec<f32>>,
+}
+
+impl Aec {
+    fn new() -> Result<Self, String> {
+        let apm = Processor::new(16000).map_err(|e| format!("Failed to init echo canceller: {e}"))?;
+        apm.set_config(Config {
+            echo_canceller: Some(EchoCanceller::default()),
+            ..Default::default()
+        });
+        Ok(Self {
+            apm,
+            render_acc: Mutex::new(Vec::new()),
+            capture_acc: Mutex::new(Vec::new()),
+        })
+    }
+
+    fn render(&self, played: &[f32], rate: u32, channels: u16) {
+        let mut acc = self.render_acc.lock().unwrap();
+        acc.extend(resample_to_16k_mono(played, rate, channels));
+        while acc.len() >= AEC_FRAME {
+            let frame: Vec<f32> = acc.drain(..AEC_FRAME).collect();
+            let _ = self.apm.analyze_render_frame([&frame]);
+        }
+    }
+
+    fn capture(&self, mic_16k: Vec<f32>) -> Vec<f32> {
+        let mut acc = self.capture_acc.lock().unwrap();
+        acc.extend(mic_16k);
+        let mut out = Vec::with_capacity(acc.len());
+        while acc.len() >= AEC_FRAME {
+            let mut frame: Vec<f32> = acc.drain(..AEC_FRAME).collect();
+            let _ = self.apm.process_capture_frame([&mut frame[..]]);
+            out.extend(frame);
+        }
+        out
+    }
+}
 
 /// Feeds `minimp3::Decoder` from a growable shared byte queue instead of a
 /// fixed buffer, so one `Decoder` instance can be reused across many
@@ -59,6 +106,7 @@ impl AudioEngine {
         let playback_epoch = Arc::new(AtomicU64::new(0));
         let underrun_samples = Arc::new(AtomicU64::new(0));
 
+        let aec = Arc::new(Aec::new()?);
         let queue_clone = Arc::clone(&output_queue);
         let underrun_clone = Arc::clone(&underrun_samples);
 
@@ -118,6 +166,8 @@ impl AudioEngine {
 
             let mic_level_f32 = Arc::clone(&mic_level);
             let mic_level_i16 = Arc::clone(&mic_level);
+            let aec_in_f32 = Arc::clone(&aec);
+            let aec_in_i16 = Arc::clone(&aec);
 
             let input_stream = match in_default_config.sample_format() {
                 SampleFormat::F32 => input_device.build_input_stream(
@@ -127,7 +177,7 @@ impl AudioEngine {
                         let rms = (sum_sq / data.len().max(1) as f32).sqrt();
                         mic_level_f32.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k = resample_to_16k_mono(data, in_rate, in_channels);
+                        let samples_16k = aec_in_f32.capture(resample_to_16k_mono(data, in_rate, in_channels));
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -144,7 +194,7 @@ impl AudioEngine {
                         let rms = (sum_sq / f32_samples.len().max(1) as f32).sqrt();
                         mic_level_i16.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k = resample_to_16k_mono(&f32_samples, in_rate, in_channels);
+                        let samples_16k = aec_in_i16.capture(resample_to_16k_mono(&f32_samples, in_rate, in_channels));
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -172,10 +222,12 @@ impl AudioEngine {
                 SampleFormat::F32 => {
                     let queue = Arc::clone(&queue_clone);
                     let underrun = Arc::clone(&underrun_clone);
+                    let aec_out = Arc::clone(&aec);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [f32], _| {
                             drain_output_f32(data, &queue, &underrun);
+                            aec_out.render(data, out_rate, out_channels);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,
@@ -184,10 +236,13 @@ impl AudioEngine {
                 SampleFormat::I16 => {
                     let queue = Arc::clone(&queue_clone);
                     let underrun = Arc::clone(&underrun_clone);
+                    let aec_out = Arc::clone(&aec);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [i16], _| {
                             drain_output_i16(data, &queue, &underrun);
+                            let played: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
+                            aec_out.render(&played, out_rate, out_channels);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,

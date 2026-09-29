@@ -8,6 +8,7 @@ import { SHELL_TABS, type ShellTab } from "@/components/shell/shell-tabs";
 import { MapAmbientChrome } from "@/components/map-ambient-chrome";
 import { TimelineView } from "@/components/timeline-view";
 import { PulseView } from "@/components/pulse/pulse-view";
+import { SpacesView } from "@/components/spaces/spaces-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
 
@@ -96,6 +97,8 @@ export function HomeShell({
     );
   } else if (activeTab === "pulse") {
     body = <PulseView />;
+  } else if (activeTab === "spaces") {
+    body = <SpacesView />;
   } else {
     const tabMeta = SHELL_TABS.find((t) => t.id === activeTab);
     body = <PlaceholderPane label={tabMeta?.label ?? "This"} />;

@@ -176,3 +176,47 @@ pub async fn get_chart_board_data(
     let path = format!("/v1/me/charts/boards/{id}/data");
     core_request(&auth, reqwest::Method::GET, &path, &[], None).await
 }
+
+#[tauri::command]
+pub async fn list_spaces(auth: State<'_, AuthManager>) -> Result<Value, String> {
+    core_request(&auth, reqwest::Method::GET, "/v1/me/spaces", &[], None).await
+}
+
+#[tauri::command]
+pub async fn get_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}");
+    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
+}
+
+#[tauri::command]
+pub async fn create_space(
+    title: String,
+    intent: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let body = serde_json::json!({ "title": title, "intent": intent });
+    core_request(&auth, reqwest::Method::POST, "/v1/me/spaces", &[], Some(body)).await
+}
+
+#[tauri::command]
+pub async fn drop_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}");
+    core_request(&auth, reqwest::Method::DELETE, &path, &[], None).await
+}
+
+#[tauri::command]
+pub async fn send_space_chat(
+    id: String,
+    message: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}/chat");
+    let body = serde_json::json!({ "message": message });
+    core_request(&auth, reqwest::Method::POST, &path, &[], Some(body)).await
+}
+
+#[tauri::command]
+pub async fn commit_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}/commit");
+    core_request(&auth, reqwest::Method::POST, &path, &[], None).await
+}
