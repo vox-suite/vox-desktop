@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 fn linear_resample(mono: &[f32], src_rate: u32, out_rate: u32) -> Vec<f32> {
     if src_rate == out_rate {
         return mono.to_vec();
@@ -43,25 +45,85 @@ pub fn resample_to_16k_mono(input: &[f32], in_rate: u32, in_channels: u16) -> Ve
         .collect()
 }
 
-pub fn resample_pcm_to_output(
-    pcm_mono: &[f32],
+/// Continuously resamples a mono f32 stream, carrying the fractional
+/// interpolation phase and any not-yet-interpolatable tail samples across
+/// calls. A one-shot `linear_resample` per chunk restarts its phase at index
+/// 0 every call, which for a src/out ratio that doesn't divide evenly (e.g.
+/// 44.1kHz -> 48kHz) puts a small timing discontinuity at every chunk
+/// boundary -- audible as clicking/static when chunks arrive every ~100ms
+/// from a streaming decoder.
+pub struct StreamResampler {
+    buffer: VecDeque<f32>,
+    pos: f64,
     src_rate: u32,
     out_rate: u32,
-    out_channels: u16,
-) -> Vec<f32> {
-    if pcm_mono.is_empty() || src_rate == 0 || out_rate == 0 || out_channels == 0 {
-        return Vec::new();
-    }
+}
 
-    let resampled = linear_resample(pcm_mono, src_rate, out_rate);
-    let ch = out_channels as usize;
-    let mut out = Vec::with_capacity(resampled.len() * ch);
-    for &s in &resampled {
-        for _ in 0..ch {
-            out.push(s);
+impl StreamResampler {
+    pub fn new() -> Self {
+        Self {
+            buffer: VecDeque::new(),
+            pos: 0.0,
+            src_rate: 0,
+            out_rate: 0,
         }
     }
-    out
+
+    pub fn reset(&mut self) {
+        self.buffer.clear();
+        self.pos = 0.0;
+        self.src_rate = 0;
+        self.out_rate = 0;
+    }
+
+    /// Feeds in the next chunk of source-rate mono samples and returns
+    /// whatever output-rate samples could be produced so far, holding back
+    /// any tail that needs a future sample to interpolate against.
+    pub fn push(&mut self, samples: &[f32], src_rate: u32, out_rate: u32) -> Vec<f32> {
+        if samples.is_empty() || src_rate == 0 || out_rate == 0 {
+            return Vec::new();
+        }
+        if src_rate == out_rate {
+            return samples.to_vec();
+        }
+        if src_rate != self.src_rate || out_rate != self.out_rate {
+            self.buffer.clear();
+            self.pos = 0.0;
+            self.src_rate = src_rate;
+            self.out_rate = out_rate;
+        }
+
+        self.buffer.extend(samples.iter().copied());
+
+        let ratio = src_rate as f64 / out_rate as f64;
+        let mut output = Vec::new();
+        loop {
+            let idx0 = self.pos.floor() as usize;
+            let idx1 = idx0 + 1;
+            if idx1 >= self.buffer.len() {
+                break;
+            }
+            let frac = (self.pos - idx0 as f64) as f32;
+            let s0 = self.buffer[idx0];
+            let s1 = self.buffer[idx1];
+            output.push(s0 + frac * (s1 - s0));
+            self.pos += ratio;
+        }
+
+        let consumed = (self.pos.floor() as usize).min(self.buffer.len());
+        if consumed > 0 {
+            self.buffer.drain(..consumed);
+            self.pos -= consumed as f64;
+        }
+
+        output
+    }
+}
+
+impl Default for StreamResampler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -90,23 +152,55 @@ mod tests {
     }
 
     #[test]
-    fn test_resample_pcm_to_output_441k_to_48k_stereo() {
-        // 1 second of 44.1kHz mono audio from ElevenLabs MP3
+    fn test_resample_empty_inputs() {
+        assert!(resample_to_16k_mono(&[], 44100, 2).is_empty());
+        assert!(StreamResampler::new().push(&[], 44100, 48000).is_empty());
+    }
+
+    #[test]
+    fn test_stream_resampler_matches_one_shot_for_a_single_chunk() {
         let src_rate = 44100;
         let out_rate = 48000;
-        let out_channels = 2;
         let input: Vec<f32> = vec![0.25; src_rate as usize];
-        let out = resample_pcm_to_output(&input, src_rate, out_rate, out_channels);
-        assert_eq!(out.len(), (out_rate * out_channels as u32) as usize);
+        let out = StreamResampler::new().push(&input, src_rate, out_rate);
+        // Within one sample of the whole-buffer length: the streaming version
+        // holds back a tail sample it can't interpolate yet without more input.
+        assert!((out.len() as i64 - out_rate as i64).abs() <= 1);
         for &sample in &out {
             assert!((sample - 0.25).abs() < 1e-4);
         }
     }
 
     #[test]
-    fn test_resample_empty_inputs() {
-        assert!(resample_to_16k_mono(&[], 44100, 2).is_empty());
-        assert!(resample_pcm_to_output(&[], 44100, 48000, 2).is_empty());
+    fn test_stream_resampler_is_continuous_across_chunk_boundaries() {
+        // Splitting the same input into many small chunks (as streamed MP3
+        // decode chunks arrive) must produce the same total output as one
+        // big chunk -- this is the property that was broken before: each
+        // call used to restart its interpolation phase at index 0.
+        let src_rate = 44100;
+        let out_rate = 48000;
+        let full_input: Vec<f32> = (0..src_rate)
+            .map(|i| (i as f32 * 0.01).sin() * 0.5)
+            .collect();
+
+        let one_shot = StreamResampler::new().push(&full_input, src_rate, out_rate);
+
+        let mut streaming = StreamResampler::new();
+        let mut chunked_out = Vec::new();
+        for chunk in full_input.chunks(137) {
+            chunked_out.extend(streaming.push(chunk, src_rate, out_rate));
+        }
+
+        assert!((chunked_out.len() as i64 - one_shot.len() as i64).abs() <= 1);
+        let compare_len = chunked_out.len().min(one_shot.len());
+        for i in 0..compare_len {
+            assert!(
+                (chunked_out[i] - one_shot[i]).abs() < 1e-4,
+                "sample {i} diverged: chunked={} one_shot={}",
+                chunked_out[i],
+                one_shot[i]
+            );
+        }
     }
 }
 

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::codec::{resample_pcm_to_output, resample_to_16k_mono};
+use crate::codec::{StreamResampler, resample_to_16k_mono};
 
 /// Feeds `minimp3::Decoder` from a growable shared byte queue instead of a
 /// fixed buffer, so one `Decoder` instance can be reused across many
@@ -42,6 +42,7 @@ pub struct AudioEngine {
     out_channels: u16,
     mp3_queue: Arc<Mutex<VecDeque<u8>>>,
     mp3_decoder: Mutex<minimp3::Decoder<QueueReader>>,
+    resampler: Mutex<StreamResampler>,
 }
 
 impl AudioEngine {
@@ -229,6 +230,7 @@ impl AudioEngine {
             out_channels,
             mp3_queue,
             mp3_decoder,
+            resampler: Mutex::new(StreamResampler::new()),
         })
     }
 
@@ -275,12 +277,17 @@ impl AudioEngine {
             return;
         }
 
-        let output_samples = resample_pcm_to_output(
-            &pcm_samples,
-            src_rate,
-            self.out_rate,
-            self.out_channels,
-        );
+        let resampled = self
+            .resampler
+            .lock()
+            .unwrap()
+            .push(&pcm_samples, src_rate, self.out_rate);
+        let mut output_samples = Vec::with_capacity(resampled.len() * self.out_channels.max(1) as usize);
+        for &s in &resampled {
+            for _ in 0..self.out_channels.max(1) {
+                output_samples.push(s);
+            }
+        }
 
         let mut queue = self.output_queue.lock().unwrap();
         if self.playback_epoch.load(Ordering::SeqCst) != epoch {
@@ -303,6 +310,7 @@ impl AudioEngine {
         drop(queue);
         self.mp3_queue.lock().unwrap().clear();
         *self.mp3_decoder.lock().unwrap() = new_mp3_decoder(&self.mp3_queue);
+        self.resampler.lock().unwrap().reset();
     }
 }
 
