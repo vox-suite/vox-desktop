@@ -5,11 +5,10 @@ mod codec;
 mod config;
 mod deep_link;
 mod device_link;
+mod filelog;
 mod live_link;
-mod local_stt;
 #[cfg(target_os = "macos")]
 mod macos_location;
-mod model_download;
 mod pkce;
 mod session;
 mod session_store;
@@ -144,8 +143,6 @@ pub fn run() {
             device_link::get_local_events,
             device_link::run_gui_action_locally,
             system_stats::get_system_stats,
-            local_stt::is_local_stt_downloaded,
-            local_stt::download_local_stt,
             #[cfg(target_os = "macos")]
             macos_location::get_native_location
         ])

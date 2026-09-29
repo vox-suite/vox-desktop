@@ -43,6 +43,11 @@ pub struct AudioEngine {
     mp3_queue: Arc<Mutex<VecDeque<u8>>>,
     mp3_decoder: Mutex<minimp3::Decoder<QueueReader>>,
     resampler: Mutex<StreamResampler>,
+    /// Samples the output callback had to fill with silence because the
+    /// queue ran dry -- audible as a click/gap. Incremented on the
+    /// real-time audio thread (a cheap atomic add only, never file I/O
+    /// there), read/reset from `take_underrun_samples`.
+    underrun_samples: Arc<AtomicU64>,
 }
 
 impl AudioEngine {
@@ -52,8 +57,10 @@ impl AudioEngine {
     ) -> Result<Self, String> {
         let output_queue = Arc::new(Mutex::new(VecDeque::<f32>::new()));
         let playback_epoch = Arc::new(AtomicU64::new(0));
+        let underrun_samples = Arc::new(AtomicU64::new(0));
 
         let queue_clone = Arc::clone(&output_queue);
+        let underrun_clone = Arc::clone(&underrun_samples);
 
         let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<(u32, u16), String>>();
         let (thread_stop_tx, thread_stop_rx) = oneshot::channel::<()>();
@@ -164,10 +171,11 @@ impl AudioEngine {
             let output_stream = match out_default_config.sample_format() {
                 SampleFormat::F32 => {
                     let queue = Arc::clone(&queue_clone);
+                    let underrun = Arc::clone(&underrun_clone);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [f32], _| {
-                            drain_output_f32(data, &queue);
+                            drain_output_f32(data, &queue, &underrun);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,
@@ -175,10 +183,11 @@ impl AudioEngine {
                 }
                 SampleFormat::I16 => {
                     let queue = Arc::clone(&queue_clone);
+                    let underrun = Arc::clone(&underrun_clone);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [i16], _| {
-                            drain_output_i16(data, &queue);
+                            drain_output_i16(data, &queue, &underrun);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
                         None,
@@ -231,6 +240,7 @@ impl AudioEngine {
             mp3_queue,
             mp3_decoder,
             resampler: Mutex::new(StreamResampler::new()),
+            underrun_samples,
         })
     }
 
@@ -303,6 +313,21 @@ impl AudioEngine {
             .unwrap_or(false)
     }
 
+    /// How much buffered audio is left to play, in milliseconds. Dropping
+    /// near zero between server frames is what an underrun/glitch looks
+    /// like before it happens.
+    pub fn queued_playback_ms(&self) -> f64 {
+        let frames = self.output_queue.lock().map(|q| q.len()).unwrap_or(0) as f64
+            / self.out_channels.max(1) as f64;
+        frames * 1000.0 / self.out_rate.max(1) as f64
+    }
+
+    /// Returns the number of output samples filled with silence since the
+    /// last call (an underrun/glitch), resetting the counter.
+    pub fn take_underrun_samples(&self) -> u64 {
+        self.underrun_samples.swap(0, Ordering::Relaxed)
+    }
+
     pub fn clear_playback(&self) {
         self.playback_epoch.fetch_add(1, Ordering::SeqCst);
         let mut queue = self.output_queue.lock().unwrap();
@@ -324,19 +349,36 @@ impl Drop for AudioEngine {
     }
 }
 
-fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>) {
+fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
     let mut queue = queue.lock().unwrap();
+    let mut missed = 0u64;
     for sample in data.iter_mut() {
-        *sample = queue.pop_front().unwrap_or(0.0);
+        *sample = match queue.pop_front() {
+            Some(val) => val,
+            None => {
+                missed += 1;
+                0.0
+            }
+        };
+    }
+    if missed > 0 {
+        underrun_samples.fetch_add(missed, Ordering::Relaxed);
     }
 }
 
-fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>) {
+fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
     let mut queue = queue.lock().unwrap();
+    let mut missed = 0u64;
     for sample in data.iter_mut() {
         *sample = match queue.pop_front() {
             Some(val) => (val.clamp(-1.0, 1.0) * 32767.0) as i16,
-            None => 0,
+            None => {
+                missed += 1;
+                0
+            }
         };
+    }
+    if missed > 0 {
+        underrun_samples.fetch_add(missed, Ordering::Relaxed);
     }
 }

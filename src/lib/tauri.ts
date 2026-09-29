@@ -205,8 +205,6 @@ export const api = {
   updateSpan: (id: string, patch: SpanPatch) =>
     invoke<Span>("update_span", { id, patch }),
   deleteSpan: (id: string) => invoke<void>("delete_span", { id }),
-  isLocalSttDownloaded: () => invoke<boolean>("is_local_stt_downloaded"),
-  downloadLocalStt: () => invoke<void>("download_local_stt"),
   startCall: () => invoke<CallStatus>("start_call"),
   endCall: () => invoke<CallStatus>("end_call"),
   callStatus: () => invoke<CallStatus>("call_status"),
