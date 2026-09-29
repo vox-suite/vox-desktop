@@ -406,6 +406,7 @@ impl Drop for AudioEngine {
 
 fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
     let mut queue = queue.lock().unwrap();
+    let had_audio = !queue.is_empty();
     let mut missed = 0u64;
     for sample in data.iter_mut() {
         *sample = match queue.pop_front() {
@@ -416,13 +417,16 @@ fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, underrun_sam
             }
         };
     }
-    if missed > 0 {
+    // Only a dry-out that follows real audio is an underrun; padding silence
+    // while idle is normal and must not be counted.
+    if missed > 0 && had_audio {
         underrun_samples.fetch_add(missed, Ordering::Relaxed);
     }
 }
 
 fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
     let mut queue = queue.lock().unwrap();
+    let had_audio = !queue.is_empty();
     let mut missed = 0u64;
     for sample in data.iter_mut() {
         *sample = match queue.pop_front() {
@@ -433,7 +437,9 @@ fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, underrun_sam
             }
         };
     }
-    if missed > 0 {
+    // Only a dry-out that follows real audio is an underrun; padding silence
+    // while idle is normal and must not be counted.
+    if missed > 0 && had_audio {
         underrun_samples.fetch_add(missed, Ordering::Relaxed);
     }
 }
