@@ -1,5 +1,6 @@
 import { addDays, startOfDay } from "@/lib/span-layout";
 import type { Span } from "@/lib/tauri";
+import { schemaColorStyle } from "@/lib/schema-tokens";
 
 export type CategoryStyle = {
   bg: string;
@@ -167,7 +168,19 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
   },
 };
 
-export function categoryStyle(category: string): CategoryStyle {
+/**
+ * `schemaColorToken` (data_schemas.color_token, 0-23) takes priority when
+ * present -- it's the live, LLM-assigned category color. The string-keyed
+ * CATEGORY_STYLES map below is the pre-schema fallback, for spans with no
+ * schema_id (manually created tasks, or spans predating the schema system).
+ */
+export function categoryStyle(
+  category: string,
+  schemaColorToken?: number | null,
+): CategoryStyle {
+  if (schemaColorToken !== null && schemaColorToken !== undefined) {
+    return schemaColorStyle(schemaColorToken);
+  }
   const known = CATEGORY_STYLES[category.toLowerCase()];
   if (known) return known;
   return {
@@ -179,8 +192,11 @@ export function categoryStyle(category: string): CategoryStyle {
   };
 }
 
-export function categoryColor(category: string): string {
-  return categoryStyle(category).dot;
+export function categoryColor(
+  category: string,
+  schemaColorToken?: number | null,
+): string {
+  return categoryStyle(category, schemaColorToken).dot;
 }
 
 export function formatTime(iso: string | null): string {

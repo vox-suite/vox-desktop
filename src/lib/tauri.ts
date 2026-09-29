@@ -43,6 +43,9 @@ export type Span = {
   notes: string;
   category: string;
   source: string;
+  schema_id: string | null;
+  schema_color_token: number | null;
+  schema_icon_token: number | null;
   status: SpanStatus;
   start_at: string | null;
   end_at: string | null;

@@ -11,6 +11,7 @@ import {
   formatAmount,
   formatTime,
 } from "@/lib/span-format";
+import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,7 @@ function SpanBlock({
   onSelect: (span: Span) => void;
 }) {
   const { span, top, height, left, width, depth, instant } = placed;
-  const style = categoryStyle(span.category);
+  const style = categoryStyle(span.category, span.schema_color_token);
   const inset = depth * INDENT_PX;
   const heightPx = Math.max(height * PX_PER_MIN - 2, 22);
   const amount = formatAmount(span);
@@ -84,13 +85,7 @@ function SpanBlock({
     >
       {instant ? (
         <>
-          <span
-            className="size-1.5 shrink-0 rounded-full"
-            style={{
-              background: style.dot,
-              boxShadow: `0 0 5px ${style.dot}88`,
-            }}
-          />
+          <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
           <span className="truncate text-[11px] font-medium text-white">
             {span.title}
           </span>
@@ -106,14 +101,10 @@ function SpanBlock({
             <p className="truncate text-[11.5px] font-semibold leading-tight text-white min-w-0 flex-1">
               {span.title}
             </p>
-            {/* Top-right Accent Dot as in screenshot */}
-            <span
-              className="size-1.5 shrink-0 rounded-full ml-1"
-              style={{
-                background: style.dot,
-                boxShadow: `0 0 6px ${style.dot}aa`,
-              }}
-            />
+            {/* Top-right Accent Indicator */}
+            <div className="ml-1">
+              <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
+            </div>
           </div>
           {showTime ? (
             <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
@@ -248,7 +239,7 @@ export function SpanCalendar({
                 top: row * 24 + 3,
                 left: `calc(${GUTTER_PX}px + (100% - ${GUTTER_PX}px) * ${startCol / days.length} + 2px)`,
                 width: `calc((100% - ${GUTTER_PX}px) * ${(endCol - startCol + 1) / days.length} - 4px)`,
-                background: `color-mix(in srgb, ${categoryColor(span.category)} 30%, #111214)`,
+                background: `color-mix(in srgb, ${categoryColor(span.category, span.schema_color_token)} 30%, #111214)`,
               }}
             >
               {span.title}
