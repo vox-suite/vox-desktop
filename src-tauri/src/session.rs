@@ -54,9 +54,26 @@ pub async fn start_call(
     state: State<'_, SessionManager>,
 ) -> Result<CallStatus, String> {
     crate::device_link::emit_local_event(&app, "status", "Voice call connecting...");
+    if let Err(err) = auth.refresh_if_expiring().await {
+        eprintln!("Vox session refresh failed before call start: {err}");
+    }
     let session = auth
         .current_session()
         .ok_or_else(|| "Sign in before starting a call".to_string())?;
+
+    // The refresh above only runs (and can only succeed) when the stored token isn't
+    // already past its expiry. If it failed while the token was already expired
+    // (e.g. the backend was briefly unreachable), don't attempt a doomed connection
+    // that would just surface a confusing raw "401 Unauthorized" — fail clearly instead.
+    let already_expired = session
+        .expires_at
+        .as_deref()
+        .and_then(|at| chrono::DateTime::parse_from_rfc3339(at).ok())
+        .is_some_and(|at| at.with_timezone(&chrono::Utc) <= chrono::Utc::now());
+    if already_expired {
+        return Err("Your session expired — please sign in again.".to_string());
+    }
+
     let api_url = auth.state().api_url;
 
     {

@@ -123,6 +123,13 @@ pub async fn run_session_loop(
 
     let (ws_stream, _) = match connect_async(request).await {
         Ok(conn) => conn,
+        Err(tokio_tungstenite::tungstenite::Error::Http(response))
+            if response.status() == 401 =>
+        {
+            let msg = "Your session expired — please sign in again.".to_string();
+            let _ = ready_tx.send(Err(msg.clone()));
+            return Err(msg);
+        }
         Err(e) => {
             let msg = format!("Failed to connect to Vox Core voice socket: {e}");
             let _ = ready_tx.send(Err(msg.clone()));
