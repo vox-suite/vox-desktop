@@ -32,12 +32,7 @@ export function useChartBoardData(boardId: string | null) {
   }, [boardId]);
 
   useEffect(() => {
-    if (!boardId) {
-      setBoard(null);
-      setData([]);
-      setError("");
-      return;
-    }
+    if (!boardId) return;
     void load(false);
   }, [boardId, load]);
 
@@ -45,5 +40,12 @@ export function useChartBoardData(boardId: string | null) {
     void load(true);
   }, [load]);
 
-  return { board, data, loading, refreshing, error, reload };
+  return {
+    board: boardId ? board : null,
+    data: boardId ? data : [],
+    loading,
+    refreshing,
+    error,
+    reload,
+  };
 }
