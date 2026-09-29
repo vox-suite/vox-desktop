@@ -126,3 +126,53 @@ pub async fn set_span_collection(
     let path = format!("/v1/collections/{collection_id}/spans/{span_id}/{action}");
     core_request(&auth, reqwest::Method::POST, &path, &[], None).await.map(|_| ())
 }
+
+#[tauri::command]
+pub async fn list_schemas(auth: State<'_, AuthManager>) -> Result<Value, String> {
+    core_request(&auth, reqwest::Method::GET, "/v1/me/schemas", &[], None).await
+}
+
+#[tauri::command]
+pub async fn suggest_charts(
+    schema_ids: Vec<String>,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let payload = serde_json::json!({ "schema_ids": schema_ids });
+    core_request(&auth, reqwest::Method::POST, "/v1/me/charts/suggest", &[], Some(payload)).await
+}
+
+#[tauri::command]
+pub async fn create_chart_board(
+    name: String,
+    charts: Value,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let payload = serde_json::json!({
+        "name": name,
+        "charts": charts,
+    });
+    core_request(&auth, reqwest::Method::POST, "/v1/me/charts/boards", &[], Some(payload)).await
+}
+
+#[tauri::command]
+pub async fn list_chart_boards(auth: State<'_, AuthManager>) -> Result<Value, String> {
+    core_request(&auth, reqwest::Method::GET, "/v1/me/charts/boards", &[], None).await
+}
+
+#[tauri::command]
+pub async fn get_chart_board(
+    id: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let path = format!("/v1/me/charts/boards/{id}");
+    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
+}
+
+#[tauri::command]
+pub async fn get_chart_board_data(
+    id: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let path = format!("/v1/me/charts/boards/{id}/data");
+    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
+}
