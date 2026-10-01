@@ -22,6 +22,7 @@ export function SpacesView() {
   const [title, setTitle] = useState("");
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const currentSpace = useSpace(selectedSpaceId);
 
@@ -29,31 +30,46 @@ export function SpacesView() {
     e.preventDefault();
     if (!title.trim() || !intent.trim() || creating) return;
     setCreating(true);
+    setCreateError("");
     try {
       const created = await create(title.trim(), intent.trim());
       setTitle("");
       setIntent("");
       setShowCreateDialog(false);
       setSelectedSpaceId(created.id);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }
   };
 
-  if (selectedSpaceId && currentSpace.graph) {
+  if (selectedSpaceId) {
+    if (currentSpace.graph) {
+      return (
+        <SpaceCanvas
+          graph={currentSpace.graph}
+          messages={currentSpace.messages}
+          loading={currentSpace.loading}
+          sending={currentSpace.sending}
+          committing={currentSpace.committing}
+          onBack={() => {
+            setSelectedSpaceId(null);
+            void reload();
+          }}
+          onSendMessage={currentSpace.sendMessage}
+          onCommit={currentSpace.commit}
+          onUpdateNode={currentSpace.updateNode}
+        />
+      );
+    }
     return (
-      <SpaceCanvas
-        graph={currentSpace.graph}
-        loading={currentSpace.loading}
-        sending={currentSpace.sending}
-        committing={currentSpace.committing}
-        onBack={() => {
-          setSelectedSpaceId(null);
-          void reload();
-        }}
-        onSendMessage={currentSpace.sendMessage}
-        onCommit={currentSpace.commit}
-      />
+      <div className="flex h-full w-full items-center justify-center bg-[#090a0f] text-zinc-400">
+        <div className="flex flex-col items-center gap-3">
+          <RotateCw className="h-8 w-8 animate-spin text-indigo-400" />
+          <span className="text-xs text-zinc-400">Loading space…</span>
+        </div>
+      </div>
     );
   }
 
@@ -73,7 +89,10 @@ export function SpacesView() {
         </div>
 
         <Button
-          onClick={() => setShowCreateDialog(true)}
+          onClick={() => {
+            setCreateError("");
+            setShowCreateDialog(true);
+          }}
           className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 shadow-sm text-xs"
         >
           <Plus className="h-4 w-4" />
@@ -103,7 +122,10 @@ export function SpacesView() {
             Start a space to explore trips, fitness routines, or major decisions. Vox will query your past data and research options visually.
           </p>
           <Button
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => {
+              setCreateError("");
+              setShowCreateDialog(true);
+            }}
             className="mt-5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -120,15 +142,23 @@ export function SpacesView() {
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide ${
-                      sp.state === "committed"
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                        : "border-indigo-500/30 bg-indigo-500/10 text-indigo-400"
-                    }`}
-                  >
-                    {sp.state}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide ${
+                        sp.state === "committed"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                          : "border-indigo-500/30 bg-indigo-500/10 text-indigo-400"
+                      }`}
+                    >
+                      {sp.state}
+                    </span>
+                    {sp.run_state === "running" && (
+                      <span className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                        <RotateCw className="h-2.5 w-2.5 animate-spin" />
+                        running
+                      </span>
+                    )}
+                  </div>
 
                   <button
                     onClick={(e) => {
@@ -181,7 +211,20 @@ export function SpacesView() {
               Describe what you are thinking of doing. Vox will architect a dedicated agent, inspect your spending and calendar, and build a visual flow.
             </p>
 
-            <form onSubmit={(e) => void handleCreate(e)} className="mt-5 space-y-4">
+            {createError && (
+              <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+                {createError}
+              </div>
+            )}
+
+            {creating && (
+              <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300 flex items-center gap-2">
+                <RotateCw className="h-4 w-4 animate-spin text-indigo-400 shrink-0" />
+                <span>Architecting space with AI… querying schemas and building spec</span>
+              </div>
+            )}
+
+            <form onSubmit={(e) => void handleCreate(e)} className="mt-4 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1">
                   Title
@@ -191,8 +234,9 @@ export function SpacesView() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Weekend getaway near Bangalore"
+                  disabled={creating}
                   required
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none disabled:opacity-60"
                 />
               </div>
 
@@ -205,8 +249,9 @@ export function SpacesView() {
                   onChange={(e) => setIntent(e.target.value)}
                   placeholder="e.g. Planning a short trip with a friend this weekend. Avoid crowded places, check my recent expenditure to estimate a realistic budget, and give me a few options with pros, cons, and driving time."
                   rows={4}
+                  disabled={creating}
                   required
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none resize-none leading-relaxed"
+                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none resize-none leading-relaxed disabled:opacity-60"
                 />
               </div>
 
@@ -215,6 +260,7 @@ export function SpacesView() {
                   type="button"
                   variant="ghost"
                   size="sm"
+                  disabled={creating}
                   onClick={() => setShowCreateDialog(false)}
                   className="text-xs text-zinc-400 hover:text-zinc-100"
                 >

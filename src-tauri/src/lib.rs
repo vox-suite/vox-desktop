@@ -143,6 +143,8 @@ pub fn run() {
             sync_client::drop_space,
             sync_client::send_space_chat,
             sync_client::commit_space,
+            sync_client::update_space_node,
+            sync_client::list_space_messages,
             device_link::get_device_link_status,
             device_link::get_remote_control,
             device_link::set_remote_control,

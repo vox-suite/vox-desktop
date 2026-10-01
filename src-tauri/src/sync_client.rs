@@ -10,13 +10,24 @@ async fn core_request(
     query: &[(&str, String)],
     body: Option<Value>,
 ) -> Result<Value, String> {
+    core_request_with_timeout(auth, method, path, query, body, Duration::from_millis(8000)).await
+}
+
+async fn core_request_with_timeout(
+    auth: &AuthManager,
+    method: reqwest::Method,
+    path: &str,
+    query: &[(&str, String)],
+    body: Option<Value>,
+    timeout: Duration,
+) -> Result<Value, String> {
     let session = auth.current_session().ok_or("Not signed in")?;
     let config = auth.config();
     let url = format!("{}{}", config.api_url.trim_end_matches('/'), path);
     let mut req = reqwest::Client::new()
         .request(method, &url)
         .header("authorization", format!("Bearer {}", session.vox_token))
-        .timeout(Duration::from_millis(8000))
+        .timeout(timeout)
         .query(query);
     if let Some(body) = body {
         req = req.json(&body);
@@ -195,7 +206,15 @@ pub async fn create_space(
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
     let body = serde_json::json!({ "title": title, "intent": intent });
-    core_request(&auth, reqwest::Method::POST, "/v1/me/spaces", &[], Some(body)).await
+    core_request_with_timeout(
+        &auth,
+        reqwest::Method::POST,
+        "/v1/me/spaces",
+        &[],
+        Some(body),
+        Duration::from_secs(30),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -219,4 +238,24 @@ pub async fn send_space_chat(
 pub async fn commit_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
     let path = format!("/v1/me/spaces/{id}/commit");
     core_request(&auth, reqwest::Method::POST, &path, &[], None).await
+}
+
+#[tauri::command]
+pub async fn update_space_node(
+    id: String,
+    node_id: String,
+    patch: Value,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}/nodes/{node_id}");
+    core_request(&auth, reqwest::Method::PATCH, &path, &[], Some(patch)).await
+}
+
+#[tauri::command]
+pub async fn list_space_messages(
+    id: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Value, String> {
+    let path = format!("/v1/me/spaces/{id}/messages");
+    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
 }

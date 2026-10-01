@@ -2,14 +2,17 @@ import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   AlertCircle,
+  AlertTriangle,
   BarChart3,
   CheckCircle2,
   Compass,
   Database,
   Flag,
+  ListOrdered,
   MapPin,
   RotateCw,
   Sparkles,
+  Wallet,
 } from "lucide-react";
 import type { SpaceNode } from "@/lib/spaces";
 
@@ -62,6 +65,30 @@ function getKindConfig(kind: string) {
         badgeBg: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30",
         accent: "text-fuchsia-400",
       };
+    case "step":
+      return {
+        icon: ListOrdered,
+        badge: "Step",
+        border: "border-teal-500/40 hover:border-teal-400",
+        badgeBg: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+        accent: "text-teal-400",
+      };
+    case "budget":
+      return {
+        icon: Wallet,
+        badge: "Budget",
+        border: "border-emerald-500/50 hover:border-emerald-400",
+        badgeBg: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+        accent: "text-emerald-400",
+      };
+    case "risk":
+      return {
+        icon: AlertTriangle,
+        badge: "Risk",
+        border: "border-rose-500/50 hover:border-rose-400",
+        badgeBg: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+        accent: "text-rose-400",
+      };
     case "limit":
       return {
         icon: AlertCircle,
@@ -95,11 +122,12 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
 
   return (
     <div
-      onClick={() => nodeData.onSelectNode?.(node)}
       className={`group relative min-w-[260px] max-w-[340px] rounded-xl border bg-zinc-950/85 p-4 shadow-xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
         cfg.border
       } ${
-        isRejected ? "opacity-40 grayscale" : ""
+        isRejected
+          ? "opacity-35 grayscale border-dashed border-red-900/60 bg-red-950/10 hover:opacity-50"
+          : ""
       } ${
         isStale ? "border-dashed border-amber-500/50" : ""
       }`}
@@ -135,17 +163,30 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
             stale
           </span>
         )}
+        {isRejected && (
+          <span className="text-[10px] text-red-400/90 font-mono rounded bg-red-950/80 border border-red-800/40 px-1.5 py-0.5 uppercase tracking-wider">
+            rejected
+          </span>
+        )}
         {node.state === "done" && (
           <CheckCircle2 className="h-3.5 w-3.5 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
         )}
       </div>
 
-      <h3 className="text-sm font-semibold text-zinc-100 group-hover:text-white transition-colors line-clamp-2">
+      <h3
+        className={`text-sm font-semibold text-zinc-100 group-hover:text-white transition-colors line-clamp-2 ${
+          isRejected ? "line-through text-zinc-500" : ""
+        }`}
+      >
         {node.title}
       </h3>
 
       {node.body && (
-        <p className="mt-1.5 text-xs leading-relaxed text-zinc-400 line-clamp-4">
+        <p
+          className={`mt-1.5 text-xs leading-relaxed line-clamp-4 ${
+            isRejected ? "text-zinc-600 line-through" : "text-zinc-400"
+          }`}
+        >
           {node.body}
         </p>
       )}

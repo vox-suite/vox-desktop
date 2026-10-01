@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type SpaceState = "ideating" | "planned" | "committed" | "dropped";
 export type NodeState = "running" | "done" | "stale" | "rejected";
+export type RunState = "idle" | "running" | "failed";
 
 export interface AgentSpecLimits {
   max_steps: number;
@@ -15,6 +16,14 @@ export interface AgentSpec {
   limits?: AgentSpecLimits;
 }
 
+export interface SpaceMessage {
+  id: string;
+  space_id: string;
+  role: "user" | "assistant" | "system";
+  text: string;
+  created_at: string;
+}
+
 export interface Space {
   id: string;
   user_id: string;
@@ -23,6 +32,8 @@ export interface Space {
   state: SpaceState;
   agent_spec: AgentSpec | Record<string, unknown>;
   committed_collection_id: string | null;
+  run_state: RunState;
+  run_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -72,4 +83,16 @@ export const spacesApi = {
     invoke<{ status: string }>("send_space_chat", { id, message }),
   commitSpace: (id: string) =>
     invoke<CommitSpaceResult>("commit_space", { id }),
+  updateNode: (
+    spaceId: string,
+    nodeId: string,
+    patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>
+  ) =>
+    invoke<SpaceNode>("update_space_node", {
+      id: spaceId,
+      nodeId,
+      patch,
+    }),
+  listMessages: (spaceId: string) =>
+    invoke<SpaceMessage[]>("list_space_messages", { id: spaceId }),
 };

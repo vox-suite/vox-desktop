@@ -1,22 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
-import { spacesApi, type SpaceGraph } from "@/lib/spaces";
+import { listen } from "@tauri-apps/api/event";
+import {
+  spacesApi,
+  type SpaceGraph,
+  type SpaceMessage,
+  type SpaceNode,
+} from "@/lib/spaces";
 
 export function useSpace(spaceId: string | null) {
   const [graph, setGraph] = useState<SpaceGraph | null>(null);
+  const [messages, setMessages] = useState<SpaceMessage[]>([]);
   const [loading, setLoading] = useState(Boolean(spaceId));
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [committing, setCommitting] = useState(false);
 
-  // Switching spaces clears the old graph and starts a fresh load; set during render.
   const [prevSpaceId, setPrevSpaceId] = useState(spaceId);
   if (spaceId !== prevSpaceId) {
     setPrevSpaceId(spaceId);
     setGraph(null);
+    setMessages([]);
     setLoading(Boolean(spaceId));
   }
 
-  const load = useCallback(async () => {
+  const loadGraph = useCallback(async () => {
     if (!spaceId) return;
     try {
       const data = await spacesApi.getSpace(spaceId);
@@ -27,16 +34,113 @@ export function useSpace(spaceId: string | null) {
     }
   }, [spaceId]);
 
+  const loadMessages = useCallback(async () => {
+    if (!spaceId) return;
+    try {
+      const data = await spacesApi.listMessages(spaceId);
+      setMessages(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [spaceId]);
+
+  const reload = useCallback(async () => {
+    await Promise.all([loadGraph(), loadMessages()]);
+  }, [loadGraph, loadMessages]);
+
   useEffect(() => {
     if (!spaceId) return;
-    queueMicrotask(() => void load().finally(() => setLoading(false)));
+    let isCancelled = false;
+    void Promise.all([loadGraph(), loadMessages()]).finally(() => {
+      if (!isCancelled) setLoading(false);
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [spaceId, loadGraph, loadMessages]);
 
-    const interval = setInterval(() => {
-      void load();
-    }, 2500);
+  useEffect(() => {
+    if (!spaceId) return;
+    const onFocus = () => {
+      void loadGraph();
+      void loadMessages();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [spaceId, loadGraph, loadMessages]);
 
-    return () => clearInterval(interval);
-  }, [spaceId, load]);
+  useEffect(() => {
+    if (!spaceId) return;
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    let unlisten: (() => void) | undefined;
+
+    void listen<string>("vox-live-update", (event) => {
+      try {
+        const payload = JSON.parse(event.payload) as {
+          type?: string;
+          space_id?: string;
+        };
+        if (
+          payload.type?.startsWith("space_") &&
+          payload.space_id === spaceId
+        ) {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            void loadGraph();
+          }, 150);
+
+          if (payload.type === "space_message_created") {
+            void loadMessages();
+          }
+        }
+      } catch {
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      clearTimeout(debounceTimer);
+      unlisten?.();
+    };
+  }, [spaceId, loadGraph, loadMessages]);
+
+  const updateNode = useCallback(
+    async (
+      nodeId: string,
+      patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>
+    ) => {
+      if (!spaceId) return;
+      let prevGraph: SpaceGraph | null = null;
+      setGraph((curr) => {
+        prevGraph = curr;
+        if (!curr) return curr;
+        return {
+          ...curr,
+          nodes: curr.nodes.map((n) =>
+            n.id === nodeId ? { ...n, ...patch } : n
+          ),
+        };
+      });
+
+      try {
+        const updated = await spacesApi.updateNode(spaceId, nodeId, patch);
+        setGraph((curr) => {
+          if (!curr) return curr;
+          return {
+            ...curr,
+            nodes: curr.nodes.map((n) => (n.id === nodeId ? updated : n)),
+          };
+        });
+        return updated;
+      } catch (err) {
+        if (prevGraph) setGraph(prevGraph);
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [spaceId]
+  );
 
   const sendMessage = useCallback(
     async (message: string) => {
@@ -44,7 +148,7 @@ export function useSpace(spaceId: string | null) {
       setSending(true);
       try {
         await spacesApi.sendSpaceChat(spaceId, message);
-        await load();
+        await Promise.all([loadGraph(), loadMessages()]);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         throw err;
@@ -52,7 +156,7 @@ export function useSpace(spaceId: string | null) {
         setSending(false);
       }
     },
-    [spaceId, load],
+    [spaceId, loadGraph, loadMessages]
   );
 
   const commit = useCallback(async () => {
@@ -60,7 +164,7 @@ export function useSpace(spaceId: string | null) {
     setCommitting(true);
     try {
       const res = await spacesApi.commitSpace(spaceId);
-      await load();
+      await loadGraph();
       return res;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -68,16 +172,18 @@ export function useSpace(spaceId: string | null) {
     } finally {
       setCommitting(false);
     }
-  }, [spaceId, load]);
+  }, [spaceId, loadGraph]);
 
   return {
     graph,
+    messages,
     loading,
     error,
     sending,
     committing,
-    reload: load,
+    reload,
     sendMessage,
     commit,
+    updateNode,
   };
 }
