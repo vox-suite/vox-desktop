@@ -13,12 +13,10 @@ export function PhoneVerifyScreen({
   autoSend,
   onSend,
   onConfirm,
-  onSkip,
 }: {
   autoSend: boolean;
   onSend: () => Promise<string>;
   onConfirm: (code: string) => Promise<void>;
-  onSkip: () => void;
 }) {
   const [last4, setLast4] = useState("");
   const [sent, setSent] = useState(false);
@@ -165,15 +163,6 @@ export function PhoneVerifyScreen({
                 {error}
               </p>
             ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              className="mt-2 h-9 w-full"
-              disabled={busy}
-              onClick={onSkip}
-            >
-              Verify later
-            </Button>
           </Card>
         </div>
       </div>
