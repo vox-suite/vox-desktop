@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { api, type Span, type SpanQuery } from "@/lib/tauri";
+import { spansApi } from "@/features/spans/api";
+import type { Span, SpanQuery } from "@/features/spans/types";
+import { platform } from "@/platform";
 
 const POLL_INTERVAL_MS = 15_000;
 const SPAN_EVENT_PREFIX = "span_";
@@ -22,7 +23,7 @@ export function useSpans(query: SpanQuery, enabled = true) {
   const load = useCallback(async () => {
     const query = JSON.parse(key) as SpanQuery;
     try {
-      setSpans(await api.getSpans(query));
+      setSpans(await spansApi.getSpans(query));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -40,18 +41,9 @@ export function useSpans(query: SpanQuery, enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    let unlisten: (() => void) | undefined;
-    void listen<string>("vox-live-update", (event) => {
-      try {
-        const payload = JSON.parse(event.payload) as { type?: string };
-        if (payload.type?.startsWith(SPAN_EVENT_PREFIX)) void load();
-      } catch {
-        /* ignore malformed frame */
-      }
-    }).then((fn) => {
-      unlisten = fn;
+    return platform().live.subscribe((payload) => {
+      if (payload.type.startsWith(SPAN_EVENT_PREFIX)) void load();
     });
-    return () => unlisten?.();
   }, [enabled, load]);
 
   const reload = useCallback(() => {

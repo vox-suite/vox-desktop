@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { spacesApi, type Space } from "@/lib/spaces";
+import { spacesApi } from "@/features/spaces/api";
+import type { Space } from "@/features/spaces/types";
 
 export function useSpaces(enabled = true) {
   const [spaces, setSpaces] = useState<Space[]>([]);

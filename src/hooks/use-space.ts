@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { spacesApi } from "@/features/spaces/api";
+import { platform } from "@/platform";
 import {
-  spacesApi,
   type SpaceGraph,
   type SpaceMessage,
   type SpaceNode,
-} from "@/lib/spaces";
+} from "@/features/spaces/types";
 
 export function useSpace(spaceId: string | null) {
   const [graph, setGraph] = useState<SpaceGraph | null>(null);
@@ -72,36 +72,22 @@ export function useSpace(spaceId: string | null) {
   useEffect(() => {
     if (!spaceId) return;
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-    let unlisten: (() => void) | undefined;
-
-    void listen<string>("vox-live-update", (event) => {
-      try {
-        const payload = JSON.parse(event.payload) as {
-          type?: string;
-          space_id?: string;
-        };
-        if (
-          payload.type?.startsWith("space_") &&
-          payload.space_id === spaceId
-        ) {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            void loadGraph();
-          }, 150);
-
-          if (payload.type === "space_message_created") {
-            void loadMessages();
-          }
-        }
-      } catch {
+    const unsubscribe = platform().live.subscribe((payload) => {
+      if (!payload.type.startsWith("space_") || payload.space_id !== spaceId) {
+        return;
       }
-    }).then((fn) => {
-      unlisten = fn;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        void loadGraph();
+      }, 150);
+      if (payload.type === "space_message_created") {
+        void loadMessages();
+      }
     });
 
     return () => {
       clearTimeout(debounceTimer);
-      unlisten?.();
+      unsubscribe();
     };
   }, [spaceId, loadGraph, loadMessages]);
 

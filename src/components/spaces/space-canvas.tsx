@@ -35,7 +35,7 @@ import type {
   SpaceGraph,
   SpaceMessage,
   SpaceNode,
-} from "@/lib/spaces";
+} from "@/features/spaces/types";
 
 const nodeTypes = {
   spaceNode: SpaceNodeCard,
@@ -198,7 +198,7 @@ function SpaceCanvasInner({
   }, [nodes.length, fitView]);
 
   const handleNodeDragStop = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (_: unknown, node: Node) => {
       void onUpdateNode(node.id, { position: node.position });
     },
     [onUpdateNode]

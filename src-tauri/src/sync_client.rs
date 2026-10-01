@@ -3,21 +3,14 @@ use serde_json::Value;
 use std::time::Duration;
 use tauri::State;
 
+const DEFAULT_TIMEOUT_MS: u64 = 8_000;
+const MAX_TIMEOUT_MS: u64 = 60_000;
+
 async fn core_request(
     auth: &AuthManager,
     method: reqwest::Method,
     path: &str,
-    query: &[(&str, String)],
-    body: Option<Value>,
-) -> Result<Value, String> {
-    core_request_with_timeout(auth, method, path, query, body, Duration::from_millis(8000)).await
-}
-
-async fn core_request_with_timeout(
-    auth: &AuthManager,
-    method: reqwest::Method,
-    path: &str,
-    query: &[(&str, String)],
+    query: &[(String, String)],
     body: Option<Value>,
     timeout: Duration,
 ) -> Result<Value, String> {
@@ -46,216 +39,41 @@ async fn core_request_with_timeout(
     resp.json::<Value>().await.map_err(|e| e.to_string())
 }
 
+fn valid_path(path: &str) -> bool {
+    path.starts_with("/v1/")
+        && !path.contains("..")
+        && !path.contains("//")
+        && !path.contains(['?', '#', '\\'])
+}
+
 #[tauri::command]
-pub async fn get_spans(
-    from: Option<String>,
-    to: Option<String>,
-    collection_id: Option<String>,
-    status: Option<String>,
-    unscheduled: Option<bool>,
+pub async fn core_http(
+    method: String,
+    path: String,
+    query: Option<Vec<(String, String)>>,
+    body: Option<Value>,
+    timeout_ms: Option<u64>,
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
-    let mut body = serde_json::Map::new();
-    for (key, value) in [
-        ("from", from),
-        ("to", to),
-        ("collection_id", collection_id),
-        ("status", status),
-    ] {
-        if let Some(value) = value.filter(|v| !v.is_empty()) {
-            body.insert(key.to_string(), Value::String(value));
-        }
+    let method = match method.to_ascii_uppercase().as_str() {
+        "GET" => reqwest::Method::GET,
+        "POST" => reqwest::Method::POST,
+        "PUT" => reqwest::Method::PUT,
+        "PATCH" => reqwest::Method::PATCH,
+        "DELETE" => reqwest::Method::DELETE,
+        _ => return Err("unsupported method".to_string()),
+    };
+    if !valid_path(&path) {
+        return Err("invalid path".to_string());
     }
-    if let Some(unscheduled) = unscheduled {
-        body.insert("unscheduled".to_string(), Value::Bool(unscheduled));
-    }
-    core_request(&auth, reqwest::Method::POST, "/v1/spans/list", &[], Some(Value::Object(body))).await
-}
-
-#[tauri::command]
-pub async fn create_span(payload: Value, auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::POST, "/v1/spans", &[], Some(payload)).await
-}
-
-#[tauri::command]
-pub async fn update_span(
-    id: String,
-    patch: Value,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/spans/{id}/update");
-    core_request(&auth, reqwest::Method::POST, &path, &[], Some(patch)).await
-}
-
-#[tauri::command]
-pub async fn delete_span(id: String, auth: State<'_, AuthManager>) -> Result<(), String> {
-    let path = format!("/v1/spans/{id}/delete");
-    core_request(&auth, reqwest::Method::POST, &path, &[], None)
-        .await
-        .map(|_| ())
-}
-
-#[tauri::command]
-pub async fn get_collections(auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::POST, "/v1/collections/list", &[], Some(serde_json::json!({}))).await
-}
-
-#[tauri::command]
-pub async fn create_collection(
-    payload: Value,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::POST, "/v1/collections", &[], Some(payload)).await
-}
-
-#[tauri::command]
-pub async fn update_collection(
-    id: String,
-    patch: Value,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/collections/{id}/update");
-    core_request(&auth, reqwest::Method::POST, &path, &[], Some(patch)).await
-}
-
-#[tauri::command]
-pub async fn archive_collection(id: String, auth: State<'_, AuthManager>) -> Result<(), String> {
-    let path = format!("/v1/collections/{id}/archive");
-    core_request(&auth, reqwest::Method::POST, &path, &[], None)
-        .await
-        .map(|_| ())
-}
-
-#[tauri::command]
-pub async fn set_span_collection(
-    collection_id: String,
-    span_id: String,
-    member: bool,
-    auth: State<'_, AuthManager>,
-) -> Result<(), String> {
-    let action = if member { "add" } else { "remove" };
-    let path = format!("/v1/collections/{collection_id}/spans/{span_id}/{action}");
-    core_request(&auth, reqwest::Method::POST, &path, &[], None).await.map(|_| ())
-}
-
-#[tauri::command]
-pub async fn list_schemas(auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::GET, "/v1/me/schemas", &[], None).await
-}
-
-#[tauri::command]
-pub async fn suggest_charts(
-    schema_ids: Vec<String>,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let payload = serde_json::json!({ "schema_ids": schema_ids });
-    core_request(&auth, reqwest::Method::POST, "/v1/me/charts/suggest", &[], Some(payload)).await
-}
-
-#[tauri::command]
-pub async fn create_chart_board(
-    name: String,
-    charts: Value,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let payload = serde_json::json!({
-        "name": name,
-        "charts": charts,
-    });
-    core_request(&auth, reqwest::Method::POST, "/v1/me/charts/boards", &[], Some(payload)).await
-}
-
-#[tauri::command]
-pub async fn list_chart_boards(auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::GET, "/v1/me/charts/boards", &[], None).await
-}
-
-#[tauri::command]
-pub async fn get_chart_board(
-    id: String,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/me/charts/boards/{id}");
-    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
-}
-
-#[tauri::command]
-pub async fn get_chart_board_data(
-    id: String,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/me/charts/boards/{id}/data");
-    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
-}
-
-#[tauri::command]
-pub async fn list_spaces(auth: State<'_, AuthManager>) -> Result<Value, String> {
-    core_request(&auth, reqwest::Method::GET, "/v1/me/spaces", &[], None).await
-}
-
-#[tauri::command]
-pub async fn get_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}");
-    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
-}
-
-#[tauri::command]
-pub async fn create_space(
-    title: String,
-    intent: String,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let body = serde_json::json!({ "title": title, "intent": intent });
-    core_request_with_timeout(
+    let timeout = Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS).min(MAX_TIMEOUT_MS));
+    core_request(
         &auth,
-        reqwest::Method::POST,
-        "/v1/me/spaces",
-        &[],
-        Some(body),
-        Duration::from_secs(30),
+        method,
+        &path,
+        query.as_deref().unwrap_or(&[]),
+        body,
+        timeout,
     )
     .await
-}
-
-#[tauri::command]
-pub async fn drop_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}");
-    core_request(&auth, reqwest::Method::DELETE, &path, &[], None).await
-}
-
-#[tauri::command]
-pub async fn send_space_chat(
-    id: String,
-    message: String,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}/chat");
-    let body = serde_json::json!({ "message": message });
-    core_request(&auth, reqwest::Method::POST, &path, &[], Some(body)).await
-}
-
-#[tauri::command]
-pub async fn commit_space(id: String, auth: State<'_, AuthManager>) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}/commit");
-    core_request(&auth, reqwest::Method::POST, &path, &[], None).await
-}
-
-#[tauri::command]
-pub async fn update_space_node(
-    id: String,
-    node_id: String,
-    patch: Value,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}/nodes/{node_id}");
-    core_request(&auth, reqwest::Method::PATCH, &path, &[], Some(patch)).await
-}
-
-#[tauri::command]
-pub async fn list_space_messages(
-    id: String,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let path = format!("/v1/me/spaces/{id}/messages");
-    core_request(&auth, reqwest::Method::GET, &path, &[], None).await
 }

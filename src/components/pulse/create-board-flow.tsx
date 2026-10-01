@@ -18,12 +18,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { schemaColorStyle, schemaIcon } from "@/lib/schema-tokens";
-import {
-  api,
-  type ChartSuggestion,
-  type ChartType,
-  type Schema,
-} from "@/lib/tauri";
+import { pulseApi } from "@/features/pulse/api";
+import type { ChartSuggestion, ChartType, Schema } from "@/features/pulse/types";
 
 function getChartIcon(type: ChartType) {
   switch (type) {
@@ -66,7 +62,7 @@ export function CreateBoardFlow({
 
   useEffect(() => {
     let active = true;
-    api
+    pulseApi
       .listSchemas()
       .then((data) => {
         if (!active) return;
@@ -101,7 +97,7 @@ export function CreateBoardFlow({
     setSuggestionsError("");
     try {
       const ids = Array.from(selectedSchemaIds);
-      const results = await api.suggestCharts(ids);
+      const results = await pulseApi.suggestCharts(ids);
       setSuggestions(results);
       setSelectedSuggestionIndices(
         new Set(results.map((_, index) => index)),
@@ -144,7 +140,7 @@ export function CreateBoardFlow({
       const chosenCharts = suggestions.filter((_, idx) =>
         selectedSuggestionIndices.has(idx),
       );
-      const board = await api.createChartBoard(boardName.trim(), chosenCharts);
+      const board = await pulseApi.createChartBoard(boardName.trim(), chosenCharts);
       onCreated(board.id);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : String(err));

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type ChartBoard } from "@/lib/tauri";
+import { pulseApi } from "@/features/pulse/api";
+import type { ChartBoard } from "@/features/pulse/types";
 
 export function useChartBoards(enabled = true) {
   const [boards, setBoards] = useState<ChartBoard[]>([]);
@@ -14,7 +15,7 @@ export function useChartBoards(enabled = true) {
 
   const load = useCallback(async () => {
     try {
-      const data = await api.listChartBoards();
+      const data = await pulseApi.listChartBoards();
       setBoards(data);
       setError("");
     } catch (err) {

@@ -14,7 +14,7 @@ import {
   Sparkles,
   Wallet,
 } from "lucide-react";
-import type { SpaceNode } from "@/lib/spaces";
+import type { SpaceNode } from "@/features/spaces/types";
 
 export interface SpaceNodeData {
   node: SpaceNode;

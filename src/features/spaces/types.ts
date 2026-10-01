@@ -1,5 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
-
 export type SpaceState = "ideating" | "planned" | "committed" | "dropped";
 export type NodeState = "running" | "done" | "stale" | "rejected";
 export type RunState = "idle" | "running" | "failed";
@@ -72,27 +70,3 @@ export interface CommitSpaceResult {
   collection_id: string;
   committed_spans_count: number;
 }
-
-export const spacesApi = {
-  listSpaces: () => invoke<Space[]>("list_spaces"),
-  getSpace: (id: string) => invoke<SpaceGraph>("get_space", { id }),
-  createSpace: (title: string, intent: string) =>
-    invoke<Space>("create_space", { title, intent }),
-  dropSpace: (id: string) => invoke<void>("drop_space", { id }),
-  sendSpaceChat: (id: string, message: string) =>
-    invoke<{ status: string }>("send_space_chat", { id, message }),
-  commitSpace: (id: string) =>
-    invoke<CommitSpaceResult>("commit_space", { id }),
-  updateNode: (
-    spaceId: string,
-    nodeId: string,
-    patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>
-  ) =>
-    invoke<SpaceNode>("update_space_node", {
-      id: spaceId,
-      nodeId,
-      patch,
-    }),
-  listMessages: (spaceId: string) =>
-    invoke<SpaceMessage[]>("list_space_messages", { id: spaceId }),
-};

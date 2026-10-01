@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type ChartBoardDetails, type ChartDataResult } from "@/lib/tauri";
+import { pulseApi } from "@/features/pulse/api";
+import type { ChartBoardDetails, ChartDataResult } from "@/features/pulse/types";
 
 export function useChartBoardData(boardId: string | null) {
   const [board, setBoard] = useState<ChartBoardDetails | null>(null);
@@ -19,8 +20,8 @@ export function useChartBoardData(boardId: string | null) {
     if (!boardId) return;
     try {
       const [boardDetails, chartData] = await Promise.all([
-        api.getChartBoard(boardId),
-        api.getChartBoardData(boardId),
+        pulseApi.getChartBoard(boardId),
+        pulseApi.getChartBoardData(boardId),
       ]);
       setBoard(boardDetails);
       setData(chartData);

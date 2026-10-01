@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  api,
-  invokeErrorMessage,
-  type Collection,
-  type NewCollection,
-} from "@/lib/tauri";
+import { spansApi } from "@/features/spans/api";
+import type { Collection, NewCollection } from "@/features/spans/types";
+import { invokeErrorMessage } from "@/lib/tauri";
 
 export function useCollections(signedIn: boolean) {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -13,7 +10,7 @@ export function useCollections(signedIn: boolean) {
 
   const load = useCallback(async () => {
     try {
-      const list = await api.getCollections();
+      const list = await spansApi.getCollections();
       setCollections(list);
     } catch {
       /* keep previous list */
@@ -26,7 +23,7 @@ export function useCollections(signedIn: boolean) {
 
   async function create(form: NewCollection) {
     try {
-      await api.createCollection(form);
+      await spansApi.createCollection(form);
       setError("");
       await load();
     } catch (err) {
@@ -37,7 +34,7 @@ export function useCollections(signedIn: boolean) {
 
   async function archive(id: string) {
     try {
-      await api.archiveCollection(id);
+      await spansApi.archiveCollection(id);
       if (selectedId === id) setSelectedId(null);
       setError("");
       await load();

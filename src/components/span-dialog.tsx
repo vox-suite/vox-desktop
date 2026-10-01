@@ -20,14 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatAmount } from "@/lib/span-format";
-import {
-  api,
-  invokeErrorMessage,
-  type Collection,
-  type ExecutionType,
-  type Span,
-  type SpanStatus,
-} from "@/lib/tauri";
+import { spansApi } from "@/features/spans/api";
+import type {
+  Collection,
+  ExecutionType,
+  Span,
+  SpanStatus,
+} from "@/features/spans/types";
+import { invokeErrorMessage } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 export type SpanDraft = { start: Date | null; collectionId?: string };
@@ -172,7 +172,7 @@ function SpanForm({
     setBusy(true);
     try {
       if (span) {
-        await api.updateSpan(span.id, {
+        await spansApi.updateSpan(span.id, {
           title: form.title.trim(),
           notes: form.notes,
           category: form.category.trim() || "general",
@@ -185,13 +185,13 @@ function SpanForm({
         await Promise.all([
           ...form.collectionIds
             .filter((id) => !before.has(id))
-            .map((id) => api.setSpanCollection(id, span.id, true)),
+            .map((id) => spansApi.setSpanCollection(id, span.id, true)),
           ...span.collection_ids
             .filter((id) => !after.has(id))
-            .map((id) => api.setSpanCollection(id, span.id, false)),
+            .map((id) => spansApi.setSpanCollection(id, span.id, false)),
         ]);
       } else {
-        await api.createSpan({
+        await spansApi.createSpan({
           title: form.title.trim(),
           notes: form.notes,
           category: form.category.trim() || "general",
@@ -219,7 +219,7 @@ function SpanForm({
     if (!span) return;
     setBusy(true);
     try {
-      await api.deleteSpan(span.id);
+      await spansApi.deleteSpan(span.id);
       onSaved();
       onClose();
     } catch (err) {

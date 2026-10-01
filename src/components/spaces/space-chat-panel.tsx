@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
-  FileText,
   Info,
   RotateCw,
   Send,
@@ -12,7 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Space, SpaceMessage, SpaceNode } from "@/lib/spaces";
+import type { Space, SpaceMessage, SpaceNode } from "@/features/spaces/types";
 
 export function SpaceChatPanel({
   space,
@@ -124,6 +123,16 @@ export function SpaceChatPanel({
         <p className="mt-1 text-xs text-zinc-400 line-clamp-2 leading-relaxed">
           {space.intent}
         </p>
+
+        {spec.mission && (
+          <div className="mt-3 rounded-lg border border-indigo-900/40 bg-indigo-950/20 p-2.5 text-xs text-zinc-300">
+            <div className="flex items-center gap-1.5 font-medium text-indigo-300">
+              <Target className="h-3.5 w-3.5" />
+              <span>Mission</span>
+            </div>
+            <p className="mt-1 text-zinc-400">{spec.mission}</p>
+          </div>
+        )}
 
         {space.run_error && (
           <div className="mt-3 rounded-lg border border-red-500/40 bg-red-950/30 p-2.5 text-xs text-red-200">
