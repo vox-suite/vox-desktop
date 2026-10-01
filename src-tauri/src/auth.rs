@@ -16,12 +16,21 @@ use crate::session_store::{
 
 const OAUTH_SCHEME: &str = "vox";
 const OAUTH_PENDING_TTL_SECS: i64 = 600;
-/// Fixed loopback used by `cargo tauri dev` — macOS will not deliver `vox://` to the
-/// debug binary when `/Applications/Vox.app` owns the scheme.
-#[cfg(debug_assertions)]
+/// Loopback used in dev builds (macOS) and ALL Windows builds.
+/// On Windows the vox:// scheme only works after the app is installed via the
+/// NSIS installer AND the OS has registered it — running the raw .exe gets
+/// no deep-link callback at all. Use the loopback for reliability.
 const DEV_OAUTH_LOOPBACK: &str = "http://127.0.0.1:17843/auth/callback";
-#[cfg(debug_assertions)]
 const DEV_OAUTH_PORT: u16 = 17843;
+
+/// Shared HTTP client with a 15-second connect+response timeout so a
+/// slow/unreachable API server doesn't block sign-in indefinitely.
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .unwrap_or_default()
+}
 
 #[derive(Clone, Debug, Serialize)]
 pub struct AuthState {
@@ -400,8 +409,9 @@ impl AuthManager {
             created_at_unix: now_unix(),
         })?;
 
-        // Debug: listen on loopback before opening the browser so the redirect cannot race us.
-        #[cfg(debug_assertions)]
+        // Debug builds and all Windows builds use the loopback listener.
+        // On Windows, vox:// deep links only work when installed via NSIS.
+        #[cfg(any(debug_assertions, windows))]
         let loopback_rx = if redirect_uri.starts_with("http://127.0.0.1:")
             || redirect_uri.starts_with("http://localhost:")
         {
@@ -414,7 +424,7 @@ impl AuthManager {
             .open_url(authorize.as_str(), None::<&str>)
             .map_err(|e| format!("Could not open browser: {e}"))?;
 
-        #[cfg(debug_assertions)]
+        #[cfg(any(debug_assertions, windows))]
         if let Some(loopback_rx) = loopback_rx {
             let callback = match tokio::time::timeout(Duration::from_secs(180), loopback_rx).await {
                 Ok(Ok(Ok(url))) => url,
@@ -424,7 +434,7 @@ impl AuthManager {
                 }
                 Err(_) => {
                     return Err(
-                        "Timed out waiting for Google in the browser. Add http://127.0.0.1:17843/auth/callback to Supabase Auth redirect URLs, then try again."
+                        "Timed out waiting for Google in the browser (3 min). Make sure http://127.0.0.1:17843/auth/callback is in Supabase Auth → Redirect URLs, then try again."
                             .to_string(),
                     );
                 }
@@ -495,7 +505,7 @@ impl AuthManager {
             "code_verifier": verifier,
         });
 
-        let response = reqwest::Client::new()
+        let response = http_client()
             .post(&url)
             .header("apikey", &self.config.supabase_anon_key)
             .header(
@@ -541,7 +551,7 @@ impl AuthManager {
             "{}/auth/v1/token?grant_type=refresh_token",
             self.config.supabase_url
         );
-        let response = reqwest::Client::new()
+        let response = http_client()
             .post(&url)
             .header("apikey", &self.config.supabase_anon_key)
             .json(&serde_json::json!({ "refresh_token": session.refresh_token }))
@@ -642,7 +652,7 @@ impl AuthManager {
             .current_session()
             .ok_or_else(|| "Not signed in".to_string())?;
         let url = format!("{}/v1/me/phone", self.config.api_url);
-        let response = reqwest::Client::new()
+        let response = http_client()
             .post(&url)
             .header("authorization", format!("Bearer {}", session.vox_token))
             .json(&LinkPhoneRequest {
@@ -764,17 +774,30 @@ pub async fn confirm_phone_verification(
 }
 
 fn oauth_redirect_for_runtime(configured: &str) -> String {
-    #[cfg(debug_assertions)]
+    // On Windows (any build), vox:// deep links require the app to be installed
+    // via the NSIS installer and the scheme registered in the registry.
+    // Running the raw .exe never gets the OS callback, so always use the
+    // loopback for reliability on Windows.
+    #[cfg(windows)]
     {
         let trimmed = configured.trim();
         if trimmed.starts_with("http://127.0.0.1:") || trimmed.starts_with("http://localhost:") {
             return trimmed.to_string();
         }
-        // Ignore production vox:// while developing — Launch Services owns that scheme.
-        DEV_OAUTH_LOOPBACK.to_string()
+        return DEV_OAUTH_LOOPBACK.to_string();
     }
-    #[cfg(not(debug_assertions))]
+    #[cfg(not(windows))]
     {
+        #[cfg(debug_assertions)]
+        {
+            let trimmed = configured.trim();
+            if trimmed.starts_with("http://127.0.0.1:") || trimmed.starts_with("http://localhost:") {
+                return trimmed.to_string();
+            }
+            // Ignore production vox:// while developing — Launch Services owns that scheme.
+            return DEV_OAUTH_LOOPBACK.to_string();
+        }
+        #[cfg(not(debug_assertions))]
         configured.trim().to_string()
     }
 }
@@ -796,7 +819,7 @@ fn is_allowed_oauth_callback(callback: &url::Url) -> bool {
     false
 }
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, windows))]
 fn spawn_oauth_loopback_listener() -> Result<oneshot::Receiver<Result<url::Url, String>>, String> {
     let (tx, rx) = oneshot::channel();
     tauri::async_runtime::spawn(async move {
@@ -806,10 +829,10 @@ fn spawn_oauth_loopback_listener() -> Result<oneshot::Receiver<Result<url::Url, 
     Ok(rx)
 }
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, windows))]
 const DEV_OAUTH_SUCCESS_HTML: &str = include_str!("../assets/oauth_success.html");
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, windows))]
 async fn accept_oauth_loopback_once() -> Result<url::Url, String> {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
@@ -858,7 +881,7 @@ async fn exchange_with_core(
     let url = format!("{}/v1/auth/exchange", config.api_url);
     let body = serde_json::json!({ "id_token": access_token });
 
-    let response = reqwest::Client::new()
+    let response = http_client()
         .post(&url)
         .json(&body)
         .send()
@@ -876,7 +899,7 @@ async fn exchange_with_core(
     let exchange_body = response.text().await.unwrap_or_default();
 
     let me_url = format!("{}/v1/me", config.api_url);
-    let me_response = reqwest::Client::new()
+    let me_response = http_client()
         .post(&me_url)
         .header("authorization", format!("Bearer {access_token}"))
         .send()
@@ -914,7 +937,7 @@ async fn fetch_supabase_user(
     access_token: &str,
 ) -> Result<SupabaseUser, String> {
     let url = format!("{}/auth/v1/user", config.supabase_url);
-    let response = reqwest::Client::new()
+    let response = http_client()
         .get(&url)
         .header("apikey", &config.supabase_anon_key)
         .header("authorization", format!("Bearer {access_token}"))

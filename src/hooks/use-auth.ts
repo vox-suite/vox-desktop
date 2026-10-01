@@ -66,6 +66,23 @@ export function useAuth() {
     };
   }, []);
 
+  // Surface backend auth errors (e.g. loopback callback failures) to the UI
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let active = true;
+    void listen<string>("auth-error", (event) => {
+      setAuthBusy(false);
+      setAuthError(event.payload);
+    }).then((fn) => {
+      if (active) unlisten = fn;
+      else fn();
+    });
+    return () => {
+      active = false;
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (auth.signed_in)

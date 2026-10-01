@@ -5,19 +5,24 @@ use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 
+#[cfg(not(windows))]
 use webrtc_audio_processing::config::EchoCanceller;
+#[cfg(not(windows))]
 use webrtc_audio_processing::{Config, Processor};
 
 use crate::codec::{resample_to_16k_mono, StreamResampler};
 
+#[cfg_attr(windows, allow(dead_code))]
 const AEC_FRAME: usize = 160;
 
+#[cfg(not(windows))]
 struct Aec {
     apm: Processor,
     render_acc: Mutex<Vec<f32>>,
     capture_acc: Mutex<Vec<f32>>,
 }
 
+#[cfg(not(windows))]
 impl Aec {
     fn new() -> Result<Self, String> {
         let apm =
@@ -52,6 +57,22 @@ impl Aec {
             out.extend(frame);
         }
         out
+    }
+}
+
+// On Windows, the bundled WebRTC APM C++ build is unavailable.
+// Use a no-op pass-through that skips echo cancellation.
+#[cfg(windows)]
+struct Aec;
+
+#[cfg(windows)]
+impl Aec {
+    fn new() -> Result<Self, String> {
+        Ok(Self)
+    }
+    fn render(&self, _played: &[f32], _rate: u32, _channels: u16) {}
+    fn capture(&self, mic_16k: Vec<f32>) -> Vec<f32> {
+        mic_16k
     }
 }
 
