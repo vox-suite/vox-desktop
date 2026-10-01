@@ -9,6 +9,7 @@ export type AuthState = {
   bridge_url: string;
   api_url: string;
   has_phone: boolean;
+  phone_verified: boolean;
   user_name?: string | null;
   avatar_url?: string | null;
 };
@@ -61,6 +62,9 @@ export const api = {
   signOut: () => invoke<AuthState>("sign_out"),
   linkPhone: (phoneNumber: string) =>
     invoke<AuthState>("link_phone", { phoneNumber }),
+  startPhoneVerification: () => invoke<string>("start_phone_verification"),
+  confirmPhoneVerification: (code: string) =>
+    invoke<AuthState>("confirm_phone_verification", { code }),
   setWindowSize: (width: number, height: number) =>
     invoke("set_window_size", { width, height }),
   centerWindow: () => invoke("center_window"),

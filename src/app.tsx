@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { HomeShell } from "@/components/home-shell";
 import { PhoneEntryScreen } from "@/components/phone-entry-screen";
+import { PhoneVerifyScreen } from "@/components/phone-verify-screen";
 import type { ShellTab } from "@/components/shell/shell-tabs";
 import { SignInScreen } from "@/components/sign-in-screen";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,6 +13,7 @@ export default function App() {
   const callSession = useCallSession(auth.auth.signed_in);
 
   const [activeTab, setActiveTab] = useState<ShellTab>("agent");
+  const [verifySkipped, setVerifySkipped] = useState(false);
 
   const {
     auth: authState,
@@ -21,6 +23,9 @@ export default function App() {
     googleSignIn,
     signOut,
     linkPhone,
+    phoneJustLinked,
+    startPhoneVerification,
+    confirmPhoneVerification,
   } = auth;
   const {
     callState,
@@ -90,6 +95,17 @@ export default function App() {
         busy={authBusy}
         error={authError}
         onSubmit={(phoneNumber) => void linkPhone(phoneNumber)}
+      />
+    );
+  }
+
+  if (!authState.phone_verified && !verifySkipped) {
+    return (
+      <PhoneVerifyScreen
+        autoSend={phoneJustLinked}
+        onSend={startPhoneVerification}
+        onConfirm={confirmPhoneVerification}
+        onSkip={() => setVerifySkipped(true)}
       />
     );
   }

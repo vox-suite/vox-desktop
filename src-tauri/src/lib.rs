@@ -117,6 +117,8 @@ pub fn run() {
             auth::sign_in_with_google,
             auth::sign_out,
             auth::link_phone,
+            auth::start_phone_verification,
+            auth::confirm_phone_verification,
             center_window,
             session::start_call,
             session::end_call,

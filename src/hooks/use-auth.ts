@@ -14,6 +14,7 @@ const emptyAuth: AuthState = {
   bridge_url: "",
   api_url: "",
   has_phone: false,
+  phone_verified: false,
   user_name: null,
   avatar_url: null,
 };
@@ -23,6 +24,7 @@ export function useAuth() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [phoneJustLinked, setPhoneJustLinked] = useState(false);
 
   useEffect(() => {
     void api.centerWindow().catch(() => undefined);
@@ -117,6 +119,7 @@ export function useAuth() {
     try {
       const next = await api.linkPhone(phoneNumber);
       setAuth(next);
+      setPhoneJustLinked(true);
     } catch (err) {
       setAuthError(invokeErrorMessage(err));
     } finally {
@@ -124,5 +127,24 @@ export function useAuth() {
     }
   }
 
-  return { auth, authLoading, authBusy, authError, googleSignIn, signOut, linkPhone };
+  async function startPhoneVerification() {
+    return api.startPhoneVerification();
+  }
+
+  async function confirmPhoneVerification(code: string) {
+    setAuth(await api.confirmPhoneVerification(code));
+  }
+
+  return {
+    auth,
+    authLoading,
+    authBusy,
+    authError,
+    phoneJustLinked,
+    googleSignIn,
+    signOut,
+    linkPhone,
+    startPhoneVerification,
+    confirmPhoneVerification,
+  };
 }

@@ -31,6 +31,7 @@ pub struct AuthState {
     pub bridge_url: String,
     pub api_url: String,
     pub has_phone: bool,
+    pub phone_verified: bool,
     pub user_name: Option<String>,
     pub avatar_url: Option<String>,
 }
@@ -131,12 +132,16 @@ struct AuthExchangeResponse {
     user_id: Uuid,
     expires_at: String,
     has_phone: bool,
+    #[serde(default)]
+    phone_verified: bool,
 }
 
 #[derive(Deserialize)]
 struct CoreMeResponse {
     user_id: Uuid,
     has_phone: bool,
+    #[serde(default)]
+    phone_verified: bool,
 }
 
 struct PendingOauth {
@@ -202,6 +207,7 @@ impl AuthManager {
             bridge_url: self.config.bridge_url.clone(),
             api_url: self.config.api_url.clone(),
             has_phone: session.as_ref().map(|s| s.has_phone).unwrap_or(false),
+            phone_verified: session.as_ref().map(|s| s.phone_verified).unwrap_or(false),
             user_name,
             avatar_url,
         }
@@ -582,6 +588,7 @@ impl AuthManager {
             vox_token: exchange.token,
             expires_at: Some(exchange.expires_at),
             has_phone: exchange.has_phone,
+            phone_verified: exchange.phone_verified,
             user_name,
             avatar_url,
         };
@@ -653,6 +660,7 @@ impl AuthManager {
 
         let mut updated = session;
         updated.has_phone = true;
+        updated.phone_verified = false;
         save_session(&updated)?;
         if let Ok(mut guard) = self.session.lock() {
             *guard = Some(updated);
@@ -667,6 +675,81 @@ pub async fn link_phone(
     auth: State<'_, AuthManager>,
 ) -> Result<AuthState, String> {
     auth.link_phone(phone_number).await
+}
+
+#[derive(Deserialize)]
+struct StartVerificationResponse {
+    #[serde(default)]
+    phone_last4: Option<String>,
+}
+
+fn verification_error(status: reqwest::StatusCode) -> String {
+    match status.as_u16() {
+        400 => "That code is invalid or has expired.".to_string(),
+        404 => "Add a phone number first.".to_string(),
+        429 => "Too many codes requested. Try again later.".to_string(),
+        502 | 503 => "We couldn't send the code right now. Try again in a moment.".to_string(),
+        _ => format!("Verification failed ({status})."),
+    }
+}
+
+impl AuthManager {
+    pub async fn start_phone_verification(&self) -> Result<String, String> {
+        let session = self
+            .current_session()
+            .ok_or_else(|| "Not signed in".to_string())?;
+        let response = reqwest::Client::new()
+            .post(format!("{}/v1/me/phone/verify/start", self.config.api_url))
+            .header("authorization", format!("Bearer {}", session.vox_token))
+            .json(&serde_json::json!({}))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to reach Vox API: {e}"))?;
+        if !response.status().is_success() {
+            return Err(verification_error(response.status()));
+        }
+        let body: StartVerificationResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("Invalid verification response: {e}"))?;
+        Ok(body.phone_last4.unwrap_or_default())
+    }
+
+    pub async fn confirm_phone_verification(&self, code: String) -> Result<AuthState, String> {
+        let session = self
+            .current_session()
+            .ok_or_else(|| "Not signed in".to_string())?;
+        let response = reqwest::Client::new()
+            .post(format!("{}/v1/me/phone/verify/confirm", self.config.api_url))
+            .header("authorization", format!("Bearer {}", session.vox_token))
+            .json(&serde_json::json!({ "code": code.trim() }))
+            .send()
+            .await
+            .map_err(|e| format!("Failed to reach Vox API: {e}"))?;
+        if !response.status().is_success() {
+            return Err(verification_error(response.status()));
+        }
+        let mut updated = session;
+        updated.phone_verified = true;
+        save_session(&updated)?;
+        if let Ok(mut guard) = self.session.lock() {
+            *guard = Some(updated);
+        }
+        Ok(self.state())
+    }
+}
+
+#[tauri::command]
+pub async fn start_phone_verification(auth: State<'_, AuthManager>) -> Result<String, String> {
+    auth.start_phone_verification().await
+}
+
+#[tauri::command]
+pub async fn confirm_phone_verification(
+    code: String,
+    auth: State<'_, AuthManager>,
+) -> Result<AuthState, String> {
+    auth.confirm_phone_verification(code).await
 }
 
 fn oauth_redirect_for_runtime(configured: &str) -> String {
@@ -811,6 +894,7 @@ async fn exchange_with_core(
         user_id: me.user_id,
         expires_at: String::new(),
         has_phone: me.has_phone,
+        phone_verified: me.phone_verified,
     })
 }
 

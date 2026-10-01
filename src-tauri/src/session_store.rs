@@ -17,6 +17,8 @@ pub struct StoredSession {
     #[serde(default)]
     pub has_phone: bool,
     #[serde(default)]
+    pub phone_verified: bool,
+    #[serde(default)]
     pub user_name: Option<String>,
     #[serde(default)]
     pub avatar_url: Option<String>,
