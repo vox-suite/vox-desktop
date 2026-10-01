@@ -88,7 +88,7 @@ export function PulseView() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {boards.map((board) => {
-            const count = board.chart_count ?? board.charts?.length ?? 0;
+            const count = board.chart_count;
 
             return (
               <Card

@@ -1,6 +1,12 @@
-export type SpaceState = "ideating" | "planned" | "committed" | "dropped";
-export type NodeState = "running" | "done" | "stale" | "rejected";
-export type RunState = "idle" | "running" | "failed";
+import type { components } from "../api.gen";
+
+type S = components["schemas"];
+
+export type SpaceState = S["SpaceState"];
+export type NodeState = S["NodeState"];
+export type RunState = S["RunState"];
+export type SpaceEdge = Required<S["SpaceEdge"]>;
+export type CommitSpaceResult = S["CommitSpaceResult"];
 
 export interface AgentSpecLimits {
   max_steps: number;
@@ -14,59 +20,21 @@ export interface AgentSpec {
   limits?: AgentSpecLimits;
 }
 
-export interface SpaceMessage {
-  id: string;
-  space_id: string;
+export type SpaceMessage = Omit<Required<S["SpaceMessage"]>, "role"> & {
   role: "user" | "assistant" | "system";
-  text: string;
-  created_at: string;
-}
+};
 
-export interface Space {
-  id: string;
-  user_id: string;
-  title: string;
-  intent: string;
-  state: SpaceState;
+export type Space = Omit<Required<S["Space"]>, "agent_spec"> & {
   agent_spec: AgentSpec | Record<string, unknown>;
-  committed_collection_id: string | null;
-  run_state: RunState;
-  run_error: string | null;
-  created_at: string;
-  updated_at: string;
-}
+};
 
-export interface SpaceNode {
-  id: string;
-  space_id: string;
-  kind: string;
-  title: string;
-  body: string;
+export type SpaceNode = Omit<Required<S["SpaceNode"]>, "data" | "position"> & {
   data: Record<string, unknown>;
-  state: NodeState;
   position: { x: number; y: number };
-  derived_from: string[];
-  provenance: Record<string, unknown>;
-  version: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SpaceEdge {
-  id: string;
-  space_id: string;
-  from_node: string;
-  to_node: string;
-  created_at: string;
-}
+};
 
 export interface SpaceGraph {
   space: Space;
   nodes: SpaceNode[];
   edges: SpaceEdge[];
-}
-
-export interface CommitSpaceResult {
-  collection_id: string;
-  committed_spans_count: number;
 }

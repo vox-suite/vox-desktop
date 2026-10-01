@@ -12,7 +12,10 @@
     "build:app:debug": "set -a; source .env; set +a; npm run tauri build -- --debug",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "gen:api": "openapi-typescript ../vox-core/contracts/openapi.json -o src/features/api.gen.ts",
+    "gen:tokens": "cargo run -q --manifest-path ../vox-shared/Cargo.toml --bin gen_tokens > src/features/pulse/schema-tokens.gen.json",
+    "gen": "npm run gen:api && npm run gen:tokens"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -43,6 +46,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.9",
     "tailwindcss": "^4.1.8",
     "typescript": "~5.8.3",

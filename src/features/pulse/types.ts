@@ -1,73 +1,25 @@
-export type Schema = {
-  id: string;
-  user_id: string | null;
-  owner_scope: string;
-  namespace: string;
-  name: string;
-  version: number;
-  description: string;
+import type { components } from "../api.gen";
+
+type S = components["schemas"];
+
+export type ChartType = S["ChartType"];
+export type Aggregation = S["Aggregation"];
+export type QuerySpec = S["QuerySpec"];
+export type ChartDataPoint = S["ChartDataPoint"];
+export type ChartDataResult = S["ChartDataResult"];
+export type ChartSuggestion = Omit<S["ChartSuggestion"], "chart_type"> & {
+  chart_type: ChartType;
+};
+export type ChartBoard = Required<S["ChartBoardSummary"]>;
+
+export type Schema = Omit<Required<S["DataSchema"]>, "json_schema"> & {
   json_schema: Record<string, unknown>;
-  color_token: number;
-  icon_token: number;
-  state: "active" | "deprecated";
-  created_at: string;
-  updated_at: string;
 };
 
-export type ChartType = "line" | "bar" | "pie" | "area";
-
-export type Aggregation = "sum" | "count" | "avg" | "min" | "max";
-
-export type QuerySpec = {
-  metric_field: string;
-  aggregation: Aggregation;
-  group_by: "day" | "week" | "month" | string;
-};
-
-export type ChartDataPoint = {
-  label: string;
-  value: number;
-};
-
-export type Chart = {
-  id: string;
-  board_id: string;
-  title: string;
-  chart_type: ChartType;
-  schema_ids: string[];
+export type Chart = Omit<Required<S["Chart"]>, "query_spec"> & {
   query_spec: QuerySpec | Record<string, unknown>;
-  created_at: string;
 };
 
-export type ChartSuggestion = {
-  title: string;
-  description: string;
-  chart_type: ChartType;
-  schema_ids: string[];
-  query_spec: QuerySpec;
-};
-
-export type ChartBoard = {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-  chart_count?: number;
-  charts?: Chart[];
-};
-
-export type ChartBoardDetails = {
-  id: string;
-  user_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
+export type ChartBoardDetails = Omit<Required<S["ChartBoardDetails"]>, "charts"> & {
   charts: Chart[];
-};
-
-export type ChartDataResult = {
-  chart_id: string;
-  data_points: ChartDataPoint[];
-  error: string | null;
 };
