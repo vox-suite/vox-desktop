@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=Reem+Kufi:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+@source "../node_modules/@vox/ui/src";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

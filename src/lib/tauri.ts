@@ -41,7 +41,7 @@ export type {
   CollectionKind,
   Collection,
   NewCollection,
-} from "@/features/spans/types";
+} from "@vox/ui";
 export type {
   Schema,
   ChartType,
@@ -53,7 +53,7 @@ export type {
   ChartBoard,
   ChartBoardDetails,
   ChartDataResult,
-} from "@/features/pulse/types";
+} from "@vox/ui";
 
 export const api = {
   getAuthState: () => invoke<AuthState>("get_auth_state"),
@@ -126,10 +126,4 @@ export async function openLocationSettings(): Promise<void> {
   if (url) await openUrl(url);
 }
 
-export function invokeErrorMessage(err: unknown): string {
-  if (typeof err === "string") return err;
-  if (err && typeof err === "object" && "message" in err) {
-    return String((err as { message: unknown }).message);
-  }
-  return "Something went wrong";
-}
+export { errorMessage as invokeErrorMessage } from "@vox/ui";

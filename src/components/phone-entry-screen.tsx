@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { VoxLogo } from "@/components/vox-logo";
+import { Badge } from "@vox/ui/ui/badge";
+import { Button } from "@vox/ui/ui/button";
+import { Card } from "@vox/ui/ui/card";
+import { Input } from "@vox/ui/ui/input";
+import { VoxLogo } from "@vox/ui/logo";
 
 // E.164: a leading "+", then 7-15 digits, first digit non-zero.
 // Matches what Twilio reports for an inbound call's caller id.

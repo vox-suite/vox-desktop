@@ -7,12 +7,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@vox/ui/ui/button";
+import { Card } from "@vox/ui/ui/card";
+import { Separator } from "@vox/ui/ui/separator";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { windowControls } from "@/lib/tauri";
-import { cn } from "@/lib/utils";
+import { cn } from "@vox/ui/utils";
 import type { ShellTab } from "./shell-tabs";
 
 const CONTROLS = [

@@ -1,8 +1,8 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@vox/ui/ui/badge";
+import { Button } from "@vox/ui/ui/button";
+import { Card } from "@vox/ui/ui/card";
 import { GoogleIcon } from "@/components/icons";
-import { VoxLogo } from "@/components/vox-logo";
+import { VoxLogo } from "@vox/ui/logo";
 
 export function SignInScreen({
   busy,

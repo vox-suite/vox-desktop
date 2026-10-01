@@ -1,5 +1,5 @@
-import { VoxLogo, type VoxOrbVisualState } from "@/components/vox-logo";
-import { cn } from "@/lib/utils";
+import { VoxLogo, type VoxOrbVisualState } from "@vox/ui/logo";
+import { cn } from "@vox/ui/utils";
 
 export function AgentPane({
   isActive,

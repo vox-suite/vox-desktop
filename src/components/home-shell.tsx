@@ -6,18 +6,18 @@ import { ActivityLogs } from "@/components/activity-logs";
 import { PlaceholderPane } from "@/components/shell/placeholder-pane";
 import { SHELL_TABS, type ShellTab } from "@/components/shell/shell-tabs";
 import { MapAmbientChrome } from "@/components/map-ambient-chrome";
-import { TimelineView } from "@/components/timeline-view";
+import { TimelineView } from "@vox/ui";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
 
 // Charts (recharts) and the canvas (xyflow) are large, so load them on first visit.
 const PulseView = lazy(() =>
-  import("@/components/pulse/pulse-view").then((m) => ({
+  import("@vox/ui/pulse").then((m) => ({
     default: m.PulseView,
   })),
 );
 const SpacesView = lazy(() =>
-  import("@/components/spaces/spaces-view").then((m) => ({
+  import("@vox/ui/spaces").then((m) => ({
     default: m.SpacesView,
   })),
 );

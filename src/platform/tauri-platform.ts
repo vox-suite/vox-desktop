@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { LiveEvent, Platform } from "./ports";
+import type { LiveEvent, Platform } from "@vox/ui";
 
 export const tauriPlatform: Platform = {
   http: {
