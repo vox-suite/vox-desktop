@@ -3,11 +3,16 @@ import { api, type ChartBoard } from "@/lib/tauri";
 
 export function useChartBoards(enabled = true) {
   const [boards, setBoards] = useState<ChartBoard[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
 
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (enabled !== prevEnabled) {
+    setPrevEnabled(enabled);
+    if (enabled) setLoading(true);
+  }
+
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await api.listChartBoards();
       setBoards(data);
@@ -21,8 +26,13 @@ export function useChartBoards(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    void load();
+    queueMicrotask(() => void load());
   }, [enabled, load]);
 
-  return { boards, loading, error, reload: load };
+  const reload = useCallback(() => {
+    setLoading(true);
+    return load();
+  }, [load]);
+
+  return { boards, loading, error, reload };
 }

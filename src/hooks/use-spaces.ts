@@ -3,11 +3,16 @@ import { spacesApi, type Space } from "@/lib/spaces";
 
 export function useSpaces(enabled = true) {
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
 
+  const [prevEnabled, setPrevEnabled] = useState(enabled);
+  if (enabled !== prevEnabled) {
+    setPrevEnabled(enabled);
+    if (enabled) setLoading(true);
+  }
+
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await spacesApi.listSpaces();
       setSpaces(data);
@@ -21,7 +26,7 @@ export function useSpaces(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    void load();
+    queueMicrotask(() => void load());
   }, [enabled, load]);
 
   const create = useCallback(
@@ -38,7 +43,7 @@ export function useSpaces(enabled = true) {
         setLoading(false);
       }
     },
-    [load]
+    [load],
   );
 
   const drop = useCallback(
@@ -51,8 +56,13 @@ export function useSpaces(enabled = true) {
         throw err;
       }
     },
-    [load]
+    [load],
   );
 
-  return { spaces, loading, error, reload: load, create, drop };
+  const reload = useCallback(() => {
+    setLoading(true);
+    return load();
+  }, [load]);
+
+  return { spaces, loading, error, reload, create, drop };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AgentPane } from "@/components/shell/agent-pane";
@@ -7,10 +7,20 @@ import { PlaceholderPane } from "@/components/shell/placeholder-pane";
 import { SHELL_TABS, type ShellTab } from "@/components/shell/shell-tabs";
 import { MapAmbientChrome } from "@/components/map-ambient-chrome";
 import { TimelineView } from "@/components/timeline-view";
-import { PulseView } from "@/components/pulse/pulse-view";
-import { SpacesView } from "@/components/spaces/spaces-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
+
+// Charts (recharts) and the canvas (xyflow) are large, so load them on first visit.
+const PulseView = lazy(() =>
+  import("@/components/pulse/pulse-view").then((m) => ({
+    default: m.PulseView,
+  })),
+);
+const SpacesView = lazy(() =>
+  import("@/components/spaces/spaces-view").then((m) => ({
+    default: m.SpacesView,
+  })),
+);
 
 export function HomeShell({
   activeTab,
@@ -96,9 +106,17 @@ export function HomeShell({
       />
     );
   } else if (activeTab === "pulse") {
-    body = <PulseView />;
+    body = (
+      <Suspense fallback={null}>
+        <PulseView />
+      </Suspense>
+    );
   } else if (activeTab === "spaces") {
-    body = <SpacesView />;
+    body = (
+      <Suspense fallback={null}>
+        <SpacesView />
+      </Suspense>
+    );
   } else {
     const tabMeta = SHELL_TABS.find((t) => t.id === activeTab);
     body = <PlaceholderPane label={tabMeta?.label ?? "This"} />;

@@ -7,12 +7,19 @@ const SPAN_EVENT_PREFIX = "span_";
 
 export function useSpans(query: SpanQuery, enabled = true) {
   const [spans, setSpans] = useState<Span[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState("");
   const key = JSON.stringify(query);
 
+  // A new query (or becoming enabled) starts a fresh load; set during render, not in an effect.
+  const loadKey = `${enabled}:${key}`;
+  const [prevLoadKey, setPrevLoadKey] = useState(loadKey);
+  if (loadKey !== prevLoadKey) {
+    setPrevLoadKey(loadKey);
+    if (enabled) setLoading(true);
+  }
+
   const load = useCallback(async () => {
-    setLoading(true);
     const query = JSON.parse(key) as SpanQuery;
     try {
       setSpans(await api.getSpans(query));
@@ -26,7 +33,7 @@ export function useSpans(query: SpanQuery, enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    void load();
+    queueMicrotask(() => void load());
     const id = window.setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [enabled, load]);
@@ -47,5 +54,10 @@ export function useSpans(query: SpanQuery, enabled = true) {
     return () => unlisten?.();
   }, [enabled, load]);
 
-  return { spans, loading, error, reload: load };
+  const reload = useCallback(() => {
+    setLoading(true);
+    return load();
+  }, [load]);
+
+  return { spans, loading, error, reload };
 }

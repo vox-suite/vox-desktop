@@ -33,6 +33,21 @@ export default defineConfig(({ mode }) => {
     worker: {
       format: "es",
     },
+    build: {
+      // The app loads from disk inside Tauri, so size only affects parse time.
+      // maplibre-gl alone is ~1 MB and backs the always-visible map, so it gets
+      // its own chunk and the limit is set just above it.
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes("node_modules/maplibre-gl")) return "maplibre";
+            if (/node_modules\/(react|react-dom|scheduler)\//.test(id))
+              return "react";
+          },
+        },
+      },
+    },
     optimizeDeps: {
       exclude: ["maplibre-gl"],
     },

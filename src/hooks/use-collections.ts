@@ -13,14 +13,15 @@ export function useCollections(signedIn: boolean) {
 
   const load = useCallback(async () => {
     try {
-      setCollections(await api.getCollections());
+      const list = await api.getCollections();
+      setCollections(list);
     } catch {
       /* keep previous list */
     }
   }, []);
 
   useEffect(() => {
-    if (signedIn) void load();
+    if (signedIn) queueMicrotask(() => void load());
   }, [signedIn, load]);
 
   async function create(form: NewCollection) {

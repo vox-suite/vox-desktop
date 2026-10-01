@@ -4,17 +4,19 @@ import { api, type ChartBoardDetails, type ChartDataResult } from "@/lib/tauri";
 export function useChartBoardData(boardId: string | null) {
   const [board, setBoard] = useState<ChartBoardDetails | null>(null);
   const [data, setData] = useState<ChartDataResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(boardId));
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (isRefresh = false) => {
+  // Switching boards starts a fresh load; set during render, not in an effect.
+  const [prevBoardId, setPrevBoardId] = useState(boardId);
+  if (boardId !== prevBoardId) {
+    setPrevBoardId(boardId);
+    setLoading(Boolean(boardId));
+  }
+
+  const load = useCallback(async () => {
     if (!boardId) return;
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
     try {
       const [boardDetails, chartData] = await Promise.all([
         api.getChartBoard(boardId),
@@ -33,11 +35,12 @@ export function useChartBoardData(boardId: string | null) {
 
   useEffect(() => {
     if (!boardId) return;
-    void load(false);
+    queueMicrotask(() => void load());
   }, [boardId, load]);
 
   const reload = useCallback(() => {
-    void load(true);
+    setRefreshing(true);
+    void load();
   }, [load]);
 
   return {

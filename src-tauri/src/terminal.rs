@@ -182,7 +182,7 @@ fn strip_ansi(input: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{strip_ansi, TerminalManager};
+    use super::strip_ansi;
 
     #[test]
     fn strips_color_codes_and_keeps_text() {
