@@ -126,14 +126,22 @@ pub async fn start_call(
     match ready_rx.await {
         Ok(Ok(())) => {
             phase.store(PHASE_ACTIVE, Ordering::SeqCst);
-            crate::device_link::emit_local_event(&app, "status", "Voice call active — mic listening");
+            crate::device_link::emit_local_event(
+                &app,
+                "status",
+                "Voice call active — mic listening",
+            );
             Ok(status_from_phase(PHASE_ACTIVE, true, 0.0))
         }
         Ok(Err(err)) => {
             let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
             let _ = session_guard.take();
             phase.store(PHASE_IDLE, Ordering::SeqCst);
-            crate::device_link::emit_local_event(&app, "error", &format!("Call failed to start: {err}"));
+            crate::device_link::emit_local_event(
+                &app,
+                "error",
+                &format!("Call failed to start: {err}"),
+            );
             Err(err)
         }
         Err(_) => {
@@ -147,7 +155,10 @@ pub async fn start_call(
 }
 
 #[tauri::command]
-pub fn end_call(app: tauri::AppHandle, state: State<'_, SessionManager>) -> Result<CallStatus, String> {
+pub fn end_call(
+    app: tauri::AppHandle,
+    state: State<'_, SessionManager>,
+) -> Result<CallStatus, String> {
     let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
     if let Some(session) = session_guard.take() {
         session.phase.store(PHASE_IDLE, Ordering::SeqCst);

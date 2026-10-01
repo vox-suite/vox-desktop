@@ -66,7 +66,8 @@ pub async fn core_http(
     if !valid_path(&path) {
         return Err("invalid path".to_string());
     }
-    let timeout = Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS).min(MAX_TIMEOUT_MS));
+    let timeout =
+        Duration::from_millis(timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS).min(MAX_TIMEOUT_MS));
     core_request(
         &auth,
         method,

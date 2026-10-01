@@ -37,28 +37,13 @@ pub enum VoiceClientMessage {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum VoiceServerMessage {
-    Connected {
-        format: String,
-        sample_rate: u32,
-    },
-    UserTranscript {
-        turn_id: String,
-        text: String,
-    },
-    Thinking {
-        turn_id: String,
-    },
-    TextDelta {
-        turn_id: String,
-        delta: String,
-    },
-    Done {
-        turn_id: String,
-    },
+    Connected { format: String, sample_rate: u32 },
+    UserTranscript { turn_id: String, text: String },
+    Thinking { turn_id: String },
+    TextDelta { turn_id: String, delta: String },
+    Done { turn_id: String },
     Interrupted,
-    Error {
-        message: String,
-    },
+    Error { message: String },
     Pong,
 }
 
@@ -83,7 +68,10 @@ pub async fn run_session_loop(
     mic_level: Arc<AtomicU32>,
 ) -> Result<(), String> {
     let session_started = Instant::now();
-    voxlog!("=== voice session starting === platform=desktop v{}", env!("CARGO_PKG_VERSION"));
+    voxlog!(
+        "=== voice session starting === platform=desktop v{}",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // 1. Connect directly to vox-core voice WebSocket endpoint
     let clean_api = api_url.trim_end_matches('/');
@@ -118,22 +106,29 @@ pub async fn run_session_loop(
     let connect_started = Instant::now();
     let (ws_stream, _) = match connect_async(request).await {
         Ok(conn) => conn,
-        Err(tokio_tungstenite::tungstenite::Error::Http(response))
-            if response.status() == 401 =>
-        {
+        Err(tokio_tungstenite::tungstenite::Error::Http(response)) if response.status() == 401 => {
             let msg = "Your session expired — please sign in again.".to_string();
-            voxlog!("connect failed: 401 expired session after {}ms", connect_started.elapsed().as_millis());
+            voxlog!(
+                "connect failed: 401 expired session after {}ms",
+                connect_started.elapsed().as_millis()
+            );
             let _ = ready_tx.send(Err(msg.clone()));
             return Err(msg);
         }
         Err(e) => {
             let msg = format!("Failed to connect to Vox Core voice socket: {e}");
-            voxlog!("connect failed after {}ms: {e}", connect_started.elapsed().as_millis());
+            voxlog!(
+                "connect failed after {}ms: {e}",
+                connect_started.elapsed().as_millis()
+            );
             let _ = ready_tx.send(Err(msg.clone()));
             return Err(msg);
         }
     };
-    voxlog!("connected to voice socket: ws_connect_ms={}", connect_started.elapsed().as_millis());
+    voxlog!(
+        "connected to voice socket: ws_connect_ms={}",
+        connect_started.elapsed().as_millis()
+    );
 
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 

@@ -94,7 +94,8 @@ pub fn run() {
                 }
             }
 
-            app.state::<AuthManager>().set_app_handle(app.handle().clone());
+            app.state::<AuthManager>()
+                .set_app_handle(app.handle().clone());
 
             let handle = app.handle().clone();
             if let Ok(Some(urls)) = app.deep_link().get_current() {
@@ -148,7 +149,11 @@ pub fn run() {
             }
 
             #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } = event
+            {
                 if !has_visible_windows {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();

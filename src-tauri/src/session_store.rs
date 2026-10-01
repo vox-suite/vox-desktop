@@ -121,8 +121,7 @@ pub fn save_session(session: &StoredSession) -> Result<(), String> {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Could not create session dir: {e}"))?;
     }
-    std::fs::write(&path, &payload)
-        .map_err(|e| format!("Could not store session file: {e}"))?;
+    std::fs::write(&path, &payload).map_err(|e| format!("Could not store session file: {e}"))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -140,12 +139,10 @@ pub fn save_session(session: &StoredSession) -> Result<(), String> {
 pub fn load_session() -> Result<Option<StoredSession>, String> {
     if let Ok(entry) = entry() {
         match entry.get_password() {
-            Ok(payload) => {
-                match serde_json::from_str::<StoredSession>(&payload) {
-                    Ok(session) => return Ok(Some(session)),
-                    Err(e) => eprintln!("keychain session corrupt: {e}"),
-                }
-            }
+            Ok(payload) => match serde_json::from_str::<StoredSession>(&payload) {
+                Ok(session) => return Ok(Some(session)),
+                Err(e) => eprintln!("keychain session corrupt: {e}"),
+            },
             Err(keyring::Error::NoEntry) => {}
             Err(e) => eprintln!("keychain session read warning: {e}"),
         }
@@ -175,4 +172,3 @@ pub fn clear_session() -> Result<(), String> {
         Ok(())
     }
 }
-

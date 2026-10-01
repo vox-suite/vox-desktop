@@ -8,7 +8,7 @@ use tokio::sync::{mpsc, oneshot};
 use webrtc_audio_processing::config::EchoCanceller;
 use webrtc_audio_processing::{Config, Processor};
 
-use crate::codec::{StreamResampler, resample_to_16k_mono};
+use crate::codec::{resample_to_16k_mono, StreamResampler};
 
 const AEC_FRAME: usize = 160;
 
@@ -20,7 +20,8 @@ struct Aec {
 
 impl Aec {
     fn new() -> Result<Self, String> {
-        let apm = Processor::new(16000).map_err(|e| format!("Failed to init echo canceller: {e}"))?;
+        let apm =
+            Processor::new(16000).map_err(|e| format!("Failed to init echo canceller: {e}"))?;
         apm.set_config(Config {
             echo_canceller: Some(EchoCanceller::default()),
             ..Default::default()
@@ -177,7 +178,8 @@ impl AudioEngine {
                         let rms = (sum_sq / data.len().max(1) as f32).sqrt();
                         mic_level_f32.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k = aec_in_f32.capture(resample_to_16k_mono(data, in_rate, in_channels));
+                        let samples_16k =
+                            aec_in_f32.capture(resample_to_16k_mono(data, in_rate, in_channels));
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -194,7 +196,11 @@ impl AudioEngine {
                         let rms = (sum_sq / f32_samples.len().max(1) as f32).sqrt();
                         mic_level_i16.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k = aec_in_i16.capture(resample_to_16k_mono(&f32_samples, in_rate, in_channels));
+                        let samples_16k = aec_in_i16.capture(resample_to_16k_mono(
+                            &f32_samples,
+                            in_rate,
+                            in_channels,
+                        ));
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -241,7 +247,8 @@ impl AudioEngine {
                         &out_config,
                         move |data: &mut [i16], _| {
                             drain_output_i16(data, &queue, &underrun);
-                            let played: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
+                            let played: Vec<f32> =
+                                data.iter().map(|&s| s as f32 / 32768.0).collect();
                             aec_out.render(&played, out_rate, out_channels);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
@@ -304,7 +311,10 @@ impl AudioEngine {
             return;
         }
         let epoch = self.playback_epoch.load(Ordering::SeqCst);
-        self.mp3_queue.lock().unwrap().extend(mp3_bytes.iter().copied());
+        self.mp3_queue
+            .lock()
+            .unwrap()
+            .extend(mp3_bytes.iter().copied());
 
         let mut pcm_samples: Vec<f32> = Vec::new();
         let mut src_rate = 44100;
@@ -347,7 +357,8 @@ impl AudioEngine {
             .lock()
             .unwrap()
             .push(&pcm_samples, src_rate, self.out_rate);
-        let mut output_samples = Vec::with_capacity(resampled.len() * self.out_channels.max(1) as usize);
+        let mut output_samples =
+            Vec::with_capacity(resampled.len() * self.out_channels.max(1) as usize);
         for &s in &resampled {
             for _ in 0..self.out_channels.max(1) {
                 output_samples.push(s);

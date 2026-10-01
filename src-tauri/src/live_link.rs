@@ -11,9 +11,9 @@ use futures_util::StreamExt;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio_tungstenite::connect_async;
-use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
+use tokio_tungstenite::tungstenite::Message;
 
 const RETRY_DELAY: Duration = Duration::from_secs(5);
 
@@ -45,7 +45,9 @@ async fn connect_and_listen(app: &AppHandle, api_url: &str, vox_token: &str) -> 
 
     while let Some(message) = receiver.next().await {
         let Ok(message) = message else { break };
-        let Message::Text(text) = message else { continue };
+        let Message::Text(text) = message else {
+            continue;
+        };
         let _ = app.emit("vox-live-update", text.to_string());
     }
     Ok(())

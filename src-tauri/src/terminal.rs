@@ -107,10 +107,7 @@ impl TerminalManager {
         let start = Instant::now();
         let exit_code = loop {
             std::thread::sleep(POLL_INTERVAL);
-            let code = output
-                .lock()
-                .ok()
-                .and_then(|buf| find_exit_code(&buf));
+            let code = output.lock().ok().and_then(|buf| find_exit_code(&buf));
             if code.is_some() {
                 break code;
             }
@@ -189,5 +186,4 @@ mod tests {
         let input = "\u{1b}[32mok\u{1b}[0m: \u{1b}[1mdone\u{1b}[0m\n";
         assert_eq!(strip_ansi(input), "ok: done\n");
     }
-
 }

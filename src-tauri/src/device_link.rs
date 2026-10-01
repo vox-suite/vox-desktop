@@ -82,7 +82,14 @@ pub fn get_local_events(state: State<'_, EventLog>) -> Vec<LocalEvent> {
     if events.is_empty() {
         let log_path = vox_config_dir().join("remote-commands.log");
         if let Ok(content) = std::fs::read_to_string(&log_path) {
-            for line in content.lines().rev().take(20).collect::<Vec<_>>().into_iter().rev() {
+            for line in content
+                .lines()
+                .rev()
+                .take(20)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+            {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
                     events.push(LocalEvent {
@@ -339,7 +346,11 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
                     json!({ "id": id, "ok": false, "error": err.to_string() })
                 }
             };
-            let outcome = if response["ok"] == true { "ran" } else { "failed" };
+            let outcome = if response["ok"] == true {
+                "ran"
+            } else {
+                "failed"
+            };
             log_remote_command(&logged, outcome);
             response
         }
@@ -352,7 +363,8 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
             emit_local_event(app, "command", &format!("gui: {command}"));
             let logged = command.clone();
             let app_clone = app.clone();
-            let result = tokio::task::spawn_blocking(move || vox_desktop_control::execute(&command)).await;
+            let result =
+                tokio::task::spawn_blocking(move || vox_desktop_control::execute(&command)).await;
             let response = match result {
                 Ok(Ok(vox_desktop_control::GuiOutcome::Done(outcome))) => {
                     emit_local_event(&app_clone, "success", &outcome);
@@ -362,7 +374,10 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
                     emit_local_event(
                         &app_clone,
                         "system",
-                        &format!("no local match, {} on-screen candidates need a model decision", candidates.len()),
+                        &format!(
+                            "no local match, {} on-screen candidates need a model decision",
+                            candidates.len()
+                        ),
                     );
                     json!({ "id": id, "ok": false, "needs_llm_fallback": true, "candidates": candidates })
                 }
@@ -375,7 +390,11 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
                     json!({ "id": id, "ok": false, "error": err.to_string() })
                 }
             };
-            let outcome = if response["ok"] == true { "ran" } else { "failed" };
+            let outcome = if response["ok"] == true {
+                "ran"
+            } else {
+                "failed"
+            };
             log_remote_command(&format!("gui: {logged}"), outcome);
             response
         }
@@ -404,7 +423,11 @@ async fn connect_and_serve(
         .await
         .map_err(|e| format!("device socket connect failed: {e}"))?;
     link.0.store(LINK_CONNECTED, Ordering::SeqCst);
-    emit_local_event(app, "status", "Device bridge connected — remote control ready");
+    emit_local_event(
+        app,
+        "status",
+        "Device bridge connected — remote control ready",
+    );
     let (mut sender, mut receiver) = ws_stream.split();
 
     loop {

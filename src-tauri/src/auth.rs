@@ -54,7 +54,9 @@ struct SupabaseUser {
 }
 
 fn parse_user_metadata_val(meta: Option<&serde_json::Value>) -> (Option<String>, Option<String>) {
-    let Some(meta) = meta else { return (None, None); };
+    let Some(meta) = meta else {
+        return (None, None);
+    };
     let user_name = meta
         .get("full_name")
         .or_else(|| meta.get("name"))
@@ -528,7 +530,9 @@ impl AuthManager {
             .expires_at
             .as_deref()
             .and_then(|at| chrono::DateTime::parse_from_rfc3339(at).ok())
-            .is_none_or(|at| at.with_timezone(&chrono::Utc) - chrono::Utc::now() < chrono::Duration::days(1));
+            .is_none_or(|at| {
+                at.with_timezone(&chrono::Utc) - chrono::Utc::now() < chrono::Duration::days(1)
+            });
         if !expiring {
             return Ok(());
         }
@@ -720,7 +724,10 @@ impl AuthManager {
             .current_session()
             .ok_or_else(|| "Not signed in".to_string())?;
         let response = reqwest::Client::new()
-            .post(format!("{}/v1/me/phone/verify/confirm", self.config.api_url))
+            .post(format!(
+                "{}/v1/me/phone/verify/confirm",
+                self.config.api_url
+            ))
             .header("authorization", format!("Bearer {}", session.vox_token))
             .json(&serde_json::json!({ "code": code.trim() }))
             .send()
