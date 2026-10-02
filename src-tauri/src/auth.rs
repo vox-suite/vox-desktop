@@ -652,6 +652,9 @@ impl AuthManager {
             .await
             .map_err(|e| format!("Failed to reach Vox API: {e}"))?;
 
+        if response.status() == reqwest::StatusCode::CONFLICT {
+            return Err(verification_error(response.status()));
+        }
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();
@@ -691,6 +694,7 @@ fn verification_error(status: reqwest::StatusCode) -> String {
     match status.as_u16() {
         400 => "That code is invalid or has expired.".to_string(),
         404 => "Add a phone number first.".to_string(),
+        409 => "That number is already verified on another Vox account.".to_string(),
         429 => "Too many codes requested. Try again later.".to_string(),
         502 | 503 => "We couldn't send the code right now. Try again in a moment.".to_string(),
         _ => format!("Verification failed ({status})."),
