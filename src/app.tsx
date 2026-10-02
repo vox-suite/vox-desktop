@@ -13,6 +13,7 @@ export default function App() {
   const callSession = useCallSession(auth.auth.signed_in);
 
   const [activeTab, setActiveTab] = useState<ShellTab>("agent");
+  const [verifySkipped, setVerifySkipped] = useState(false);
 
   const {
     auth: authState,
@@ -98,12 +99,13 @@ export default function App() {
     );
   }
 
-  if (!authState.phone_verified) {
+  if (!authState.phone_verified && !verifySkipped) {
     return (
       <PhoneVerifyScreen
         autoSend={phoneJustLinked}
         onSend={startPhoneVerification}
         onConfirm={confirmPhoneVerification}
+        onSkip={() => setVerifySkipped(true)}
       />
     );
   }
