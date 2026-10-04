@@ -6,4 +6,5 @@ pub struct CallStatus {
     pub state: String,
     pub mic_level: f32,
     pub is_speaking: bool,
+    pub is_vox_speaking: bool,
 }

@@ -19,6 +19,7 @@ export type CallStatus = {
   state: string;
   mic_level: number;
   is_speaking: boolean;
+  is_vox_speaking: boolean;
 };
 
 export type DeviceLinkStatus = {
@@ -42,7 +43,7 @@ export type {
   CollectionKind,
   Collection,
   NewCollection,
-} from "@vox/ui";
+} from "@/features/spans/types";
 export type {
   Schema,
   ChartType,
@@ -54,7 +55,7 @@ export type {
   ChartBoard,
   ChartBoardDetails,
   ChartDataResult,
-} from "@vox/ui";
+} from "@/features/pulse/types";
 
 export const api = {
   getAuthState: () => invoke<AuthState>("get_auth_state"),
@@ -130,4 +131,4 @@ export async function openLocationSettings(): Promise<void> {
   if (url) await openUrl(url);
 }
 
-export { errorMessage as invokeErrorMessage } from "@vox/ui";
+export { errorMessage as invokeErrorMessage } from "@/lib/errors";

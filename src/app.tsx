@@ -6,7 +6,6 @@ import type { ShellTab } from "@/components/shell/shell-tabs";
 import { SignInScreen } from "@/components/sign-in-screen";
 import { useAuth } from "@/hooks/use-auth";
 import { useCallSession } from "@/hooks/use-call-session";
-import { statusLabel } from "@/lib/status";
 
 export default function App() {
   const auth = useAuth();
@@ -31,7 +30,7 @@ export default function App() {
     callState,
     isActive,
     isBusy,
-    isSpeaking,
+    isVoxSpeaking,
     callError,
     toggleCall,
     endCall,
@@ -61,19 +60,10 @@ export default function App() {
     await googleSignIn();
   }
 
-  const label = statusLabel(callState, callError);
-  const subLabel = isActive
-    ? isSpeaking
-      ? "Speaking… (listening)"
-      : "Listening… speak naturally"
-    : isBusy || callState === "connecting"
-      ? "Establishing duplex audio link…"
-      : "Press the button or hit Return to talk";
-
   if (authLoading) {
     return (
       <main
-        className="relative h-full w-full overflow-hidden bg-void-black"
+        className="relative h-full w-full overflow-hidden bg-background"
         tabIndex={0}
       />
     );
@@ -112,7 +102,7 @@ export default function App() {
 
   return (
     <main
-      className="relative h-full w-full overflow-hidden bg-void-black"
+      className="relative h-full w-full overflow-hidden bg-background"
       tabIndex={0}
     >
       <HomeShell
@@ -126,9 +116,8 @@ export default function App() {
         avatarUrl={authState.avatar_url ?? null}
         onSignOut={() => void signOut()}
         isActive={isActive}
+        voxSpeaking={isVoxSpeaking}
         callState={callState}
-        label={label}
-        subLabel={subLabel}
         callError={callError}
         onToggleCall={() => void toggleCall()}
         collections={[]}

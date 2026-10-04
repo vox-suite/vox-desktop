@@ -1,12 +1,12 @@
 import {
-  useCallback,
   useEffect,
   useRef,
   useState,
   type RefObject,
 } from "react";
 import { resolveDeviceLocation } from "@/lib/location";
-import { highlightBuildingAt } from "@/lib/map-highlight";
+import { createSceneLayer } from "@/lib/map-scene";
+import { subscribeMapScene } from "@/lib/scene-source";
 import { ensure3dBuildings, ensureMissionControlLook } from "@/lib/map-style";
 import { maplibregl, workerReady } from "@/lib/maplibre";
 
@@ -27,37 +27,30 @@ function setHomeBounds(map: maplibregl.Map, lng: number, lat: number) {
   map.setMaxZoom(18);
 }
 
-export type ResolvedLocation = {
-  lat: number;
-  lng: number;
-  label: string;
-  city?: string;
-};
-
-export function useMissionMap(): {
+export function useMissionMap(reaction: {
+  callActive: boolean;
+  voxSpeaking: boolean;
+}): {
   mapNode: RefObject<HTMLDivElement | null>;
   mapReady: boolean;
   mapError: string;
-  locationSource: "gps" | "ip" | "default" | null;
-  location: ResolvedLocation | null;
-  permissionDenied: boolean;
-  relocate: () => void;
 } {
+  const reactionRef = useRef(reaction);
+  useEffect(() => {
+    reactionRef.current = reaction;
+  }, [reaction]);
   const mapNode = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const userLngLat = useRef<[number, number] | null>(null);
-  const [locationSource, setLocationSource] = useState<
-    "gps" | "ip" | "default" | null
-  >(null);
-  const [location, setLocation] = useState<ResolvedLocation | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState("");
-  const relocateRef = useRef<(() => void) | null>(null);
   const orbitRaf = useRef<number | null>(null);
   const orbitPausedUntil = useRef(0);
   const orbitLastTs = useRef(0);
+  const sceneActive = useRef(false);
+  const sceneLayerRef = useRef<ReturnType<typeof createSceneLayer> | null>(null);
+  const unsubScene = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!mapNode.current || mapRef.current) return;
@@ -166,10 +159,25 @@ export function useMissionMap(): {
           const last = orbitLastTs.current || now;
           const dt = Math.min(0.05, (now - last) / 1000);
           orbitLastTs.current = now;
-          const running = now >= orbitPausedUntil.current && !map.isMoving();
+          const { callActive, voxSpeaking } = reactionRef.current;
+          el.classList.toggle("vox-hud-marker--active", callActive);
+          el.classList.toggle("vox-hud-marker--speaking", voxSpeaking);
+          if (map.getLayer("vox-highlight-layer")) {
+            map.setPaintProperty(
+              "vox-highlight-layer",
+              "fill-extrusion-opacity",
+              voxSpeaking ? 0.85 + 0.15 * Math.sin(now / 220) : 1,
+            );
+          }
+          const running =
+            now >= orbitPausedUntil.current &&
+            !map.isMoving() &&
+            !sceneActive.current;
           // Ease speed in/out so resuming after a gesture feels like a camera dolly.
           orbitSpeed +=
-            ((running ? 1 : 0) - orbitSpeed) * Math.min(1, dt * 0.8);
+            ((running ? (reactionRef.current.callActive ? 0.35 : 1) : 0) -
+              orbitSpeed) *
+            Math.min(1, dt * 0.8);
           const center = userLngLat.current;
           if (center && orbitSpeed > 0.001 && !map.isMoving()) {
             try {
@@ -197,7 +205,7 @@ export function useMissionMap(): {
         } catch {
           /* ignore */
         }
-        setHomeBounds(map, lng, lat);
+        if (!sceneActive.current) setHomeBounds(map, lng, lat);
         resize();
 
         pauseOrbit(2200);
@@ -209,41 +217,46 @@ export function useMissionMap(): {
           duration: 1800,
         });
 
-        const paintHighlight = () => {
-          highlightBuildingAt(map, lng, lat);
-        };
-        map.once("moveend", paintHighlight);
-        map.once("idle", paintHighlight);
-        window.setTimeout(paintHighlight, 800);
-        window.setTimeout(paintHighlight, 1800);
-        window.setTimeout(paintHighlight, 3200);
+        sceneLayerRef.current?.setHome([lng, lat]);
       };
 
       const runLocate = async () => {
         const loc = await resolveDeviceLocation();
-        setLocationSource(loc.source);
-        setPermissionDenied(loc.permissionDenied);
-        setLocation({
-          lat: loc.lat,
-          lng: loc.lng,
-          label: loc.label,
-          city: loc.city,
-        });
         applyPosition(loc.lng, loc.lat);
       };
 
       map.on("load", () => {
         ensureMissionControlLook(map);
         ensure3dBuildings(map);
+        const layer = createSceneLayer(map, {
+          onCamera: () => pauseOrbit(3_600_000),
+          onActiveChange: (active) => {
+            sceneActive.current = active;
+            const home = userLngLat.current;
+            if (active) {
+              map.setMaxBounds(null);
+              map.setMinZoom(10);
+              map.setMaxZoom(19);
+            } else if (home) {
+              setHomeBounds(map, home[0], home[1]);
+              map.easeTo({
+                center: home,
+                zoom: MAP_ZOOM,
+                pitch: MAP_PITCH,
+                duration: 1800,
+              });
+            }
+          },
+        });
+        sceneLayerRef.current = layer;
+        if (userLngLat.current) layer.setHome(userLngLat.current);
+        unsubScene.current = subscribeMapScene(layer.apply);
         resize();
         window.setTimeout(resize, 100);
         window.setTimeout(resize, 500);
         setMapReady(true);
         startOrbit();
         void runLocate();
-        relocateRef.current = () => {
-          void runLocate();
-        };
       });
 
       map.on("error", (e: { error?: { message?: string } }) => {
@@ -261,6 +274,10 @@ export function useMissionMap(): {
         map.off("zoomstart", onUserGesture);
         map.off("pitchstart", onUserGesture);
         map.off("rotatestart", onUserGesture);
+        unsubScene.current?.();
+        unsubScene.current = null;
+        sceneLayerRef.current?.destroy();
+        sceneLayerRef.current = null;
         marker.remove();
         markerRef.current = null;
         map.remove();
@@ -269,17 +286,9 @@ export function useMissionMap(): {
     } // end init
   }, []);
 
-  const relocate = useCallback(() => {
-    relocateRef.current?.();
-  }, []);
-
   return {
     mapNode,
     mapReady,
     mapError,
-    locationSource,
-    location,
-    permissionDenied,
-    relocate,
   };
 }

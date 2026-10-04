@@ -60,14 +60,11 @@ export function pointInRing(x: number, y: number, ring: number[][]): boolean {
   return inside;
 }
 
-export function highlightBuildingAt(
+function footprintAt(
   map: maplibregl.Map,
   lng: number,
   lat: number,
-): boolean {
-  if (!map.getLayer(BUILDINGS_LAYER)) return false;
-  ensureHighlightLayer(map);
-
+): GeoJSON.Feature | null {
   // GPS is often a few metres off (lands on the road), so search a wide box
   // and take the building containing the point, else the nearest one.
   const point = map.project([lng, lat]);
@@ -95,34 +92,37 @@ export function highlightBuildingAt(
       }
     }
   }
-
-  const src = map.getSource(HIGHLIGHT_SOURCE) as
-    maplibregl.GeoJSONSource | undefined;
-  if (!building || !buildingRing) {
-    src?.setData({ type: "FeatureCollection", features: [] });
-    return false;
-  }
-
+  if (!building || !buildingRing) return null;
   // Same footprint + height as the grey extrusion z-fights and grey often
   // wins, so grow the red copy ~3% and lift it 1m to fully cover it.
   const props = building.properties ?? {};
   const h = Number(props.render_height ?? props.height ?? 12) + 1;
-  src?.setData({
-    type: "FeatureCollection",
-    features: [buildingRing].map((ring) => {
-      const cx = ring.reduce((a, [x]) => a + x, 0) / ring.length;
-      const cy = ring.reduce((a, [, y]) => a + y, 0) / ring.length;
-      return {
-        type: "Feature" as const,
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [
-            ring.map(([x, y]) => [cx + (x - cx) * 1.03, cy + (y - cy) * 1.03]),
-          ],
-        },
-        properties: { ...props, render_height: h, height: h },
-      };
-    }),
-  });
-  return true;
+  const cx = buildingRing.reduce((a, [x]) => a + x, 0) / buildingRing.length;
+  const cy = buildingRing.reduce((a, [, y]) => a + y, 0) / buildingRing.length;
+  return {
+    type: "Feature",
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        buildingRing.map(([x, y]) => [
+          cx + (x - cx) * 1.03,
+          cy + (y - cy) * 1.03,
+        ]),
+      ],
+    },
+    properties: { ...props, render_height: h, height: h },
+  };
+}
+
+export function setHighlights(
+  map: maplibregl.Map,
+  points: [number, number][],
+): void {
+  if (!map.getLayer(BUILDINGS_LAYER)) return;
+  ensureHighlightLayer(map);
+  const features = points
+    .map(([lng, lat]) => footprintAt(map, lng, lat))
+    .filter((f): f is GeoJSON.Feature => f !== null);
+  (map.getSource(HIGHLIGHT_SOURCE) as maplibregl.GeoJSONSource | undefined)
+    ?.setData({ type: "FeatureCollection", features });
 }

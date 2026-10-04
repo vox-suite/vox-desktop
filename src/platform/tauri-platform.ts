@@ -1,8 +1,22 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { LiveEvent, Platform } from "@vox/ui";
+import type { LiveEvent, Platform } from "@/platform";
 
 export const tauriPlatform: Platform = {
+  browser: {
+    openExternal: async (url) => {
+      const destination = new URL(url);
+      if (
+        destination.protocol !== "https:" ||
+        destination.hostname !== "accounts.google.com" ||
+        destination.pathname !== "/o/oauth2/v2/auth" ||
+        destination.username !== "" || destination.password !== "" || destination.port !== ""
+      )
+        throw new Error("Unsupported authorization destination");
+      await openUrl(url);
+    },
+  },
   http: {
     request: <T>(req: Parameters<Platform["http"]["request"]>[0]) =>
       invoke<T>("core_http", {

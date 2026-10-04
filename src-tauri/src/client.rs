@@ -66,6 +66,7 @@ pub async fn run_session_loop(
     ready_tx: oneshot::Sender<Result<(), String>>,
     mut stop_rx: oneshot::Receiver<()>,
     mic_level: Arc<AtomicU32>,
+    vox_playing: Arc<AtomicBool>,
 ) -> Result<(), String> {
     let session_started = Instant::now();
     voxlog!(
@@ -242,6 +243,7 @@ pub async fn run_session_loop(
                 }
 
                 let playing = audio_engine.is_playing();
+                vox_playing.store(playing, Ordering::Relaxed);
                 if playing {
                     last_playing_at = Instant::now();
                 }

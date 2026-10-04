@@ -6,6 +6,7 @@ export function useCallSession(signedIn: boolean) {
   const [isActive, setIsActive] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isVoxSpeaking, setIsVoxSpeaking] = useState(false);
   const [callError, setCallError] = useState("");
 
   useEffect(() => {
@@ -17,9 +18,11 @@ export function useCallSession(signedIn: boolean) {
         setCallState(status.state);
         setIsActive(status.active);
         setIsSpeaking(status.is_speaking);
+        setIsVoxSpeaking(status.is_vox_speaking);
         if (status.state === "idle" || status.state === "ended") {
           setIsBusy(false);
           setIsSpeaking(false);
+          setIsVoxSpeaking(false);
         }
       });
     }, delay);
@@ -32,6 +35,7 @@ export function useCallSession(signedIn: boolean) {
     setIsActive(false);
     setIsBusy(false);
     setIsSpeaking(false);
+    setIsVoxSpeaking(false);
     setCallError("");
   }
 
@@ -69,6 +73,7 @@ export function useCallSession(signedIn: boolean) {
     setIsActive(false);
     setIsBusy(false);
     setIsSpeaking(false);
+    setIsVoxSpeaking(false);
     setCallState("idle");
     setCallError("");
   }
@@ -78,6 +83,7 @@ export function useCallSession(signedIn: boolean) {
     isActive,
     isBusy,
     isSpeaking,
+    isVoxSpeaking,
     callError,
     toggleCall,
     endCall,

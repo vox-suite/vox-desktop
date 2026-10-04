@@ -1,10 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=Reem+Kufi:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Geist+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Reem+Kufi:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
-@source "../node_modules/@vox/ui/src";
+
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@import "@vox/ui/theme.css";
+@import "./styles/theme.css";
 
 @layer base {
   * {
@@ -57,34 +57,26 @@ a,
 /* Sign-in ambient: coral wash top-left + film grain, fades toward center */
 .sign-in-glow {
   background: radial-gradient(
-    ellipse 95% 85% at 28% 28%,
-    rgba(255, 99, 99, 0.32) 0%,
-    rgba(255, 99, 99, 0.14) 32%,
-    rgba(255, 99, 99, 0.05) 55%,
-    transparent 76%
+    ellipse 86vh 71vh at 12vh 9vh,
+    rgba(255, 99, 99, 0.550) 0%,
+    rgba(255, 99, 99, 0.526) 10%,
+    rgba(255, 99, 99, 0.461) 20%,
+    rgba(255, 99, 99, 0.373) 30%,
+    rgba(255, 99, 99, 0.275) 40%,
+    rgba(255, 99, 99, 0.181) 50%,
+    rgba(255, 99, 99, 0.103) 60%,
+    rgba(255, 99, 99, 0.047) 70%,
+    rgba(255, 99, 99, 0.015) 80%,
+    rgba(255, 99, 99, 0.002) 90%,
+    rgba(255, 99, 99, 0.000) 100%
   );
-  filter: blur(42px);
 }
 
 .sign-in-noise {
-  opacity: 0.4;
+  opacity: 0.22;
   mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='1.8 1.8 1.8 0 -2.2 1.8 1.8 1.8 0 -2.2 1.8 1.8 1.8 0 -2.2 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 160px 160px;
-  -webkit-mask-image: radial-gradient(
-    110% 95% at 0% 0%,
-    #000 0%,
-    #000 30%,
-    rgba(0, 0, 0, 0.3) 52%,
-    transparent 74%
-  );
-  mask-image: radial-gradient(
-    110% 95% at 0% 0%,
-    #000 0%,
-    #000 30%,
-    rgba(0, 0, 0, 0.3) 52%,
-    transparent 74%
-  );
 }
 
 /* Full-bleed grain for widget cards — same generator as .sign-in-noise but
@@ -212,6 +204,23 @@ a,
   background: #fff;
   border: 1px solid #050607;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.vox-hud-marker--active .vox-hud-marker__pin {
+  box-shadow: 0 0 10px 2px rgba(255, 99, 99, 0.55);
+}
+
+.vox-hud-marker--speaking .vox-hud-marker__pin {
+  animation: vox-pin-pulse 0.9s ease-out infinite;
+}
+
+@keyframes vox-pin-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(255, 99, 99, 0.7);
+  }
+  to {
+    box-shadow: 0 0 0 26px rgba(255, 99, 99, 0);
+  }
 }
 
 .vox-hud-marker__stem {

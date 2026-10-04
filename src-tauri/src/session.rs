@@ -15,6 +15,7 @@ struct ActiveSession {
     is_running: Arc<AtomicBool>,
     phase: Arc<AtomicU8>,
     mic_level: Arc<AtomicU32>,
+    vox_playing: Arc<AtomicBool>,
 }
 
 pub struct SessionManager(Mutex<Option<ActiveSession>>);
@@ -31,7 +32,7 @@ impl Default for SessionManager {
     }
 }
 
-fn status_from_phase(phase: u8, is_running: bool, mic_level: f32) -> CallStatus {
+fn status_from_phase(phase: u8, is_running: bool, mic_level: f32, vox_playing: bool) -> CallStatus {
     let state = match phase {
         PHASE_CONNECTING => "connecting",
         PHASE_ACTIVE if is_running => "active",
@@ -39,11 +40,13 @@ fn status_from_phase(phase: u8, is_running: bool, mic_level: f32) -> CallStatus 
         _ => "idle",
     };
     let is_speaking = is_running && phase == PHASE_ACTIVE && mic_level > 0.012;
+    let is_vox_speaking = is_running && phase == PHASE_ACTIVE && vox_playing;
     CallStatus {
         active: is_running && phase == PHASE_ACTIVE,
         state: state.to_string(),
         mic_level,
         is_speaking,
+        is_vox_speaking,
     }
 }
 
@@ -90,6 +93,8 @@ pub async fn start_call(
     let is_running = Arc::new(AtomicBool::new(false));
     let phase = Arc::new(AtomicU8::new(PHASE_CONNECTING));
     let mic_level = Arc::new(AtomicU32::new(0));
+    let vox_playing = Arc::new(AtomicBool::new(false));
+    let vox_playing_clone = Arc::clone(&vox_playing);
     let is_running_clone = Arc::clone(&is_running);
     let phase_clone = Arc::clone(&phase);
     let mic_level_clone = Arc::clone(&mic_level);
@@ -102,6 +107,7 @@ pub async fn start_call(
             is_running,
             phase: Arc::clone(&phase),
             mic_level: Arc::clone(&mic_level),
+            vox_playing: Arc::clone(&vox_playing),
         });
     }
 
@@ -114,6 +120,7 @@ pub async fn start_call(
             ready_tx,
             stop_rx,
             mic_level_clone,
+            vox_playing_clone,
         )
         .await;
         is_running_clone.store(false, Ordering::SeqCst);
@@ -131,7 +138,7 @@ pub async fn start_call(
                 "status",
                 "Voice call active — mic listening",
             );
-            Ok(status_from_phase(PHASE_ACTIVE, true, 0.0))
+            Ok(status_from_phase(PHASE_ACTIVE, true, 0.0, false))
         }
         Ok(Err(err)) => {
             let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
@@ -166,7 +173,7 @@ pub fn end_call(
         let _ = session.stop_tx.send(());
         crate::device_link::emit_local_event(&app, "status", "Voice call ended");
     }
-    Ok(status_from_phase(PHASE_IDLE, false, 0.0))
+    Ok(status_from_phase(PHASE_IDLE, false, 0.0, false))
 }
 
 #[tauri::command]
@@ -178,12 +185,13 @@ pub fn call_status(state: State<'_, SessionManager>) -> Result<CallStatus, Strin
             let running = session.is_running.load(Ordering::SeqCst);
             let mic_raw = session.mic_level.load(Ordering::Relaxed);
             let mic_level = f32::from_bits(mic_raw);
+            let vox_playing = session.vox_playing.load(Ordering::Relaxed);
             if phase == PHASE_ACTIVE && !running {
-                Ok(status_from_phase(PHASE_IDLE, false, 0.0))
+                Ok(status_from_phase(PHASE_IDLE, false, 0.0, false))
             } else {
-                Ok(status_from_phase(phase, running, mic_level))
+                Ok(status_from_phase(phase, running, mic_level, vox_playing))
             }
         }
-        None => Ok(status_from_phase(PHASE_IDLE, false, 0.0)),
+        None => Ok(status_from_phase(PHASE_IDLE, false, 0.0, false)),
     }
 }

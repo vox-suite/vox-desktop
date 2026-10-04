@@ -38,7 +38,7 @@ Signed/notarized builds (Apple Developer cert secrets in the release workflow) w
 
 ### Map home
 
-Signed-in home is a **stylized dark 3D city map** (MapLibre + OpenFreeMap) — extruded buildings, wireframe streets, mission-control HUD — not photorealistic satellite.
+Signed-in home is a **stylized dark 3D city map** (MapLibre + OpenFreeMap) — extruded buildings, wireframe streets, mission-control HUD — not photorealistic satellite. Vox can drive the map: scenes arrive as `map_scene` frames on the live socket (`GET /v1/me/map/scene` on start). See `docs/superpowers/specs/2026-10-04-map-scenes-design.md`.
 
 Optional place naming uses the same **`GOOGLE_MAPS_API_KEY`** as Core via **Places API (New)** `searchNearby`:
 
