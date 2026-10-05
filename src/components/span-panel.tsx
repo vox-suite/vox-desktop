@@ -10,6 +10,7 @@ import {
   CircleDashed,
   Clock,
   FolderOpen,
+  Info,
   Hourglass,
   Layers,
   MapPin,
@@ -52,6 +53,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CategoryIndicator } from "@/components/category-indicator";
 import { spansApi } from "@/features/spans/api";
 import type {
@@ -299,6 +305,11 @@ function PanelBody({
   const providerOwned = PROVIDER_OWNED.has(span.source);
   const sourceLabel =
     SOURCE_LABELS[span.source] ?? span.source.replace(/_/g, " ");
+  const album = (
+    span.data?.provider_data as
+      { album?: { images?: { url?: string }[] } } | undefined
+  )?.album;
+  const cover = album?.images?.[1]?.url ?? album?.images?.[0]?.url;
   const status = STATUSES.find((s) => s.value === span.status) ?? STATUSES[0];
   const category = CATEGORIES.find((c) => c.value === span.category);
   const amount = formatAmount(span);
@@ -405,6 +416,17 @@ function PanelBody({
             "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
         }}
       >
+        {cover ? (
+          <>
+            <img
+              src={cover}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 size-full scale-125 object-cover opacity-55 blur-lg saturate-125"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0d10]/75 via-[#0c0d10]/35 to-transparent" />
+          </>
+        ) : null}
         <div
           className="absolute inset-0"
           style={{
@@ -438,7 +460,9 @@ function PanelBody({
               dotSizeClass="size-2.5"
             />
           </div>
-          <div className="min-w-0 flex-1 pr-9">
+          <div
+            className={cn("min-w-0 flex-1", providerOwned ? "pr-16" : "pr-9")}
+          >
             {editingTitle ? (
               <>
                 <SheetTitle className="sr-only">{span.title}</SheetTitle>
@@ -508,10 +532,22 @@ function PanelBody({
       </SheetHeader>
 
       {providerOwned && (
-        <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-muted-foreground">
-          Title, time and status are managed by {sourceLabel}. You can edit
-          notes, category and collections.
-        </p>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Managed by ${sourceLabel}`}
+              className="absolute top-3 right-12 text-muted-foreground"
+            >
+              <Info />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="end" className="max-w-56">
+            Title, time and status are managed by {sourceLabel}. You can edit
+            notes, category and collections.
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <div className="flex flex-col">
