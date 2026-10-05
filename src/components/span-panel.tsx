@@ -427,12 +427,14 @@ function PanelBody({
             <div className="absolute inset-0 bg-gradient-to-r from-[#0c0d10]/75 via-[#0c0d10]/35 to-transparent" />
           </>
         ) : null}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${style.dot}88 0%, ${style.dot}3d 40%, ${style.dot}14 62%, transparent 85%)`,
-          }}
-        />
+        {span.source !== "spotify" ? (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${style.dot}88 0%, ${style.dot}3d 40%, ${style.dot}14 62%, transparent 85%)`,
+            }}
+          />
+        ) : null}
       </div>
       <div
         aria-hidden
@@ -442,9 +444,9 @@ function PanelBody({
           filter: "brightness(0.4) contrast(1.3)",
           backgroundSize: "130px 130px",
           maskImage:
-            "linear-gradient(to bottom, #000 0%, #000 45%, rgba(0,0,0,0.35) 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 25%, transparent 100%)",
           WebkitMaskImage:
-            "linear-gradient(to bottom, #000 0%, #000 45%, rgba(0,0,0,0.35) 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 25%, transparent 100%)",
         }}
       />
 
@@ -713,6 +715,7 @@ export function SpanPanel({
       <SheetContent
         side="right"
         overlay={false}
+        onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={outsideGuard}
         className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg"
       >
