@@ -4,6 +4,7 @@ const MINUTE = 60_000;
 const DAY_MINUTES = 24 * 60;
 export const MIN_BLOCK_MINUTES = 25;
 const CHILD_HEADER_MINUTES = 22;
+const INSTANT_LANE = 0.3;
 
 export type PlacedSpan = {
   slot?: number;
@@ -58,8 +59,10 @@ function packInstants(
   width: number,
   depth: number,
   out: PlacedSpan[],
+  lane: Map<Node, [number, number]>,
 ) {
   for (const node of [...nodes].sort((a, b) => a.start - b.start)) {
+    const [l, w] = lane.get(node) ?? [left, width];
     const slot = Math.min(
       Math.floor(node.start / SLOT_MINUTES),
       SLOTS_PER_DAY - 1,
@@ -68,13 +71,13 @@ function packInstants(
       span: node.span,
       top: slot * SLOT_MINUTES,
       height: SLOT_MINUTES,
-      left,
-      width,
+      left: l,
+      width: w,
       depth,
       instant: true,
       slot,
     });
-    pack(node.children, left, width, depth + 1, out);
+    pack(node.children, l, w, depth + 1, out);
   }
 }
 
@@ -87,6 +90,7 @@ function pack(
 ) {
   const instants = nodes.filter((n) => n.instant);
   const durations = nodes.filter((n) => !n.instant);
+  const lane = new Map<Node, [number, number]>();
 
   const sorted = [...durations].sort(
     (a, b) => a.start - b.start || b.end - a.end,
@@ -96,10 +100,15 @@ function pack(
   let clusterEnd = -Infinity;
 
   const flush = () => {
+    if (cluster.length === 0) return;
+    const from = Math.min(...cluster.map((c) => c.node.start));
+    const hits = instants.filter((i) => i.start >= from && i.start < clusterEnd);
+    const side = hits.length ? width * INSTANT_LANE : 0;
+    for (const hit of hits) lane.set(hit, [left, side]);
     const cols = columnEnds.length;
     for (const { node, col } of cluster) {
-      const w = width / cols;
-      const l = left + col * w;
+      const w = (width - side) / cols;
+      const l = left + side + col * w;
       out.push({
         span: node.span,
         top: node.start,
@@ -136,7 +145,7 @@ function pack(
   }
   flush();
 
-  packInstants(instants, left, width, depth, out);
+  packInstants(instants, left, width, depth, out, lane);
 }
 
 export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {

@@ -43,7 +43,6 @@ function InstantChip({
 }) {
   const style = spanStyle(span);
   const cover = spanCover(span);
-  const subtitle = spanSubtitle(span);
   const amount = formatAmount(span);
   const label = displayTitle(span);
   const iconOnly = span.source === "spotify" || span.source === "youtube";
@@ -93,9 +92,22 @@ function InstantChip({
     </button>
   );
   if (!hasCard) return chip;
+  return <SpanHoverCard span={span}>{chip}</SpanHoverCard>;
+}
+
+function SpanHoverCard({
+  span,
+  children,
+}: {
+  span: Span;
+  children: React.ReactNode;
+}) {
+  const cover = spanCover(span);
+  const subtitle = spanSubtitle(span);
+  const label = displayTitle(span);
   return (
     <HoverCard openDelay={80} closeDelay={60}>
-      <HoverCardTrigger asChild>{chip}</HoverCardTrigger>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
       <HoverCardContent side="right" align="start" className="w-72 p-3">
         <div className="flex items-center gap-3">
           {cover ? (
@@ -117,7 +129,9 @@ function InstantChip({
               </p>
             ) : null}
             <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+              {isEstimated(span) ? "≈ " : ""}
               {formatTime(span.start_at)}
+              {span.end_at ? ` – ${formatTime(span.end_at)}` : ""}
             </p>
           </div>
         </div>
@@ -178,11 +192,12 @@ function SpanBlock({
   // Only show time line if height is at least 48px to prevent vertical text collision
   const showTime = heightPx >= 48;
 
-  return (
+  const card = !!spanCover(span);
+  const block = (
     <button
       type="button"
       data-no-drag
-      title={`${displayTitle(span)}${estimated ? " (estimated)" : ""} · ${formatTime(span.start_at)}${
+      title={card ? undefined : `${displayTitle(span)}${estimated ? " (estimated)" : ""} · ${formatTime(span.start_at)}${
         span.end_at ? `–${formatTime(span.end_at)}` : ""
       }${amount ? ` · ${amount}` : ""}`}
       onClick={(e) => {
@@ -209,17 +224,17 @@ function SpanBlock({
         border: `1px ${estimated ? "dashed" : "solid"} ${style.border}`,
       }}
     >
-      <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
-        <p className="min-w-0 flex-1 truncate text-[11.5px] font-semibold leading-tight text-foreground">
-          {displayTitle(span)}
-        </p>
-        <div className="ml-1">
+      <div className="flex w-full items-center gap-1 overflow-hidden">
+        <div className="mr-1">
           <CategoryIndicator
             span={span}
             color={style.dot}
             dotSizeClass="size-1.5"
           />
         </div>
+        <p className="min-w-0 flex-1 truncate text-[11.5px] font-semibold leading-tight text-foreground">
+          {displayTitle(span)}
+        </p>
       </div>
       {showTime ? (
         <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
@@ -237,6 +252,7 @@ function SpanBlock({
       ) : null}
     </button>
   );
+  return card ? <SpanHoverCard span={span}>{block}</SpanHoverCard> : block;
 }
 
 export function SpanCalendar({
