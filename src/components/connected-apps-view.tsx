@@ -157,6 +157,7 @@ const wizConnector = (): Connector => ({
 });
 
 const PAGE_SIZE = 12;
+const IMPORT_CHUNK = 500;
 type Status = "all" | "connected" | "available";
 const PENDING_KEY = "vox.pending-connection-setup";
 const failureMessage = (detail: string) => {
@@ -701,17 +702,21 @@ export function ConnectedAppsView() {
                         setOpenId(app.id);
                       }}
                     >
-                      {isConnected(app.id) ? (
+                      {app.id === "youtube" ? (
+                        <RefreshCw className="size-4" />
+                      ) : isConnected(app.id) ? (
                         <Settings2 className="size-4" />
                       ) : (
                         <Plug className="size-4" />
                       )}
-                      {isConnected(app.id)
-                        ? "Configure"
-                        : ["spotify", "youtube"].includes(app.id) &&
-                            !app.available
-                          ? "Set up"
-                          : "Connect"}
+                      {app.id === "youtube"
+                        ? "Sync"
+                        : isConnected(app.id)
+                          ? "Configure"
+                          : ["spotify", "youtube"].includes(app.id) &&
+                              !app.available
+                            ? "Set up"
+                            : "Connect"}
                     </Button>
                   </article>
                 );
@@ -906,15 +911,44 @@ export function ConnectedAppsView() {
                               );
                               return;
                             }
-                            const result = await request<{
-                              imported: number;
-                              skipped: number;
-                            }>("connections/youtube/history/import", {
-                              consent: historyConsent,
-                              history,
-                            });
+                            let imported = 0;
+                            let skipped = 0;
+                            let rejected = 0;
+                            for (
+                              let i = 0;
+                              i < history.length;
+                              i += IMPORT_CHUNK
+                            ) {
+                              const chunk = history.slice(i, i + IMPORT_CHUNK);
+                              setMessage(
+                                `Importing ${Math.min(i + IMPORT_CHUNK, history.length).toLocaleString()} of ${history.length.toLocaleString()} records…`,
+                              );
+                              try {
+                                const result = await request<{
+                                  imported: number;
+                                  skipped: number;
+                                }>("connections/youtube/history/import", {
+                                  consent: historyConsent,
+                                  history: chunk,
+                                });
+                                imported += result.imported;
+                                skipped += result.skipped;
+                              } catch (err) {
+                                // A chunk with no valid watch records is rejected; skip it.
+                                if (!/failed: 400/.test(errorMessage(err)))
+                                  throw err;
+                                skipped += chunk.length;
+                                rejected += 1;
+                              }
+                            }
+                            if (rejected * IMPORT_CHUNK >= history.length) {
+                              setMessage(
+                                "No valid watch records found. Choose the YouTube watch-history file from Google Takeout.",
+                              );
+                              return;
+                            }
                             setMessage(
-                              `Imported ${result.imported} new watch records. ${result.skipped} records were skipped.`,
+                              `Imported ${imported.toLocaleString()} new watch records. ${skipped.toLocaleString()} records were skipped.`,
                             );
                           });
                         }}
