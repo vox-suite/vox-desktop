@@ -415,9 +415,9 @@ function PanelBody({
             src={cover}
             alt=""
             referrerPolicy="no-referrer"
-            className="absolute inset-0 size-full scale-110 object-cover opacity-60 blur-xl saturate-125"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-30 blur-xl saturate-125"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/35 via-[#0c0d10]/60 to-[#0c0d10]/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/50 via-[#0c0d10]/70 to-[#0c0d10]/90" />
         </div>
       ) : span.source !== "spotify" ? (
         <div
