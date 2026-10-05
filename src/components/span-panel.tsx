@@ -10,6 +10,7 @@ import {
   CircleDashed,
   Clock,
   FolderOpen,
+  Gamepad2,
   Info,
   Hourglass,
   Layers,
@@ -68,7 +69,12 @@ import type {
 } from "@/features/spans/types";
 import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
-import { formatAmount, spanStyle } from "@/lib/span-format";
+import {
+  displayTitle,
+  formatAmount,
+  spanCover,
+  spanStyle,
+} from "@/lib/span-format";
 import { cn } from "@/lib/utils";
 
 type Icon = ComponentType<LucideProps>;
@@ -118,6 +124,7 @@ const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
   { value: "visit", label: "Visit", icon: MapPin },
   { value: "reminder", label: "Reminder", icon: Bell },
   { value: "music", label: "Music", icon: Music },
+  { value: "gaming", label: "Gaming", icon: Gamepad2 },
 ];
 
 // The server rejects title/time/status edits for these sources.
@@ -305,11 +312,7 @@ function PanelBody({
   const providerOwned = PROVIDER_OWNED.has(span.source);
   const sourceLabel =
     SOURCE_LABELS[span.source] ?? span.source.replace(/_/g, " ");
-  const album = (
-    span.data?.provider_data as
-      { album?: { images?: { url?: string }[] } } | undefined
-  )?.album;
-  const cover = album?.images?.[1]?.url ?? album?.images?.[0]?.url;
+  const cover = spanCover(span);
   const status = STATUSES.find((s) => s.value === span.status) ?? STATUSES[0];
   const category = CATEGORIES.find((c) => c.value === span.category);
   const amount = formatAmount(span);
@@ -469,7 +472,9 @@ function PanelBody({
           >
             {editingTitle ? (
               <>
-                <SheetTitle className="sr-only">{span.title}</SheetTitle>
+                <SheetTitle className="sr-only">
+                  {displayTitle(span)}
+                </SheetTitle>
                 <div className="flex items-center gap-1.5">
                   <Input
                     autoFocus
@@ -508,7 +513,7 @@ function PanelBody({
             ) : (
               <div className="flex items-start gap-1.5">
                 <SheetTitle className="font-heading text-lg leading-7">
-                  {span.title}
+                  {displayTitle(span)}
                 </SheetTitle>
                 {!providerOwned && (
                   <Button

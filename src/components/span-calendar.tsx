@@ -6,11 +6,19 @@ import {
   type PlacedSpan,
 } from "@/lib/span-layout";
 import {
+  displayTitle,
   formatAmount,
   formatTime,
+  spanCover,
   spanStyle,
+  spanSubtitle,
 } from "@/lib/span-format";
 import { CategoryIndicator } from "@/components/category-indicator";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +31,83 @@ const GUTTER_PX = 54;
 
 function isSameDay(a: Date, b: Date) {
   return startOfDay(a).getTime() === startOfDay(b).getTime();
+}
+
+function IconChip({
+  span,
+  top,
+  left,
+  inset,
+  depth,
+  style,
+  onSelect,
+}: {
+  span: Span;
+  top: number;
+  left: number;
+  inset: number;
+  depth: number;
+  style: ReturnType<typeof spanStyle>;
+  onSelect: (span: Span) => void;
+}) {
+  const cover = spanCover(span);
+  const subtitle = spanSubtitle(span);
+  return (
+    <HoverCard openDelay={80} closeDelay={60}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          data-no-drag
+          aria-label={displayTitle(span)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(span);
+          }}
+          className="absolute grid place-items-center rounded-full border shadow-md transition duration-150 hover:scale-110 hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          style={{
+            top: top * PX_PER_MIN + 2,
+            left: `calc(${left * 100}% + ${inset + 3}px)`,
+            width: INSTANT_HEIGHT_PX,
+            height: INSTANT_HEIGHT_PX,
+            zIndex: depth + 50,
+            backgroundColor: style.bg,
+            borderColor: style.border,
+          }}
+        >
+          <CategoryIndicator
+            span={span}
+            color={style.dot}
+            dotSizeClass="size-1.5"
+          />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent side="right" align="start" className="w-72 p-3">
+        <div className="flex items-center gap-3">
+          {cover ? (
+            <img
+              src={cover}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-16 shrink-0 rounded-md object-cover"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-snug">
+              {displayTitle(span)}
+            </p>
+            {subtitle ? (
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {subtitle}
+              </p>
+            ) : null}
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+              {formatTime(span.start_at)}
+            </p>
+          </div>
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
 }
 
 function SpanBlock({
@@ -43,11 +128,25 @@ function SpanBlock({
   // Only show time line if height is at least 48px to prevent vertical text collision
   const showTime = !instant && heightPx >= 48;
 
+  if (instant && span.source === "spotify") {
+    return (
+      <IconChip
+        span={span}
+        top={top}
+        left={left}
+        inset={inset}
+        depth={depth}
+        style={style}
+        onSelect={onSelect}
+      />
+    );
+  }
+
   return (
     <button
       type="button"
       data-no-drag
-      title={`${span.title} · ${formatTime(span.start_at)}${
+      title={`${displayTitle(span)} · ${formatTime(span.start_at)}${
         span.end_at ? `–${formatTime(span.end_at)}` : ""
       }${amount ? ` · ${amount}` : ""}`}
       onClick={(e) => {
@@ -86,9 +185,13 @@ function SpanBlock({
     >
       {instant ? (
         <>
-          <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
+          <CategoryIndicator
+            span={span}
+            color={style.dot}
+            dotSizeClass="size-1.5"
+          />
           <span className="truncate text-[13px] font-medium leading-none text-foreground">
-            {span.title}
+            {displayTitle(span)}
           </span>
           {amount ? (
             <span className="ml-1 shrink-0 rounded bg-muted px-1 py-0.2 font-mono text-[9px] font-semibold text-foreground">
@@ -100,11 +203,15 @@ function SpanBlock({
         <>
           <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
             <p className="truncate text-[11.5px] font-semibold leading-tight text-foreground min-w-0 flex-1">
-              {span.title}
+              {displayTitle(span)}
             </p>
             {/* Top-right Accent Indicator */}
             <div className="ml-1">
-              <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
+              <CategoryIndicator
+                span={span}
+                color={style.dot}
+                dotSizeClass="size-1.5"
+              />
             </div>
           </div>
           {showTime ? (
@@ -164,7 +271,7 @@ export function SpanCalendar({
   const perDay = useMemo(
     () =>
       days.map((day) => {
-        const placed = layoutDay(spans, day);
+        const placed = layoutDay(spans, day, days.length === 1 ? 8 : 3);
         const parents = new Set(
           placed
             .map((p) => p.span.parent_id)
@@ -202,7 +309,9 @@ export function SpanCalendar({
               <span
                 className={cn(
                   "font-mono text-[11px] uppercase tracking-wide",
-                  today ? "text-muted-foreground font-semibold" : "text-muted-foreground",
+                  today
+                    ? "text-muted-foreground font-semibold"
+                    : "text-muted-foreground",
                 )}
               >
                 {day.toLocaleDateString(undefined, { weekday: "short" })}
@@ -235,7 +344,7 @@ export function SpanCalendar({
               key={span.id}
               type="button"
               onClick={() => onSelect(span)}
-              className="absolute h-5 truncate rounded px-2 text-left text-[11px] text-foreground"
+              className="absolute flex h-5 items-center gap-1.5 truncate rounded px-2 text-left text-[11px] text-foreground"
               style={{
                 top: row * 24 + 3,
                 left: `calc(${GUTTER_PX}px + (100% - ${GUTTER_PX}px) * ${startCol / days.length} + 2px)`,
@@ -243,7 +352,12 @@ export function SpanCalendar({
                 background: `color-mix(in srgb, ${spanStyle(span).dot} 30%, #111214)`,
               }}
             >
-              {span.title}
+              <CategoryIndicator
+                span={span}
+                color={spanStyle(span).dot}
+                dotSizeClass="size-1.5"
+              />
+              <span className="truncate">{displayTitle(span)}</span>
             </button>
           ))}
         </div>

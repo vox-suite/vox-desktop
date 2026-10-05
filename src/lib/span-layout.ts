@@ -49,7 +49,7 @@ export function isAllDay(span: Span): boolean {
   return !!b && b[1] - b[0] >= DAY_MINUTES * MINUTE;
 }
 
-const MAX_INSTANT_LANES = 4;
+const DEFAULT_INSTANT_LANES = 4;
 
 function packInstants(
   nodes: Node[],
@@ -57,6 +57,7 @@ function packInstants(
   width: number,
   depth: number,
   out: PlacedSpan[],
+  maxLanes: number,
 ) {
   const sorted = [...nodes].sort((a, b) => a.start - b.start);
   let cluster: { node: Node; lane: number; top: number }[] = [];
@@ -76,7 +77,7 @@ function packInstants(
         depth,
         instant: true,
       });
-      pack(node.children, l, w, depth + 1, out);
+      pack(node.children, l, w, depth + 1, out, maxLanes);
     }
     cluster = [];
     laneEnds = [];
@@ -86,7 +87,7 @@ function packInstants(
     if (laneEnds.length && node.start >= Math.max(...laneEnds)) flush();
     let lane = laneEnds.findIndex((end) => end <= node.start);
     if (lane === -1) {
-      if (laneEnds.length < MAX_INSTANT_LANES) {
+      if (laneEnds.length < maxLanes) {
         lane = laneEnds.length;
         laneEnds.push(0);
       } else {
@@ -110,6 +111,7 @@ function pack(
   width: number,
   depth: number,
   out: PlacedSpan[],
+  maxLanes: number,
 ) {
   const instants = nodes.filter((n) => n.instant);
   const durations = nodes.filter((n) => !n.instant);
@@ -139,7 +141,7 @@ function pack(
         child.start = Math.max(child.start, node.start + CHILD_HEADER_MINUTES);
         child.end = Math.max(child.end, child.start + MIN_BLOCK_MINUTES);
       }
-      pack(node.children, l, w, depth + 1, out);
+      pack(node.children, l, w, depth + 1, out, maxLanes);
     }
     cluster = [];
     columnEnds = [];
@@ -162,10 +164,14 @@ function pack(
   }
   flush();
 
-  packInstants(instants, left, width, depth, out);
+  packInstants(instants, left, width, depth, out, maxLanes);
 }
 
-export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {
+export function layoutDay(
+  spans: Span[],
+  day: Date,
+  maxLanes = DEFAULT_INSTANT_LANES,
+): PlacedSpan[] {
   const dayStart = startOfDay(day).getTime();
   const dayEnd = dayStart + DAY_MINUTES * MINUTE;
   const nodes = new Map<string, Node>();
@@ -206,7 +212,7 @@ export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {
   }
 
   const out: PlacedSpan[] = [];
-  pack(roots, 0, 1, 0, out);
+  pack(roots, 0, 1, 0, out, maxLanes);
   return out;
 }
 

@@ -1,6 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
 import { startOfDay, monthGridDays } from "@/lib/span-layout";
-import { formatAmount, formatTime, spanStyle } from "@/lib/span-format";
+import {
+  displayTitle,
+  formatAmount,
+  formatTime,
+  spanStyle,
+} from "@/lib/span-format";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
@@ -128,7 +133,7 @@ export function SpanMonthView({
                       key={s.id}
                       type="button"
                       data-no-drag
-                      title={`${s.title}${time ? ` · ${time}` : ""}${amount ? ` · ${amount}` : ""}`}
+                      title={`${displayTitle(s)}${time ? ` · ${time}` : ""}${amount ? ` · ${amount}` : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectSpan(s);
@@ -139,9 +144,13 @@ export function SpanMonthView({
                         border: `1px solid ${style.border}`,
                       }}
                     >
-                      <CategoryIndicator span={s} color={style.dot} dotSizeClass="size-1.5" />
+                      <CategoryIndicator
+                        span={s}
+                        color={style.dot}
+                        dotSizeClass="size-1.5"
+                      />
                       <span className="truncate text-[11px] font-medium text-foreground">
-                        {s.title}
+                        {displayTitle(s)}
                       </span>
                       {amount ? (
                         <span className="ml-auto shrink-0 font-mono text-[9px] text-muted-foreground">

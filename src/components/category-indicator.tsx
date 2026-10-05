@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import playstationLogo from "@/assets/brands/playstation.svg";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import { schemaIcon } from "@/lib/schema-tokens";
 import type { Span } from "@/features/spans/types";
@@ -13,13 +14,15 @@ export function CategoryIndicator({
   color: string;
   dotSizeClass: string;
 }) {
-  if (span.source === "spotify") {
+  const logo =
+    span.source === "spotify"
+      ? spotifyLogo
+      : span.source === "playstation"
+        ? playstationLogo
+        : null;
+  if (logo) {
     return (
-      <img
-        src={spotifyLogo}
-        alt=""
-        className="size-3.5 shrink-0 rounded-[4px]"
-      />
+      <img src={logo} alt="" className="size-3.5 shrink-0 rounded-[4px]" />
     );
   }
   if (span.schema_icon_token !== null && span.schema_icon_token !== undefined) {

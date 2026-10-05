@@ -214,8 +214,17 @@ const SPOTIFY_STYLE: CategoryStyle = {
   subtext: "rgba(134, 239, 172, 0.75)",
 };
 
+const PLAYSTATION_STYLE: CategoryStyle = {
+  bg: "rgba(8, 30, 66, 0.9)",
+  border: "rgba(0, 112, 209, 0.5)",
+  dot: "#0070d1",
+  text: "#ffffff",
+  subtext: "rgba(147, 197, 253, 0.8)",
+};
+
 export function spanStyle(span: Span): CategoryStyle {
   if (span.source === "spotify") return SPOTIFY_STYLE;
+  if (span.source === "playstation") return PLAYSTATION_STYLE;
   return categoryStyle(span.category, span.schema_color_token);
 }
 
@@ -258,4 +267,42 @@ export function formatAmount(span: Span): string | null {
 export function daysFrom(start: Date, count: number): Date[] {
   const first = startOfDay(start);
   return Array.from({ length: count }, (_, i) => addDays(first, i));
+}
+
+export function displayTitle(span: Span): string {
+  return span.source === "playstation"
+    ? span.title.replace(/^PlayStation:\s*/, "")
+    : span.title;
+}
+
+type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+export function spanCover(span: Span): string | undefined {
+  const data = span.data as Loose | undefined;
+  if (span.source === "spotify") {
+    const images = data?.provider_data?.album?.images as
+      { url?: string }[] | undefined;
+    return images?.[1]?.url ?? images?.[0]?.url;
+  }
+  if (span.source === "playstation") {
+    return typeof data?.image_url === "string" ? data.image_url : undefined;
+  }
+  return undefined;
+}
+
+export function spanSubtitle(span: Span): string | undefined {
+  const data = span.data as Loose | undefined;
+  if (span.source === "spotify") {
+    const artists = data?.provider_data?.artists as
+      { name?: string }[] | undefined;
+    const names = artists
+      ?.map((a) => a.name)
+      .filter(Boolean)
+      .join(", ");
+    return names || undefined;
+  }
+  if (span.source === "playstation") {
+    return typeof data?.platform === "string" ? data.platform : undefined;
+  }
+  return undefined;
 }
