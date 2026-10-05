@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SpanCalendar } from "@/components/span-calendar";
 import { SpanMonthView } from "@/components/span-month-view";
 import { daysFrom } from "@/lib/span-format";
-import { SpanDialog } from "@/components/span-dialog";
+import { SpanPanel } from "@/components/span-panel";
 import { useSpans } from "@/hooks/use-spans";
 import {
   addDays,
@@ -255,9 +255,8 @@ export function TimelineView({
         </div>
       </div>
 
-      <SpanDialog
+      <SpanPanel
         span={selected}
-        draft={null}
         collections={collections}
         onClose={() => setSelected(null)}
         onSaved={reload}
