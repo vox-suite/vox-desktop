@@ -36,6 +36,8 @@
     overflow: hidden;
     background: var(--background);
     border-radius: 12px;
+    /* Clip position:fixed children (the sidebar) to the rounded window too. */
+    contain: paint;
   }
 }
 

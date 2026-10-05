@@ -52,6 +52,13 @@ const NAV_ITEMS = [
   { id: "pulse", label: "Pulse", icon: Activity },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
 
+const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";
+
+function startWindowDrag(e: React.MouseEvent) {
+  if (e.button !== 0 || (e.target as HTMLElement).closest(INTERACTIVE)) return;
+  void getCurrentWindow().startDragging();
+}
+
 export function AppSidebar({
   activeTab,
   onTabChange,
@@ -79,15 +86,8 @@ export function AppSidebar({
       .toUpperCase() || "U";
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader
-        data-tauri-drag-region
-        onMouseDown={(e) => {
-          if (e.button === 0 && e.target === e.currentTarget) {
-            void getCurrentWindow().startDragging();
-          }
-        }}
-      >
+    <Sidebar collapsible="icon" onMouseDown={startWindowDrag}>
+      <SidebarHeader data-tauri-drag-region>
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center group-data-[collapsible=icon]:hidden">
             {CONTROLS.map((c) => (
