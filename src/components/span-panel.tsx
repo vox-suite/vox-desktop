@@ -405,37 +405,39 @@ function PanelBody({
   }
 
   return (
-    <div className="relative isolate flex min-h-full shrink-0 flex-col gap-4 px-5 pb-6 pt-3">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"
-        style={{
-          maskImage:
-            "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
-        }}
-      >
-        {cover ? (
-          <>
-            <img
-              src={cover}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="absolute inset-0 size-full scale-125 object-cover opacity-55 blur-lg saturate-125"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0d10]/75 via-[#0c0d10]/35 to-transparent" />
-          </>
-        ) : null}
-        {span.source !== "spotify" ? (
+    <div className="relative isolate flex min-h-full flex-1 shrink-0 flex-col gap-4 px-5 pb-6 pt-6">
+      {cover ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        >
+          <img
+            src={cover}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-60 blur-xl saturate-125"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/35 via-[#0c0d10]/60 to-[#0c0d10]/85" />
+        </div>
+      ) : span.source !== "spotify" ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"
+          style={{
+            maskImage:
+              "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
+          }}
+        >
           <div
             className="absolute inset-0"
             style={{
               background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${style.dot}88 0%, ${style.dot}3d 40%, ${style.dot}14 62%, transparent 85%)`,
             }}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       <div
         aria-hidden
         className="sign-in-noise pointer-events-none absolute inset-0 -z-20"
@@ -444,9 +446,9 @@ function PanelBody({
           filter: "brightness(0.4) contrast(1.3)",
           backgroundSize: "130px 130px",
           maskImage:
-            "linear-gradient(to bottom, #000 0%, #000 25%, transparent 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 60%, rgba(0,0,0,0.4) 100%)",
           WebkitMaskImage:
-            "linear-gradient(to bottom, #000 0%, #000 25%, transparent 100%)",
+            "linear-gradient(to bottom, #000 0%, #000 60%, rgba(0,0,0,0.4) 100%)",
         }}
       />
 
@@ -540,7 +542,7 @@ function PanelBody({
               size="icon-sm"
               variant="ghost"
               aria-label={`Managed by ${sourceLabel}`}
-              className="absolute top-3 right-12 text-muted-foreground"
+              className="absolute top-6 right-12 text-muted-foreground"
             >
               <Info />
             </Button>
@@ -717,7 +719,7 @@ export function SpanPanel({
         overlay={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={outsideGuard}
-        className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg"
+        className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg [&_[data-slot=sheet-close]]:top-6"
       >
         {span ? (
           <PanelBody
