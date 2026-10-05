@@ -33,56 +33,68 @@ function isSameDay(a: Date, b: Date) {
   return startOfDay(a).getTime() === startOfDay(b).getTime();
 }
 
-function IconChip({
+function InstantChip({
   span,
-  top,
-  left,
-  lane,
-  inset,
-  depth,
-  style,
   onSelect,
 }: {
   span: Span;
-  top: number;
-  left: number;
-  lane: number;
-  inset: number;
-  depth: number;
-  style: ReturnType<typeof spanStyle>;
   onSelect: (span: Span) => void;
 }) {
+  const style = spanStyle(span);
   const cover = spanCover(span);
   const subtitle = spanSubtitle(span);
+  const amount = formatAmount(span);
+  const label = displayTitle(span);
+  const iconOnly = span.source === "spotify";
+  const hasCard = iconOnly || !!cover;
+
+  const chip = (
+    <button
+      type="button"
+      data-no-drag
+      aria-label={label}
+      title={
+        hasCard
+          ? undefined
+          : `${label} · ${formatTime(span.start_at)}${amount ? ` · ${amount}` : ""}`
+      }
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(span);
+      }}
+      className={cn(
+        "pointer-events-auto flex shrink-0 items-center rounded-full border shadow-md transition duration-150 hover:scale-105 hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+        iconOnly ? "justify-center" : "max-w-64 gap-2 px-3.5",
+        span.status === "cancelled" && "opacity-40",
+      )}
+      style={{
+        height: INSTANT_HEIGHT_PX,
+        width: iconOnly ? INSTANT_HEIGHT_PX : undefined,
+        backgroundColor: style.bg,
+        borderColor: style.border,
+      }}
+    >
+      <CategoryIndicator
+        span={span}
+        color={style.dot}
+        dotSizeClass="size-1.5"
+      />
+      {iconOnly ? null : (
+        <span className="truncate text-[13px] font-medium leading-none text-foreground">
+          {label}
+        </span>
+      )}
+      {!iconOnly && amount ? (
+        <span className="shrink-0 rounded bg-muted px-1 font-mono text-[9px] font-semibold text-foreground">
+          {amount}
+        </span>
+      ) : null}
+    </button>
+  );
+  if (!hasCard) return chip;
   return (
     <HoverCard openDelay={80} closeDelay={60}>
-      <HoverCardTrigger asChild>
-        <button
-          type="button"
-          data-no-drag
-          aria-label={displayTitle(span)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(span);
-          }}
-          className="absolute grid place-items-center rounded-full border shadow-md transition duration-150 hover:scale-110 hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          style={{
-            top: top * PX_PER_MIN + 2,
-            left: `calc(${left * 100}% + ${inset + 3 + lane * (INSTANT_HEIGHT_PX + 4)}px)`,
-            width: INSTANT_HEIGHT_PX,
-            height: INSTANT_HEIGHT_PX,
-            zIndex: depth + 50,
-            backgroundColor: style.bg,
-            borderColor: style.border,
-          }}
-        >
-          <CategoryIndicator
-            span={span}
-            color={style.dot}
-            dotSizeClass="size-1.5"
-          />
-        </button>
-      </HoverCardTrigger>
+      <HoverCardTrigger asChild>{chip}</HoverCardTrigger>
       <HoverCardContent side="right" align="start" className="w-72 p-3">
         <div className="flex items-center gap-3">
           {cover ? (
@@ -94,9 +106,7 @@ function IconChip({
             />
           ) : null}
           <div className="min-w-0">
-            <p className="text-sm font-medium leading-snug">
-              {displayTitle(span)}
-            </p>
+            <p className="text-sm font-medium leading-snug">{label}</p>
             {subtitle ? (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {subtitle}
@@ -112,6 +122,39 @@ function IconChip({
   );
 }
 
+// One of the 96 quarter-hour slots: its entries sit side by side.
+function InstantRow({
+  items,
+  onSelect,
+}: {
+  items: PlacedSpan[];
+  onSelect: (span: Span) => void;
+}) {
+  const { slot = 0, left, width, depth } = items[0];
+  const inset = depth * INDENT_PX;
+  return (
+    <div
+      data-no-drag
+      className="pointer-events-none absolute flex flex-row items-center gap-2 overflow-x-auto px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      style={{
+        top: slot * QUARTER_PX,
+        height: QUARTER_PX,
+        left: `calc(${left * 100}% + ${inset + 3}px)`,
+        width: `calc(${width * 100}% - ${inset + 6}px)`,
+        zIndex: depth + 50,
+      }}
+    >
+      {items.map((placed) => (
+        <InstantChip
+          key={placed.span.id}
+          span={placed.span}
+          onSelect={onSelect}
+        />
+      ))}
+    </div>
+  );
+}
+
 function SpanBlock({
   placed,
   hasChildren,
@@ -121,29 +164,14 @@ function SpanBlock({
   hasChildren: boolean;
   onSelect: (span: Span) => void;
 }) {
-  const { span, top, height, left, width, depth, instant } = placed;
+  const { span, top, height, left, width, depth } = placed;
   const style = spanStyle(span);
   const inset = depth * INDENT_PX;
   const heightPx = Math.max(height * PX_PER_MIN - 2, 22);
   const amount = formatAmount(span);
   const muted = span.status === "cancelled";
   // Only show time line if height is at least 48px to prevent vertical text collision
-  const showTime = !instant && heightPx >= 48;
-
-  if (instant && span.source === "spotify") {
-    return (
-      <IconChip
-        span={span}
-        top={top}
-        left={left - placed.lane * width}
-        lane={placed.lane}
-        inset={inset}
-        depth={depth}
-        style={style}
-        onSelect={onSelect}
-      />
-    );
-  }
+  const showTime = heightPx >= 48;
 
   return (
     <button
@@ -157,13 +185,8 @@ function SpanBlock({
         onSelect(span);
       }}
       className={cn(
-        "group absolute overflow-hidden text-left transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
-        instant
-          ? "flex items-center gap-2 rounded-full px-3.5 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
-          : cn(
-              "flex flex-col rounded-lg shadow-md hover:brightness-125",
-              showTime ? "justify-between p-2.5" : "justify-center px-2 py-1",
-            ),
+        "group absolute flex flex-col overflow-hidden rounded-lg text-left shadow-md transition duration-150 hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+        showTime ? "justify-between p-2.5" : "justify-center px-2 py-1",
         muted && "opacity-40 line-through",
         span.status === "active" &&
           "ring-1 ring-border shadow-[0_0_14px_rgba(255,255,255,0.2)]",
@@ -171,67 +194,41 @@ function SpanBlock({
       )}
       style={{
         top: top * PX_PER_MIN + 2,
-        height: instant ? INSTANT_HEIGHT_PX : heightPx,
+        height: heightPx,
         left: `calc(${left * 100}% + ${inset + 3}px)`,
-        width: instant
-          ? "fit-content"
-          : `calc(${width * 100}% - ${inset + 6}px)`,
-        maxWidth: instant
-          ? `calc(${width * 100}% - ${inset + 6}px)`
-          : undefined,
-        zIndex: instant ? depth + 50 : depth + 1,
+        width: `calc(${width * 100}% - ${inset + 6}px)`,
+        zIndex: depth + 1,
         backgroundColor: hasChildren
           ? `color-mix(in srgb, ${style.bg} 60%, #111215)`
           : style.bg,
         border: `1px solid ${style.border}`,
       }}
     >
-      {instant ? (
-        <>
+      <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
+        <p className="min-w-0 flex-1 truncate text-[11.5px] font-semibold leading-tight text-foreground">
+          {displayTitle(span)}
+        </p>
+        <div className="ml-1">
           <CategoryIndicator
             span={span}
             color={style.dot}
             dotSizeClass="size-1.5"
           />
-          <span className="truncate text-[13px] font-medium leading-none text-foreground">
-            {displayTitle(span)}
+        </div>
+      </div>
+      {showTime ? (
+        <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
+          <span className="truncate" style={{ color: style.subtext }}>
+            {formatTime(span.start_at)}
+            {span.end_at ? ` – ${formatTime(span.end_at)}` : ""}
           </span>
           {amount ? (
-            <span className="ml-1 shrink-0 rounded bg-muted px-1 py-0.2 font-mono text-[9px] font-semibold text-foreground">
+            <span className="ml-auto shrink-0 rounded bg-muted px-1 py-0.2 text-[9px] font-semibold text-foreground">
               {amount}
             </span>
           ) : null}
-        </>
-      ) : (
-        <>
-          <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
-            <p className="truncate text-[11.5px] font-semibold leading-tight text-foreground min-w-0 flex-1">
-              {displayTitle(span)}
-            </p>
-            {/* Top-right Accent Indicator */}
-            <div className="ml-1">
-              <CategoryIndicator
-                span={span}
-                color={style.dot}
-                dotSizeClass="size-1.5"
-              />
-            </div>
-          </div>
-          {showTime ? (
-            <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
-              <span className="truncate" style={{ color: style.subtext }}>
-                {formatTime(span.start_at)}
-                {span.end_at ? ` – ${formatTime(span.end_at)}` : ""}
-              </span>
-              {amount ? (
-                <span className="ml-auto shrink-0 rounded bg-muted px-1 py-0.2 text-[9px] font-semibold text-foreground">
-                  {amount}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </>
-      )}
+        </div>
+      ) : null}
     </button>
   );
 }
@@ -274,13 +271,20 @@ export function SpanCalendar({
   const perDay = useMemo(
     () =>
       days.map((day) => {
-        const placed = layoutDay(spans, day, days.length === 1 ? 8 : 3);
+        const placed = layoutDay(spans, day);
         const parents = new Set(
           placed
             .map((p) => p.span.parent_id)
             .filter((id): id is string => !!id),
         );
-        return { day, placed, parents };
+        const blocks = placed.filter((p) => !p.instant);
+        const groups = new Map<string, PlacedSpan[]>();
+        for (const p of placed) {
+          if (!p.instant) continue;
+          const key = `${p.depth}|${p.left}|${p.width}|${p.slot}`;
+          groups.set(key, [...(groups.get(key) ?? []), p]);
+        }
+        return { day, blocks, rows: [...groups.entries()], parents };
       }),
     [days, spans],
   );
@@ -405,7 +409,7 @@ export function SpanCalendar({
           </div>
 
           {/* Days Columns */}
-          {perDay.map(({ day, placed, parents }) => {
+          {perDay.map(({ day, blocks, rows, parents }) => {
             const today = isSameDay(day, now);
             return (
               <div
@@ -418,13 +422,16 @@ export function SpanCalendar({
                   backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.09) ${HOUR_PX - 1}px, rgba(255,255,255,0.09) ${HOUR_PX}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${QUARTER_PX - 1}px, rgba(255,255,255,0.035) ${QUARTER_PX - 1}px, rgba(255,255,255,0.035) ${QUARTER_PX}px)`,
                 }}
               >
-                {placed.map((p) => (
+                {blocks.map((p) => (
                   <SpanBlock
                     key={p.span.id}
                     placed={p}
                     hasChildren={parents.has(p.span.id)}
                     onSelect={onSelect}
                   />
+                ))}
+                {rows.map(([key, items]) => (
+                  <InstantRow key={key} items={items} onSelect={onSelect} />
                 ))}
               </div>
             );

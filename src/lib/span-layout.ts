@@ -3,12 +3,10 @@ import type { Span } from "@/features/spans/types";
 const MINUTE = 60_000;
 const DAY_MINUTES = 24 * 60;
 export const MIN_BLOCK_MINUTES = 25;
-// One quarter-hour row per instant entry.
-const INSTANT_SLOT_MINUTES = 15;
 const CHILD_HEADER_MINUTES = 22;
 
 export type PlacedSpan = {
-  lane: number;
+  slot?: number;
   span: Span;
   top: number;
   height: number;
@@ -50,61 +48,34 @@ export function isAllDay(span: Span): boolean {
   return !!b && b[1] - b[0] >= DAY_MINUTES * MINUTE;
 }
 
-const DEFAULT_INSTANT_LANES = 4;
+export const SLOT_MINUTES = 15;
+const SLOTS_PER_DAY = DAY_MINUTES / SLOT_MINUTES;
 
+// Instant entries are assigned to one of the 96 quarter-hour slots.
 function packInstants(
   nodes: Node[],
   left: number,
   width: number,
   depth: number,
   out: PlacedSpan[],
-  maxLanes: number,
 ) {
-  const sorted = [...nodes].sort((a, b) => a.start - b.start);
-  let cluster: { node: Node; lane: number; top: number }[] = [];
-  let laneEnds: number[] = [];
-
-  const flush = () => {
-    const lanes = laneEnds.length;
-    for (const { node, lane, top } of cluster) {
-      const w = width / lanes;
-      const l = left + lane * w;
-      out.push({
-        span: node.span,
-        top,
-        height: node.end - node.start,
-        lane,
-        left: l,
-        width: w,
-        depth,
-        instant: true,
-      });
-      pack(node.children, l, w, depth + 1, out, maxLanes);
-    }
-    cluster = [];
-    laneEnds = [];
-  };
-
-  for (const node of sorted) {
-    if (laneEnds.length && node.start >= Math.max(...laneEnds)) flush();
-    let lane = laneEnds.findIndex((end) => end <= node.start);
-    if (lane === -1) {
-      if (laneEnds.length < maxLanes) {
-        lane = laneEnds.length;
-        laneEnds.push(0);
-      } else {
-        lane = laneEnds.indexOf(Math.min(...laneEnds));
-      }
-    }
-    const slot = node.end - node.start;
-    const top = Math.min(
-      Math.max(node.start, laneEnds[lane]),
-      DAY_MINUTES - slot,
+  for (const node of [...nodes].sort((a, b) => a.start - b.start)) {
+    const slot = Math.min(
+      Math.floor(node.start / SLOT_MINUTES),
+      SLOTS_PER_DAY - 1,
     );
-    laneEnds[lane] = top + slot;
-    cluster.push({ node, lane, top });
+    out.push({
+      span: node.span,
+      top: slot * SLOT_MINUTES,
+      height: SLOT_MINUTES,
+      left,
+      width,
+      depth,
+      instant: true,
+      slot,
+    });
+    pack(node.children, left, width, depth + 1, out);
   }
-  flush();
 }
 
 function pack(
@@ -113,7 +84,6 @@ function pack(
   width: number,
   depth: number,
   out: PlacedSpan[],
-  maxLanes: number,
 ) {
   const instants = nodes.filter((n) => n.instant);
   const durations = nodes.filter((n) => !n.instant);
@@ -134,7 +104,6 @@ function pack(
         span: node.span,
         top: node.start,
         height: node.end - node.start,
-        lane: col,
         left: l,
         width: w,
         depth,
@@ -144,7 +113,7 @@ function pack(
         child.start = Math.max(child.start, node.start + CHILD_HEADER_MINUTES);
         child.end = Math.max(child.end, child.start + MIN_BLOCK_MINUTES);
       }
-      pack(node.children, l, w, depth + 1, out, maxLanes);
+      pack(node.children, l, w, depth + 1, out);
     }
     cluster = [];
     columnEnds = [];
@@ -167,14 +136,10 @@ function pack(
   }
   flush();
 
-  packInstants(instants, left, width, depth, out, maxLanes);
+  packInstants(instants, left, width, depth, out);
 }
 
-export function layoutDay(
-  spans: Span[],
-  day: Date,
-  maxLanes = DEFAULT_INSTANT_LANES,
-): PlacedSpan[] {
+export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {
   const dayStart = startOfDay(day).getTime();
   const dayEnd = dayStart + DAY_MINUTES * MINUTE;
   const nodes = new Map<string, Node>();
@@ -193,13 +158,11 @@ export function layoutDay(
     }
     const s = (Math.max(start, dayStart) - dayStart) / MINUTE;
     const e = (Math.min(end, dayEnd) - dayStart) / MINUTE;
-    const top = Math.min(s, DAY_MINUTES - MIN_BLOCK_MINUTES);
+    const top = instant ? s : Math.min(s, DAY_MINUTES - MIN_BLOCK_MINUTES);
     nodes.set(span.id, {
       span,
       start: top,
-      end: instant
-        ? top + INSTANT_SLOT_MINUTES
-        : Math.max(e, top + MIN_BLOCK_MINUTES),
+      end: instant ? top : Math.max(e, top + MIN_BLOCK_MINUTES),
       instant,
       children: [],
     });
@@ -215,7 +178,7 @@ export function layoutDay(
   }
 
   const out: PlacedSpan[] = [];
-  pack(roots, 0, 1, 0, out, maxLanes);
+  pack(roots, 0, 1, 0, out);
   return out;
 }
 
