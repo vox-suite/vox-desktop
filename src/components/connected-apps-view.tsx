@@ -189,9 +189,16 @@ export function ConnectedAppsView() {
   const [consent, setConsent] = useState(false);
   const [historyConsent, setHistoryConsent] = useState(false);
   const [personalData, setPersonalData] = useState<{
-    data: {
-      recently_played?: { played_at: string; track: { name: string } }[];
-      playlists?: { id: string; snippet: { title: string } }[];
+    data?: {
+      recently_played?: {
+        played_at: string;
+        track?: { name?: string; artists?: { name?: string }[] } | null;
+      }[];
+      playlists?: {
+        id?: string;
+        name?: string;
+        snippet?: { title?: string };
+      }[];
       subscriptions?: unknown[];
     };
   } | null>(null);
@@ -964,7 +971,7 @@ export function ConnectedAppsView() {
                       {personalError}
                     </p>
                   )}
-                  {personalData?.data.recently_played && (
+                  {personalData?.data?.recently_played && (
                     <div className="space-y-3">
                       <h3 className="text-sm font-medium">Recently played</h3>
                       <p className="text-xs text-muted-foreground">
@@ -973,15 +980,24 @@ export function ConnectedAppsView() {
                       </p>
                       <ul className="space-y-2 text-sm">
                         {personalData.data.recently_played
+                          .filter((item) => item.track)
                           .slice(0, 10)
                           .map((item, index) => (
                             <li
                               key={`${item.played_at}:${index}`}
                               className="rounded-lg bg-white/[0.04] px-3 py-2"
                             >
-                              <p>{item.track.name}</p>
+                              <p>{item.track?.name ?? "Unknown track"}</p>
                               <p className="text-xs text-muted-foreground">
-                                {new Date(item.played_at).toLocaleString()}
+                                {[
+                                  item.track?.artists
+                                    ?.map((artist) => artist.name)
+                                    .filter(Boolean)
+                                    .join(", "),
+                                  new Date(item.played_at).toLocaleString(),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </p>
                             </li>
                           ))}
@@ -993,20 +1009,22 @@ export function ConnectedAppsView() {
                       </ul>
                     </div>
                   )}
-                  {personalData?.data.playlists && (
+                  {personalData?.data?.playlists && (
                     <div className="space-y-3">
                       <h3 className="text-sm font-medium">
-                        Your YouTube playlists
+                        {openId === "spotify"
+                          ? "Your Spotify playlists"
+                          : "Your YouTube playlists"}
                       </h3>
                       <ul className="space-y-2 text-sm">
                         {personalData.data.playlists
                           .slice(0, 10)
-                          .map((item) => (
+                          .map((item, index) => (
                             <li
-                              key={item.id}
+                              key={item.id ?? index}
                               className="rounded-lg bg-white/[0.04] px-3 py-2"
                             >
-                              {item.snippet.title}
+                              {item.snippet?.title ?? item.name ?? "Untitled"}
                             </li>
                           ))}
                         {!personalData.data.playlists.length && (
