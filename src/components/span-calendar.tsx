@@ -37,6 +37,7 @@ function IconChip({
   span,
   top,
   left,
+  lane,
   inset,
   depth,
   style,
@@ -45,6 +46,7 @@ function IconChip({
   span: Span;
   top: number;
   left: number;
+  lane: number;
   inset: number;
   depth: number;
   style: ReturnType<typeof spanStyle>;
@@ -66,7 +68,7 @@ function IconChip({
           className="absolute grid place-items-center rounded-full border shadow-md transition duration-150 hover:scale-110 hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           style={{
             top: top * PX_PER_MIN + 2,
-            left: `calc(${left * 100}% + ${inset + 3}px)`,
+            left: `calc(${left * 100}% + ${inset + 3 + lane * (INSTANT_HEIGHT_PX + 4)}px)`,
             width: INSTANT_HEIGHT_PX,
             height: INSTANT_HEIGHT_PX,
             zIndex: depth + 50,
@@ -133,7 +135,8 @@ function SpanBlock({
       <IconChip
         span={span}
         top={top}
-        left={left}
+        left={left - placed.lane * width}
+        lane={placed.lane}
         inset={inset}
         depth={depth}
         style={style}

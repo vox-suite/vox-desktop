@@ -8,6 +8,7 @@ const INSTANT_SLOT_MINUTES = 15;
 const CHILD_HEADER_MINUTES = 22;
 
 export type PlacedSpan = {
+  lane: number;
   span: Span;
   top: number;
   height: number;
@@ -72,6 +73,7 @@ function packInstants(
         span: node.span,
         top,
         height: node.end - node.start,
+        lane,
         left: l,
         width: w,
         depth,
@@ -132,6 +134,7 @@ function pack(
         span: node.span,
         top: node.start,
         height: node.end - node.start,
+        lane: col,
         left: l,
         width: w,
         depth,
