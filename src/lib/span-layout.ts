@@ -3,6 +3,8 @@ import type { Span } from "@/features/spans/types";
 const MINUTE = 60_000;
 const DAY_MINUTES = 24 * 60;
 export const MIN_BLOCK_MINUTES = 25;
+// One quarter-hour row per instant entry.
+const INSTANT_SLOT_MINUTES = 15;
 const CHILD_HEADER_MINUTES = 22;
 
 export type PlacedSpan = {
@@ -186,7 +188,9 @@ export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {
     nodes.set(span.id, {
       span,
       start: top,
-      end: Math.max(e, top + MIN_BLOCK_MINUTES),
+      end: instant
+        ? top + INSTANT_SLOT_MINUTES
+        : Math.max(e, top + MIN_BLOCK_MINUTES),
       instant,
       children: [],
     });

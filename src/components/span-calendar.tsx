@@ -14,9 +14,9 @@ import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
 
-const HOUR_PX = 72;
+const HOUR_PX = 128;
 const QUARTER_PX = HOUR_PX / 4;
-const INSTANT_HEIGHT_PX = 26;
+const INSTANT_HEIGHT_PX = QUARTER_PX - 4;
 const PX_PER_MIN = HOUR_PX / 60;
 const INDENT_PX = 10;
 const GUTTER_PX = 54;
@@ -57,7 +57,7 @@ function SpanBlock({
       className={cn(
         "group absolute overflow-hidden text-left transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
         instant
-          ? "flex items-center gap-2 rounded-full px-3 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
+          ? "flex items-center gap-2 rounded-full px-3.5 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
           : cn(
               "flex flex-col rounded-lg shadow-md hover:brightness-125",
               showTime ? "justify-between p-2.5" : "justify-center px-2 py-1",
@@ -87,7 +87,7 @@ function SpanBlock({
       {instant ? (
         <>
           <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
-          <span className="truncate text-[12.5px] font-medium leading-none text-foreground">
+          <span className="truncate text-[13px] font-medium leading-none text-foreground">
             {span.title}
           </span>
           {amount ? (
