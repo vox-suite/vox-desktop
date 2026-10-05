@@ -1,10 +1,16 @@
 use crate::auth::AuthManager;
 use serde_json::Value;
+use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::State;
 
 const DEFAULT_TIMEOUT_MS: u64 = 8_000;
 const MAX_TIMEOUT_MS: u64 = 60_000;
+
+fn http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(reqwest::Client::new)
+}
 
 async fn core_request(
     auth: &AuthManager,
@@ -17,7 +23,7 @@ async fn core_request(
     let session = auth.current_session().ok_or("Not signed in")?;
     let config = auth.config();
     let url = format!("{}{}", config.api_url.trim_end_matches('/'), path);
-    let mut req = reqwest::Client::new()
+    let mut req = http_client()
         .request(method, &url)
         .header("authorization", format!("Bearer {}", session.vox_token))
         .timeout(timeout)

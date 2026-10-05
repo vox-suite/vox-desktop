@@ -8,6 +8,8 @@ import {
   CalendarDays,
   Check,
   CircleAlert,
+  CircleCheck,
+  Info,
   Gamepad2,
   KeyRound,
   Loader2,
@@ -157,6 +159,33 @@ const wizConnector = (): Connector => ({
 });
 
 const PAGE_SIZE = 12;
+
+function StatusMessage({
+  message,
+  className,
+}: {
+  message: string;
+  className: string;
+}) {
+  const icon =
+    /^(Account connected|Timeline refreshed|Imported \d|History disconnected|Disconnected\.)/.test(
+      message,
+    ) ? (
+      <CircleCheck className="size-4 shrink-0 text-emerald-400" />
+    ) : /^(Importing|Reading)/.test(message) ? (
+      <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+    ) : /^Waiting for connection/.test(message) ? (
+      <Info className="size-4 shrink-0 text-muted-foreground" />
+    ) : (
+      <CircleAlert className="size-4 shrink-0 text-[#ff8a8a]" />
+    );
+  return (
+    <div role="status" className={className}>
+      {icon}
+      {message}
+    </div>
+  );
+}
 const IMPORT_CHUNK = 500;
 type Status = "all" | "connected" | "available";
 const PENDING_KEY = "vox.pending-connection-setup";
@@ -223,13 +252,15 @@ export function ConnectedAppsView() {
   const inProgress = useRef(false);
   const reload = useCallback(async () => {
     try {
-      const [apps, accounts, localStatus] = await Promise.all([
-        request<Connector[]>("connectors/list").catch(() => []),
-        request<Connection[]>("connections/list").catch(() => []),
+      void (
         platform()
           .wiz?.getStatus()
           .catch(() => ({ enabled: false, devices: [] })) ??
-          Promise.resolve({ enabled: false, devices: [] }),
+        Promise.resolve({ enabled: false, devices: [] })
+      ).then(setWizStatus);
+      const [apps, accounts] = await Promise.all([
+        request<Connector[]>("connectors/list").catch(() => []),
+        request<Connection[]>("connections/list").catch(() => []),
       ]);
       setSpotifyRegistered((apps || []).some((app) => app.id === "spotify"));
       const merged = (apps || []).filter(
@@ -244,7 +275,6 @@ export function ConnectedAppsView() {
         }
       }
       merged.push(wizConnector());
-      setWizStatus(localStatus);
       setConnectors(merged);
       setConnections(
         (accounts || []).filter(
@@ -573,13 +603,10 @@ export function ConnectedAppsView() {
         </div>
 
         {message && !openApp && (
-          <div
-            role="status"
+          <StatusMessage
+            message={message}
             className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm"
-          >
-            <CircleAlert className="size-4 shrink-0 text-[#ff8a8a]" />
-            {message}
-          </div>
+          />
         )}
 
         {pending && (
@@ -797,13 +824,10 @@ export function ConnectedAppsView() {
               </SheetHeader>
 
               {message && (
-                <div
-                  role="status"
+                <StatusMessage
+                  message={message}
                   className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm"
-                >
-                  <CircleAlert className="size-4 shrink-0 text-[#ff8a8a]" />
-                  {message}
-                </div>
+                />
               )}
 
               {openApp.id === "wiz" ? (
