@@ -495,13 +495,11 @@ function PanelBody({
                 )}
               </div>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="gap-1.5 font-normal">
-                <status.icon className={cn("size-3", status.tone)} />
-                {status.label}
+            {amount ? (
+              <Badge variant="secondary" className="mt-2">
+                {amount}
               </Badge>
-              {amount ? <Badge variant="secondary">{amount}</Badge> : null}
-            </div>
+            ) : null}
           </div>
         </div>
         <SheetDescription className="sr-only">
