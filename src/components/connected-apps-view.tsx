@@ -192,10 +192,6 @@ export function ConnectedAppsView() {
   const [historyConsent, setHistoryConsent] = useState(false);
   const [personalData, setPersonalData] = useState<{
     data?: {
-      recently_played?: {
-        played_at: string;
-        track?: { name?: string; artists?: { name?: string }[] } | null;
-      }[];
       playlists?: {
         id?: string;
         name?: string;
@@ -438,7 +434,7 @@ export function ConnectedAppsView() {
     const canRead =
       openAccount?.assistant_read &&
       openAccount.authorization_state === "authorized";
-    const isPersonal = ["spotify", "youtube"].includes(openId || "");
+    const isPersonal = openId === "youtube";
     void Promise.resolve().then(async () => {
       if (!active) return;
       setPersonalData(null);
@@ -1006,44 +1002,6 @@ export function ConnectedAppsView() {
                     <p role="status" className="text-sm text-amber-200">
                       {personalError}
                     </p>
-                  )}
-                  {personalData?.data?.recently_played && (
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-medium">Recently played</h3>
-                      <p className="text-xs text-muted-foreground">
-                        Latest tracks returned by Spotify; this is not your
-                        complete listening history.
-                      </p>
-                      <ul className="space-y-2 text-sm">
-                        {personalData.data.recently_played
-                          .filter((item) => item.track)
-                          .slice(0, 10)
-                          .map((item, index) => (
-                            <li
-                              key={`${item.played_at}:${index}`}
-                              className="rounded-lg bg-white/[0.04] px-3 py-2"
-                            >
-                              <p>{item.track?.name ?? "Unknown track"}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {[
-                                  item.track?.artists
-                                    ?.map((artist) => artist.name)
-                                    .filter(Boolean)
-                                    .join(", "),
-                                  new Date(item.played_at).toLocaleString(),
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </p>
-                            </li>
-                          ))}
-                        {!personalData.data.recently_played.length && (
-                          <li className="text-muted-foreground">
-                            No recent tracks returned.
-                          </li>
-                        )}
-                      </ul>
-                    </div>
                   )}
                   {personalData?.data?.playlists && (
                     <div className="space-y-3">
