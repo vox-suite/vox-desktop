@@ -193,6 +193,8 @@ const failureMessage = (detail: string) => {
   const status = /failed: (\d{3})/.exec(detail)?.[1];
   if (status === "401" || status === "403")
     return "Your session has expired. Sign in again and retry.";
+  if (status === "409")
+    return "A sync is already running for this account. Try again in a minute.";
   if (status === "400")
     return "Vox couldn't use this request. For watch history, choose an English Google Takeout watch-history file with recent watches.";
   if (status === "413")
