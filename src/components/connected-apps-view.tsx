@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
-  Bike,
   CalendarDays,
   Check,
   CircleAlert,
@@ -22,15 +21,14 @@ import {
   Settings2,
   ShieldCheck,
   Unplug,
-  UtensilsCrossed,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import googleCalendarLogo from "@/assets/brands/google-calendar.svg";
 import playstationLogo from "@/assets/brands/playstation.svg";
-import swiggyLogo from "@/assets/brands/swiggy.svg";
-import zomatoLogo from "@/assets/brands/zomato.svg";
+import { swiggy } from "@/connectors/swiggy";
+import { zomato } from "@/connectors/zomato";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import youtubeLogo from "@/assets/brands/youtube.svg";
 import wizLogo from "@/assets/brands/wiz.svg";
@@ -76,20 +74,8 @@ const BRANDS: Record<
     color: "#0070d1",
     tagline: "Gaming sessions and playtime",
   },
-  swiggy: {
-    icon: Bike,
-    logo: swiggyLogo,
-    bare: true,
-    color: "#fc8019",
-    tagline: "Food orders and delivery status",
-  },
-  zomato: {
-    icon: UtensilsCrossed,
-    logo: zomatoLogo,
-    bare: true,
-    color: "#cb202d",
-    tagline: "Connected food order history",
-  },
+  swiggy: swiggy.brand,
+  zomato: zomato.brand,
   spotify: {
     icon: Music2,
     logo: spotifyLogo,
@@ -137,24 +123,8 @@ const KNOWN_CONNECTORS: Connector[] = [
     auth_type: "oauth2",
     available: true,
   },
-  {
-    id: "swiggy",
-    name: "Swiggy",
-    description:
-      "Read real food orders and delivery status through Swiggy account authorization.",
-    supported_features: ["timeline_sync", "assistant_read"],
-    auth_type: "oauth2",
-    available: false,
-  },
-  {
-    id: "zomato",
-    name: "Zomato",
-    description:
-      "Read food orders through an approved Zomato account integration.",
-    supported_features: ["timeline_sync", "assistant_read"],
-    auth_type: "oauth2",
-    available: false,
-  },
+  swiggy.descriptor,
+  zomato.descriptor,
   {
     id: "spotify",
     name: "Spotify",
