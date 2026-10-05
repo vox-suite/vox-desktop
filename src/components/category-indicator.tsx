@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import playstationLogo from "@/assets/brands/playstation.svg";
 import spotifyLogo from "@/assets/brands/spotify.svg";
+import youtubeLogo from "@/assets/brands/youtube.svg";
 import { schemaIcon } from "@/lib/schema-tokens";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,9 @@ export function CategoryIndicator({
       ? spotifyLogo
       : span.source === "playstation"
         ? playstationLogo
-        : null;
+        : span.source === "youtube"
+          ? youtubeLogo
+          : null;
   if (logo) {
     return (
       <img src={logo} alt="" className="size-3.5 shrink-0 rounded-[4px]" />

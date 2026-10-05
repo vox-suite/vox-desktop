@@ -222,8 +222,17 @@ const PLAYSTATION_STYLE: CategoryStyle = {
   subtext: "rgba(147, 197, 253, 0.8)",
 };
 
+const YOUTUBE_STYLE: CategoryStyle = {
+  bg: "rgba(58, 10, 16, 0.9)",
+  border: "rgba(255, 0, 51, 0.45)",
+  dot: "#ff0033",
+  text: "#ffffff",
+  subtext: "rgba(252, 165, 165, 0.8)",
+};
+
 export function spanStyle(span: Span): CategoryStyle {
   if (span.source === "spotify") return SPOTIFY_STYLE;
+  if (span.source === "youtube") return YOUTUBE_STYLE;
   if (span.source === "playstation") return PLAYSTATION_STYLE;
   return categoryStyle(span.category, span.schema_color_token);
 }
@@ -287,6 +296,12 @@ export function spanCover(span: Span): string | undefined {
   if (span.source === "playstation") {
     return typeof data?.image_url === "string" ? data.image_url : undefined;
   }
+  if (span.source === "youtube") {
+    const id = data?.provider_data?.video_id;
+    return typeof id === "string" && id
+      ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
+      : undefined;
+  }
   return undefined;
 }
 
@@ -303,6 +318,12 @@ export function spanSubtitle(span: Span): string | undefined {
   }
   if (span.source === "playstation") {
     return typeof data?.platform === "string" ? data.platform : undefined;
+  }
+  if (span.source === "youtube") {
+    const action = data?.provider_data?.action;
+    if (action === "watch") return "Watched on YouTube";
+    if (action === "like") return "Liked on YouTube";
+    if (action === "playlist_addition") return "Added to a playlist";
   }
   return undefined;
 }

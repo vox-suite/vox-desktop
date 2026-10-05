@@ -45,7 +45,7 @@ function InstantChip({
   const subtitle = spanSubtitle(span);
   const amount = formatAmount(span);
   const label = displayTitle(span);
-  const iconOnly = span.source === "spotify";
+  const iconOnly = span.source === "spotify" || span.source === "youtube";
   const hasCard = iconOnly || !!cover;
 
   const chip = (
@@ -102,7 +102,10 @@ function InstantChip({
               src={cover}
               alt=""
               referrerPolicy="no-referrer"
-              className="size-16 shrink-0 rounded-md object-cover"
+              className={cn(
+                "shrink-0 rounded-md object-cover",
+                span.source === "youtube" ? "h-16 w-28" : "size-16",
+              )}
             />
           ) : null}
           <div className="min-w-0">

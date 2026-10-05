@@ -24,6 +24,7 @@ import {
   Timer,
   Trash2,
   Users,
+  Video,
   Utensils,
   Wallet,
   X,
@@ -125,6 +126,7 @@ const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
   { value: "reminder", label: "Reminder", icon: Bell },
   { value: "music", label: "Music", icon: Music },
   { value: "gaming", label: "Gaming", icon: Gamepad2 },
+  { value: "video", label: "Video", icon: Video },
 ];
 
 // The server rejects title/time/status edits for these sources.
