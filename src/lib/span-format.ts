@@ -206,6 +206,19 @@ export function categoryStyle(
   };
 }
 
+const SPOTIFY_STYLE: CategoryStyle = {
+  bg: "rgba(10, 42, 24, 0.9)",
+  border: "rgba(29, 185, 84, 0.45)",
+  dot: "#1db954",
+  text: "#ffffff",
+  subtext: "rgba(134, 239, 172, 0.75)",
+};
+
+export function spanStyle(span: Span): CategoryStyle {
+  if (span.source === "spotify") return SPOTIFY_STYLE;
+  return categoryStyle(span.category, span.schema_color_token);
+}
+
 export function categoryColor(
   category: string,
   schemaColorToken?: number | null,

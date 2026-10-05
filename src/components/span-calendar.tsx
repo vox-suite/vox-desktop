@@ -6,10 +6,9 @@ import {
   type PlacedSpan,
 } from "@/lib/span-layout";
 import {
-  categoryColor,
-  categoryStyle,
   formatAmount,
   formatTime,
+  spanStyle,
 } from "@/lib/span-format";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
@@ -34,7 +33,7 @@ function SpanBlock({
   onSelect: (span: Span) => void;
 }) {
   const { span, top, height, left, width, depth, instant } = placed;
-  const style = categoryStyle(span.category, span.schema_color_token);
+  const style = spanStyle(span);
   const inset = depth * INDENT_PX;
   const heightPx = Math.max(height * PX_PER_MIN - 2, 22);
   const amount = formatAmount(span);
@@ -239,7 +238,7 @@ export function SpanCalendar({
                 top: row * 24 + 3,
                 left: `calc(${GUTTER_PX}px + (100% - ${GUTTER_PX}px) * ${startCol / days.length} + 2px)`,
                 width: `calc((100% - ${GUTTER_PX}px) * ${(endCol - startCol + 1) / days.length} - 4px)`,
-                background: `color-mix(in srgb, ${categoryColor(span.category, span.schema_color_token)} 30%, #111214)`,
+                background: `color-mix(in srgb, ${spanStyle(span).dot} 30%, #111214)`,
               }}
             >
               {span.title}

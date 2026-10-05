@@ -47,6 +47,61 @@ export function isAllDay(span: Span): boolean {
   return !!b && b[1] - b[0] >= DAY_MINUTES * MINUTE;
 }
 
+const MAX_INSTANT_LANES = 4;
+
+function packInstants(
+  nodes: Node[],
+  left: number,
+  width: number,
+  depth: number,
+  out: PlacedSpan[],
+) {
+  const sorted = [...nodes].sort((a, b) => a.start - b.start);
+  let cluster: { node: Node; lane: number; top: number }[] = [];
+  let laneEnds: number[] = [];
+
+  const flush = () => {
+    const lanes = laneEnds.length;
+    for (const { node, lane, top } of cluster) {
+      const w = width / lanes;
+      const l = left + lane * w;
+      out.push({
+        span: node.span,
+        top,
+        height: node.end - node.start,
+        left: l,
+        width: w,
+        depth,
+        instant: true,
+      });
+      pack(node.children, l, w, depth + 1, out);
+    }
+    cluster = [];
+    laneEnds = [];
+  };
+
+  for (const node of sorted) {
+    if (laneEnds.length && node.start >= Math.max(...laneEnds)) flush();
+    let lane = laneEnds.findIndex((end) => end <= node.start);
+    if (lane === -1) {
+      if (laneEnds.length < MAX_INSTANT_LANES) {
+        lane = laneEnds.length;
+        laneEnds.push(0);
+      } else {
+        lane = laneEnds.indexOf(Math.min(...laneEnds));
+      }
+    }
+    const slot = node.end - node.start;
+    const top = Math.min(
+      Math.max(node.start, laneEnds[lane]),
+      DAY_MINUTES - slot,
+    );
+    laneEnds[lane] = top + slot;
+    cluster.push({ node, lane, top });
+  }
+  flush();
+}
+
 function pack(
   nodes: Node[],
   left: number,
@@ -105,18 +160,7 @@ function pack(
   }
   flush();
 
-  for (const node of instants) {
-    out.push({
-      span: node.span,
-      top: node.start,
-      height: node.end - node.start,
-      left,
-      width,
-      depth,
-      instant: true,
-    });
-    pack(node.children, left, width, depth + 1, out);
-  }
+  packInstants(instants, left, width, depth, out);
 }
 
 export function layoutDay(spans: Span[], day: Date): PlacedSpan[] {

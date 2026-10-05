@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import spotifyLogo from "@/assets/brands/spotify.svg";
 import { schemaIcon } from "@/lib/schema-tokens";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,15 @@ export function CategoryIndicator({
   color: string;
   dotSizeClass: string;
 }) {
+  if (span.source === "spotify") {
+    return (
+      <img
+        src={spotifyLogo}
+        alt=""
+        className="size-3.5 shrink-0 rounded-[4px]"
+      />
+    );
+  }
   if (span.schema_icon_token !== null && span.schema_icon_token !== undefined) {
     return createElement(schemaIcon(span.schema_icon_token), {
       className: "size-3 shrink-0",

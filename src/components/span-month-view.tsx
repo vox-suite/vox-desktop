@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { startOfDay, monthGridDays } from "@/lib/span-layout";
-import { categoryStyle, formatAmount, formatTime } from "@/lib/span-format";
+import { formatAmount, formatTime, spanStyle } from "@/lib/span-format";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
@@ -119,7 +119,7 @@ export function SpanMonthView({
               {/* Event Chips List */}
               <div className="flex flex-col gap-1 overflow-hidden">
                 {visibleSpans.map((s) => {
-                  const style = categoryStyle(s.category, s.schema_color_token);
+                  const style = spanStyle(s);
                   const amount = formatAmount(s);
                   const time = formatTime(s.start_at);
 
