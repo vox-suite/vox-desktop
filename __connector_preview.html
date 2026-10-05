@@ -1,0 +1,12 @@
+<!doctype html><html class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vox connector preview</title></head><body><main id="preview" style="height:100vh"></main><script type="module">
+import RefreshRuntime from '/@react-refresh';
+RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;
+const React = (await import('/node_modules/.vite/deps/react.js')).default;
+const ReactDOM = (await import('/node_modules/.vite/deps/react-dom_client.js')).default;
+await import('/src/index.css');
+const {installPlatform}=await import('/src/platform/index.ts');
+const {ConnectedAppsView}=await import('/src/components/connected-apps-view.tsx');
+window.calls=[];window.fixtureAccounts=[{id:'psn-fixture',connector_id:'playstation',authorization_state:'authorized',sync_timeline:true,assistant_read:true}];
+let wizStatus={enabled:false,devices:[]};const light={id:'aabbccddeeff',name:'Desk light',address:'192.168.1.50',on:true,brightness:60,reachable:true};installPlatform({wiz:{getStatus:async()=>wizStatus,connect:async(consent,address)=>{window.calls.push({wiz:'connect',consent,address});wizStatus={enabled:true,devices:[light]};return wizStatus.devices},refresh:async()=>wizStatus.devices,control:async(id,state)=>{window.calls.push({wiz:'control',id,state});Object.assign(light,state);return {...light}},disconnect:async()=>{window.calls.push({wiz:'disconnect'});wizStatus={enabled:false,devices:[]}}},http:{request:async req=>{window.calls.push(req); if(req.path.endsWith('/connectors/list'))return ['spotify','youtube'].map(id=>({id,available:true,supported_features:id==='philips_hue'?['assistant_read','device_control']:['timeline_sync','assistant_read']}));if(req.path.endsWith('/connections/list'))return window.fixtureAccounts;if(req.path.endsWith('/history/import')) return {imported:1,skipped:1};if(req.path.endsWith('/read'))return {data:{lights:{'1':{name:'Desk light',state:{on:true,bri:200}}},recently_played:[{played_at:'2026-10-04T12:00:00Z',track:{name:'Fixture track'}}],playlists:[{id:'one',snippet:{title:'Fixture playlist'}}]}};return {};}},live:{subscribe:()=>()=>{}},browser:{openExternal:async url=>window.calls.push({url})}});
+ReactDOM.createRoot(document.getElementById('preview')).render(React.createElement(ConnectedAppsView));
+</script></body></html>

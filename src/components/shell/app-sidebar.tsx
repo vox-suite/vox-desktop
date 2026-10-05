@@ -1,8 +1,14 @@
 import { useState } from "react";
-import { Activity, Bot, ChevronsUpDown, GanttChart, LogOut, Plug } from "lucide-react";
+import {
+  Activity,
+  Bot,
+  ChevronsUpDown,
+  GanttChart,
+  LogOut,
+  Plug,
+} from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,7 +38,11 @@ import type { ShellTab } from "./shell-tabs";
 const CONTROLS = [
   { title: "Close", color: "bg-destructive", action: windowControls.close },
   { title: "Minimize", color: "bg-muted", action: windowControls.minimize },
-  { title: "Fullscreen", color: "bg-muted", action: windowControls.toggleMaximize },
+  {
+    title: "Fullscreen",
+    color: "bg-muted",
+    action: windowControls.toggleMaximize,
+  },
 ] as const;
 
 const NAV_ITEMS = [
@@ -58,7 +68,8 @@ export function AppSidebar({
   onSignOut: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
-  const displayName = (userName || accountLabel).replace(/@.*/, "").trim() || "User";
+  const displayName =
+    (userName || accountLabel).replace(/@.*/, "").trim() || "User";
   const initials =
     displayName
       .split(/\s+/)
@@ -77,28 +88,25 @@ export function AppSidebar({
           }
         }}
       >
-        <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:justify-center">
-          {CONTROLS.map((c) => (
-            <Button
-              key={c.title}
-              variant="ghost"
-              size="icon-xs"
-              title={c.title}
-              onClick={() => void c.action()}
-            >
-              <span className={`size-2.5 rounded-full ${c.color}`} />
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between group-data-[collapsible=icon]:hidden">
+        <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center group-data-[collapsible=icon]:hidden">
+            {CONTROLS.map((c) => (
+              <Button
+                key={c.title}
+                variant="ghost"
+                size="icon-xs"
+                title={c.title}
+                className="size-4 p-0"
+                onClick={() => void c.action()}
+              >
+                <span className={`size-2.5 rounded-full ${c.color}`} />
+              </Button>
+            ))}
+          </div>
           <span className="flex items-center gap-2 font-heading text-sm font-semibold">
             <VoxLogo animated size={20} state="idle" />
-            Vox
-            <Badge variant="secondary" className="font-mono">
-              v{__APP_VERSION__}
-            </Badge>
+            <span className="group-data-[collapsible=icon]:hidden">Vox</span>
           </span>
-          <SidebarTrigger title="Toggle sidebar (⌘B)" />
         </div>
       </SidebarHeader>
 
@@ -124,44 +132,55 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" tooltip={displayName}>
-                  <Avatar className="size-8">
-                    {avatarUrl && !imgError ? (
-                      <AvatarImage
-                        src={avatarUrl}
-                        alt={displayName}
-                        referrerPolicy="no-referrer"
-                        onError={() => setImgError(true)}
-                      />
-                    ) : null}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{displayName}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {accountLabel}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                  Vox Desktop · v{__APP_VERSION__}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={onSignOut}>
-                  <LogOut />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-2">
+          <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton size="lg" tooltip={displayName}>
+                    <Avatar className="size-8">
+                      {avatarUrl && !imgError ? (
+                        <AvatarImage
+                          src={avatarUrl}
+                          alt={displayName}
+                          referrerPolicy="no-referrer"
+                          onError={() => setImgError(true)}
+                        />
+                      ) : null}
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+                      <span
+                        className="truncate font-medium"
+                        title={displayName}
+                      >
+                        {displayName}
+                      </span>
+                      <span
+                        className="truncate text-xs text-muted-foreground"
+                        title={accountLabel}
+                      >
+                        {accountLabel}
+                      </span>
+                    </div>
+                    <ChevronsUpDown className="ml-auto shrink-0" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="start" className="w-56">
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    Vox Desktop · v{__APP_VERSION__}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={onSignOut}>
+                    <LogOut />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <SidebarTrigger title="Toggle sidebar (⌘B)" className="shrink-0" />
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

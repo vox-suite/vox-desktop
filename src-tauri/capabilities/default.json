@@ -24,6 +24,24 @@
         },
         {
           "url": "https://accounts.google.com/o/oauth2/v2/auth?*"
+        },
+        {
+          "url": "https://www.playstation.com"
+        },
+        {
+          "url": "https://ca.account.sony.com/api/v1/ssocookie"
+        },
+        {
+          "url": "https://takeout.google.com/"
+        },
+        {
+          "url": "https://accounts.spotify.com/authorize?*"
+        },
+        {
+          "url": "https://mcp.swiggy.com/auth/authorize?*"
+        },
+        {
+          "url": "https://mcp-server.zomato.com/authorize?*"
         }
       ]
     },

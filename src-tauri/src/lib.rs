@@ -16,6 +16,7 @@ mod sync_client;
 mod system_stats;
 mod terminal;
 mod types;
+mod wiz;
 
 use auth::AuthManager;
 use deep_link::{filter_vox_urls, handle_oauth_callback_urls};
@@ -79,6 +80,7 @@ pub fn run() {
         .manage(device_link::RemoteControl::load())
         .manage(device_link::EventLog::default())
         .manage(SystemStatsState::new())
+        .manage(wiz::WizState::default())
         .on_window_event(|window, event| {
             #[cfg(target_os = "macos")]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -132,6 +134,11 @@ pub fn run() {
             device_link::get_local_events,
             device_link::run_gui_action_locally,
             system_stats::get_system_stats,
+            wiz::get_wiz_status,
+            wiz::connect_wiz,
+            wiz::refresh_wiz,
+            wiz::control_wiz,
+            wiz::disconnect_wiz,
             #[cfg(target_os = "macos")]
             macos_location::get_native_location
         ])

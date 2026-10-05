@@ -3,17 +3,32 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { LiveEvent, Platform } from "@/platform";
 
+import type { WizStatus } from "./ports";
+
+import { isAllowedExternalUrl } from "./external-url-policy";
+
 export const tauriPlatform: Platform = {
+  wiz: {
+    getStatus: () => invoke("get_wiz_status"),
+    connect: (consent, link) =>
+      invoke<WizStatus>("connect_wiz", {
+        consent,
+        link,
+      }).then((status) => status.devices),
+    refresh: () => invoke("refresh_wiz"),
+    control: (deviceId, state) =>
+      invoke("control_wiz", {
+        deviceId,
+        on: state.on ?? null,
+        brightness: state.brightness ?? null,
+      }),
+    disconnect: () => invoke("disconnect_wiz"),
+  },
   browser: {
     openExternal: async (url) => {
-      const destination = new URL(url);
-      if (
-        destination.protocol !== "https:" ||
-        destination.hostname !== "accounts.google.com" ||
-        destination.pathname !== "/o/oauth2/v2/auth" ||
-        destination.username !== "" || destination.password !== "" || destination.port !== ""
-      )
-        throw new Error("Unsupported authorization destination");
+      if (!isAllowedExternalUrl(url)) {
+        throw new Error("Unsupported external destination");
+      }
       await openUrl(url);
     },
   },

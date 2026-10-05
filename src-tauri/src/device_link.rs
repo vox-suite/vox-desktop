@@ -231,6 +231,7 @@ async fn register_device(
         "device_identifier": device_identifier,
         "platform": format!("macos-{}", std::env::consts::ARCH),
         "label": device_label(),
+        "capabilities": { "wiz": true },
         "execution_consent": execution_consent,
     });
     let resp = client
@@ -270,6 +271,7 @@ enum FrameType {
     OpenShell,
     RunCommand,
     GuiAction,
+    Wiz,
 }
 
 impl std::str::FromStr for FrameType {
@@ -280,6 +282,7 @@ impl std::str::FromStr for FrameType {
             "open_shell" => Ok(Self::OpenShell),
             "run_command" => Ok(Self::RunCommand),
             "gui_action" => Ok(Self::GuiAction),
+            "wiz" => Ok(Self::Wiz),
             _ => Err(()),
         }
     }
@@ -295,6 +298,23 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
     };
 
     match frame_type {
+        FrameType::Wiz => {
+            let action = frame.get("action").and_then(Value::as_str).unwrap_or("");
+            emit_local_event(app, "command", &format!("wiz: {action}"));
+            let response = match crate::wiz::remote(app, &frame).await {
+                Ok(mut value) => {
+                    value["id"] = id;
+                    value
+                }
+                Err(err) => {
+                    emit_local_event(app, "error", &format!("WiZ failed: {err}"));
+                    json!({ "id": id, "ok": false, "error": err })
+                }
+            };
+            let outcome = if response["ok"] == true { "ran" } else { "failed" };
+            log_remote_command(&format!("wiz: {action}"), outcome);
+            response
+        }
         FrameType::OpenShell => {
             emit_local_event(app, "system", "Vox requested interactive terminal shell");
             let terminal = terminal.clone();

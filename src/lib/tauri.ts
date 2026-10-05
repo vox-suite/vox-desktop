@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export type AuthState = {
@@ -117,18 +116,6 @@ export async function animateWindowSize(
     };
     requestAnimationFrame(step);
   });
-}
-
-/** Opens the OS location-privacy settings pane directly. */
-export async function openLocationSettings(): Promise<void> {
-  const isMac = navigator.userAgent.includes("Mac");
-  const isWin = navigator.userAgent.includes("Win");
-  const url = isMac
-    ? "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
-    : isWin
-      ? "ms-settings:privacy-location"
-      : "";
-  if (url) await openUrl(url);
 }
 
 export { errorMessage as invokeErrorMessage } from "@/lib/errors";

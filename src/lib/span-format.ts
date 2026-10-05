@@ -141,6 +141,20 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     text: "#ffffff",
     subtext: "rgba(254, 215, 170, 0.75)",
   },
+  dining: {
+    bg: "rgba(56, 26, 14, 0.88)",
+    border: "rgba(249, 115, 22, 0.35)",
+    dot: "#fb923c",
+    text: "#ffffff",
+    subtext: "rgba(254, 215, 170, 0.75)",
+  },
+  food_delivery: {
+    bg: "rgba(56, 26, 14, 0.88)",
+    border: "rgba(249, 115, 22, 0.35)",
+    dot: "#fb923c",
+    text: "#ffffff",
+    subtext: "rgba(254, 215, 170, 0.75)",
+  },
 
   // PS5 Gaming (Deep Violet / Neon Purple)
   game: {
@@ -220,7 +234,7 @@ export function formatMoney(amount: number, currency = "INR"): string {
 }
 
 export function formatAmount(span: Span): string | null {
-  const amount = span.data?.amount;
+  const amount = span.data?.total_amount ?? span.data?.amount;
   if (typeof amount !== "number") return null;
   return formatMoney(
     amount,
