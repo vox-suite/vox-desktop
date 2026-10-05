@@ -327,3 +327,7 @@ export function spanSubtitle(span: Span): string | undefined {
   }
   return undefined;
 }
+
+export function isEstimated(span: Span): boolean {
+  return (span.data as { estimated?: boolean } | undefined)?.estimated === true;
+}

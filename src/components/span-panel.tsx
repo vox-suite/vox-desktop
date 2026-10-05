@@ -73,6 +73,7 @@ import { errorMessage } from "@/lib/errors";
 import {
   displayTitle,
   formatAmount,
+  isEstimated,
   spanCover,
   spanStyle,
 } from "@/lib/span-format";
@@ -530,10 +531,15 @@ function PanelBody({
                 )}
               </div>
             )}
-            {amount ? (
-              <Badge variant="secondary" className="mt-2">
-                {amount}
-              </Badge>
+            {amount || isEstimated(span) ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {amount ? <Badge variant="secondary">{amount}</Badge> : null}
+                {isEstimated(span) ? (
+                  <Badge variant="outline" className="font-normal">
+                    Estimated time
+                  </Badge>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>

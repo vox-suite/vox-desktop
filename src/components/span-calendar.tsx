@@ -9,6 +9,7 @@ import {
   displayTitle,
   formatAmount,
   formatTime,
+  isEstimated,
   spanCover,
   spanStyle,
   spanSubtitle,
@@ -172,6 +173,7 @@ function SpanBlock({
   const inset = depth * INDENT_PX;
   const heightPx = Math.max(height * PX_PER_MIN - 2, 22);
   const amount = formatAmount(span);
+  const estimated = isEstimated(span);
   const muted = span.status === "cancelled";
   // Only show time line if height is at least 48px to prevent vertical text collision
   const showTime = heightPx >= 48;
@@ -180,7 +182,7 @@ function SpanBlock({
     <button
       type="button"
       data-no-drag
-      title={`${displayTitle(span)} · ${formatTime(span.start_at)}${
+      title={`${displayTitle(span)}${estimated ? " (estimated)" : ""} · ${formatTime(span.start_at)}${
         span.end_at ? `–${formatTime(span.end_at)}` : ""
       }${amount ? ` · ${amount}` : ""}`}
       onClick={(e) => {
@@ -204,7 +206,7 @@ function SpanBlock({
         backgroundColor: hasChildren
           ? `color-mix(in srgb, ${style.bg} 60%, #111215)`
           : style.bg,
-        border: `1px solid ${style.border}`,
+        border: `1px ${estimated ? "dashed" : "solid"} ${style.border}`,
       }}
     >
       <div className="flex w-full items-center justify-between gap-1 overflow-hidden">
@@ -222,6 +224,7 @@ function SpanBlock({
       {showTime ? (
         <div className="mt-1 flex items-center gap-1.5 overflow-hidden font-mono text-[10px]">
           <span className="truncate" style={{ color: style.subtext }}>
+            {estimated ? "≈ " : ""}
             {formatTime(span.start_at)}
             {span.end_at ? ` – ${formatTime(span.end_at)}` : ""}
           </span>
