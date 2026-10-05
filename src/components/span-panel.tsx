@@ -30,7 +30,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -54,21 +60,46 @@ import type {
   SpanPatch,
   SpanStatus,
 } from "@/features/spans/types";
+import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
 import { formatAmount, spanStyle } from "@/lib/span-format";
 import { cn } from "@/lib/utils";
 
 type Icon = ComponentType<LucideProps>;
 
-const STATUSES: { value: SpanStatus; label: string; icon: Icon; tone: string }[] =
-  [
-    { value: "planned", label: "Planned", icon: CalendarClock, tone: "text-sky-300" },
-    { value: "active", label: "In progress", icon: Activity, tone: "text-amber-300" },
-    { value: "waiting_user", label: "Waiting for you", icon: Hourglass, tone: "text-violet-300" },
-    { value: "done", label: "Done", icon: CheckCircle2, tone: "text-emerald-300" },
-    { value: "failed", label: "Failed", icon: XCircle, tone: "text-red-400" },
-    { value: "cancelled", label: "Cancelled", icon: Ban, tone: "text-zinc-400" },
-  ];
+const STATUSES: {
+  value: SpanStatus;
+  label: string;
+  icon: Icon;
+  tone: string;
+}[] = [
+  {
+    value: "planned",
+    label: "Planned",
+    icon: CalendarClock,
+    tone: "text-sky-300",
+  },
+  {
+    value: "active",
+    label: "In progress",
+    icon: Activity,
+    tone: "text-amber-300",
+  },
+  {
+    value: "waiting_user",
+    label: "Waiting for you",
+    icon: Hourglass,
+    tone: "text-violet-300",
+  },
+  {
+    value: "done",
+    label: "Done",
+    icon: CheckCircle2,
+    tone: "text-emerald-300",
+  },
+  { value: "failed", label: "Failed", icon: XCircle, tone: "text-red-400" },
+  { value: "cancelled", label: "Cancelled", icon: Ban, tone: "text-zinc-400" },
+];
 
 const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
   { value: "todo", label: "To-do", icon: CircleDashed },
@@ -82,6 +113,9 @@ const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
   { value: "reminder", label: "Reminder", icon: Bell },
   { value: "music", label: "Music", icon: Music },
 ];
+
+// The server rejects title/time/status edits for these sources.
+const PROVIDER_OWNED = new Set(["google_calendar", "spotify", "youtube"]);
 
 const SOURCE_LABELS: Record<string, string> = {
   spotify: "Spotify",
@@ -135,7 +169,7 @@ function Row({
   children: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[132px_minmax(0,1fr)] items-start gap-3 py-3">
+    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-3 py-2">
       <div className="flex items-center gap-2 pt-1 text-[13px] text-muted-foreground">
         <RowIcon className="size-3.5 shrink-0" />
         {label}
@@ -145,68 +179,101 @@ function Row({
   );
 }
 
-function DateField({
+function DateTimeField({
   value,
   disabled,
   placeholder,
+  clearable,
   onCommit,
 }: {
   value: string | null | undefined;
   disabled: boolean;
   placeholder: string;
+  clearable?: boolean;
   onCommit: (iso: string | null) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [open, setOpen] = useState(false);
+  const [day, setDay] = useState<Date | undefined>();
+  const [time, setTime] = useState("00:00");
   const shown = value ? formatDate(value) : null;
 
-  const commit = () => {
-    setEditing(false);
-    const next = draft ? new Date(draft).toISOString() : null;
-    if (next !== (value ?? null)) onCommit(next);
+  const onOpenChange = (next: boolean) => {
+    if (next) {
+      const d = value ? new Date(value) : new Date();
+      setDay(d);
+      setTime(toLocalInput(d.toISOString()).slice(11));
+    }
+    setOpen(next);
   };
 
-  if (editing) {
-    return (
-      <Input
-        autoFocus
-        type="datetime-local"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") setEditing(false);
-        }}
-        className="h-8 bg-white/[0.04]"
-      />
-    );
-  }
+  const apply = () => {
+    if (!day) return;
+    const [h, m] = time.split(":").map(Number);
+    const next = new Date(day);
+    next.setHours(h || 0, m || 0, 0, 0);
+    setOpen(false);
+    if (!value || next.getTime() !== new Date(value).getTime()) {
+      onCommit(next.toISOString());
+    }
+  };
+
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        setDraft(toLocalInput(value));
-        setEditing(true);
-      }}
-      className={cn(
-        "group -mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-md px-2 py-1 text-left transition",
-        !disabled && "hover:bg-white/[0.05]",
-      )}
-    >
-      {shown ? (
-        <span className="min-w-0">
-          <span className="font-medium">{shown.date}</span>
-          <span className="text-muted-foreground"> at {shown.time}</span>
-        </span>
-      ) : (
-        <span className="text-muted-foreground">{placeholder}</span>
-      )}
-      {!disabled && (
-        <Pencil className="ml-auto size-3 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-      )}
-    </button>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            "group -mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-md px-2 py-1 text-left transition",
+            !disabled && "hover:bg-white/[0.05]",
+          )}
+        >
+          {shown ? (
+            <span className="min-w-0">
+              <span className="font-medium">{shown.date}</span>
+              <span className="text-muted-foreground"> at {shown.time}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+          {!disabled && (
+            <Pencil className="ml-auto size-3 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={day}
+          onSelect={setDay}
+          defaultMonth={day}
+        />
+        <div className="flex items-center gap-2 bg-white/[0.03] p-3">
+          <Clock className="size-3.5 shrink-0 text-muted-foreground" />
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="h-8 w-32"
+          />
+          {clearable && value ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setOpen(false);
+                onCommit(null);
+              }}
+            >
+              Clear
+            </Button>
+          ) : null}
+          <Button size="sm" className="ml-auto" disabled={!day} onClick={apply}>
+            Set
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -229,7 +296,9 @@ function PanelBody({
   const [busy, setBusy] = useState(false);
 
   const style = spanStyle(span);
-  const calendarOwned = span.source === "google_calendar";
+  const providerOwned = PROVIDER_OWNED.has(span.source);
+  const sourceLabel =
+    SOURCE_LABELS[span.source] ?? span.source.replace(/_/g, " ");
   const status = STATUSES.find((s) => s.value === span.status) ?? STATUSES[0];
   const category = CATEGORIES.find((c) => c.value === span.category);
   const amount = formatAmount(span);
@@ -250,6 +319,37 @@ function PanelBody({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveTime(patch: {
+    start_at?: string | null;
+    end_at?: string | null;
+  }) {
+    // Moving the start carries the end along so the duration is kept.
+    if (
+      patch.start_at &&
+      patch.end_at === undefined &&
+      span.start_at &&
+      span.end_at
+    ) {
+      const length =
+        new Date(span.end_at).getTime() - new Date(span.start_at).getTime();
+      if (length >= 0) {
+        patch = {
+          ...patch,
+          end_at: new Date(
+            new Date(patch.start_at).getTime() + length,
+          ).toISOString(),
+        };
+      }
+    }
+    const start = patch.start_at !== undefined ? patch.start_at : span.start_at;
+    const end = patch.end_at !== undefined ? patch.end_at : span.end_at;
+    if (start && end && new Date(end) < new Date(start)) {
+      setError("End must be after start");
+      return;
+    }
+    await save(patch);
   }
 
   async function commitTitle() {
@@ -294,7 +394,7 @@ function PanelBody({
   }
 
   return (
-    <div className="relative isolate flex min-h-full shrink-0 flex-col gap-6 px-8 pb-10 pt-9">
+    <div className="relative isolate flex min-h-full shrink-0 flex-col gap-4 px-5 pb-6 pt-3">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"
@@ -329,7 +429,7 @@ function PanelBody({
       <SheetHeader className="space-y-0 p-0">
         <div className="flex items-start gap-3">
           <div
-            className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border"
+            className="grid size-7 shrink-0 place-items-center rounded-lg border"
             style={{ background: style.bg, borderColor: style.border }}
           >
             <CategoryIndicator
@@ -338,7 +438,7 @@ function PanelBody({
               dotSizeClass="size-2.5"
             />
           </div>
-          <div className="min-w-0 flex-1 pr-8">
+          <div className="min-w-0 flex-1 pr-9">
             {editingTitle ? (
               <>
                 <SheetTitle className="sr-only">{span.title}</SheetTitle>
@@ -354,7 +454,7 @@ function PanelBody({
                         setEditingTitle(false);
                       }
                     }}
-                    className="h-9 bg-white/[0.04] font-heading text-base"
+                    className="h-7 bg-white/[0.04] font-heading text-base"
                   />
                   <Button
                     size="icon-sm"
@@ -379,10 +479,10 @@ function PanelBody({
               </>
             ) : (
               <div className="flex items-start gap-1.5">
-                <SheetTitle className="font-heading text-xl leading-snug">
+                <SheetTitle className="font-heading text-lg leading-7">
                   {span.title}
                 </SheetTitle>
-                {!calendarOwned && (
+                {!providerOwned && (
                   <Button
                     size="icon-xs"
                     variant="ghost"
@@ -409,17 +509,17 @@ function PanelBody({
         </SheetDescription>
       </SheetHeader>
 
-      {calendarOwned && (
+      {providerOwned && (
         <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-muted-foreground">
-          Title, time and status are managed by Google Calendar. You can edit
+          Title, time and status are managed by {sourceLabel}. You can edit
           notes, category and collections.
         </p>
       )}
 
-      <div className="divide-y divide-white/[0.06] border-y border-white/[0.06]">
+      <div className="flex flex-col">
         <Row icon={status.icon} label="Status">
           <Select
-            disabled={calendarOwned || busy}
+            disabled={providerOwned || busy}
             value={span.status}
             onValueChange={(v) => v && void save({ status: v as SpanStatus })}
           >
@@ -470,20 +570,21 @@ function PanelBody({
         </Row>
 
         <Row icon={Clock} label="Start">
-          <DateField
+          <DateTimeField
             value={span.start_at}
-            disabled={calendarOwned || busy}
+            disabled={providerOwned || busy}
             placeholder="Add start"
-            onCommit={(iso) => void save({ start_at: iso })}
+            onCommit={(iso) => void saveTime({ start_at: iso })}
           />
         </Row>
 
         <Row icon={Clock} label="End">
-          <DateField
+          <DateTimeField
+            clearable
             value={span.end_at}
-            disabled={calendarOwned || busy}
+            disabled={providerOwned || busy}
             placeholder="No end time"
-            onCommit={(iso) => void save({ end_at: iso })}
+            onCommit={(iso) => void saveTime({ end_at: iso })}
           />
         </Row>
 
@@ -495,9 +596,7 @@ function PanelBody({
 
         <Row icon={Layers} label="Source">
           <span className="flex items-center gap-2">
-            <span className="capitalize">
-              {SOURCE_LABELS[span.source] ?? span.source.replace(/_/g, " ")}
-            </span>
+            <span className="capitalize">{sourceLabel}</span>
           </span>
         </Row>
 
@@ -574,12 +673,13 @@ export function SpanPanel({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const outsideGuard = useOutsideGuard();
   return (
     <Sheet open={!!span} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
         overlay={false}
-        onInteractOutside={(e) => e.preventDefault()}
+        onInteractOutside={outsideGuard}
         className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg"
       >
         {span ? (

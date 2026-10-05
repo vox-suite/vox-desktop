@@ -35,6 +35,7 @@ import wizLogo from "@/assets/brands/wiz.svg";
 import { WizConnectionPanel } from "@/components/wiz-connection-panel";
 import type { WizStatus } from "@/platform/ports";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
 import { takeoutHtmlToHistory } from "@/lib/takeout-history";
 import {
@@ -215,6 +216,7 @@ export function ConnectedAppsView() {
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status>("all");
+  const outsideGuard = useOutsideGuard();
   const searchInput = useRef<HTMLInputElement>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const historyInput = useRef<HTMLInputElement>(null);
@@ -732,7 +734,7 @@ export function ConnectedAppsView() {
         <SheetContent
           side="right"
           overlay={false}
-          onInteractOutside={(e) => e.preventDefault()}
+          onInteractOutside={outsideGuard}
           className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg"
         >
           {openApp && openBrand && (
