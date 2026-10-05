@@ -270,12 +270,9 @@ export function daysFrom(start: Date, count: number): Date[] {
 }
 
 export function displayTitle(span: Span): string {
-  if (span.source !== "playstation") return span.title;
-  const title = span.title.replace(/^PlayStation:\s*/, "");
-  const marker = (span.data as { marker?: string } | undefined)?.marker;
-  if (marker === "first_played") return `${title} · first played`;
-  if (marker === "last_played") return `${title} · last played`;
-  return title;
+  return span.source === "playstation"
+    ? span.title.replace(/^PlayStation:\s*/, "")
+    : span.title;
 }
 
 type Loose = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
