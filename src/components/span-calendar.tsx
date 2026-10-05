@@ -14,7 +14,9 @@ import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
 
-const HOUR_PX = 56;
+const HOUR_PX = 72;
+const QUARTER_PX = HOUR_PX / 4;
+const INSTANT_HEIGHT_PX = 26;
 const PX_PER_MIN = HOUR_PX / 60;
 const INDENT_PX = 10;
 const GUTTER_PX = 54;
@@ -55,7 +57,7 @@ function SpanBlock({
       className={cn(
         "group absolute overflow-hidden text-left transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
         instant
-          ? "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
+          ? "flex items-center gap-2 rounded-full px-3 py-0.5 shadow-md backdrop-blur-md hover:scale-[1.02] hover:brightness-125"
           : cn(
               "flex flex-col rounded-lg shadow-md hover:brightness-125",
               showTime ? "justify-between p-2.5" : "justify-center px-2 py-1",
@@ -67,7 +69,7 @@ function SpanBlock({
       )}
       style={{
         top: top * PX_PER_MIN + 2,
-        height: instant ? 22 : heightPx,
+        height: instant ? INSTANT_HEIGHT_PX : heightPx,
         left: `calc(${left * 100}% + ${inset + 3}px)`,
         width: instant
           ? "fit-content"
@@ -85,7 +87,7 @@ function SpanBlock({
       {instant ? (
         <>
           <CategoryIndicator span={span} color={style.dot} dotSizeClass="size-1.5" />
-          <span className="truncate text-[11px] font-medium text-foreground">
+          <span className="truncate text-[12.5px] font-medium leading-none text-foreground">
             {span.title}
           </span>
           {amount ? (
@@ -270,6 +272,19 @@ export function SpanCalendar({
                 })}
               </span>
             ))}
+            {Array.from({ length: 24 * 3 }, (_, i) => {
+              const hour = Math.floor(i / 3);
+              const minute = ((i % 3) + 1) * 15;
+              return (
+                <span
+                  key={`q${i}`}
+                  className="absolute right-3 -translate-y-1/2 font-mono text-[8.5px] text-muted-foreground/45 select-none"
+                  style={{ top: hour * HOUR_PX + (minute / 15) * QUARTER_PX }}
+                >
+                  :{minute}
+                </span>
+              );
+            })}
           </div>
 
           {/* Days Columns */}
@@ -283,7 +298,7 @@ export function SpanCalendar({
                   today && "bg-muted/30",
                 )}
                 style={{
-                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.035) ${HOUR_PX - 1}px, rgba(255,255,255,0.035) ${HOUR_PX}px)`,
+                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgba(255,255,255,0.09) ${HOUR_PX - 1}px, rgba(255,255,255,0.09) ${HOUR_PX}px), repeating-linear-gradient(to bottom, transparent 0, transparent ${QUARTER_PX - 1}px, rgba(255,255,255,0.035) ${QUARTER_PX - 1}px, rgba(255,255,255,0.035) ${QUARTER_PX}px)`,
                 }}
               >
                 {placed.map((p) => (
