@@ -129,7 +129,7 @@ const KNOWN_CONNECTORS: Connector[] = [
     id: "spotify",
     name: "Spotify",
     description:
-      "Bring your recently played music and playlists into conversations with Vox.",
+      "Add your recently played music to your timeline and conversations with Vox.",
     supported_features: [],
     auth_type: "oauth2",
     available: false,
@@ -1012,9 +1012,7 @@ export function ConnectedAppsView() {
                   {personalData?.data?.playlists && (
                     <div className="space-y-3">
                       <h3 className="text-sm font-medium">
-                        {openId === "spotify"
-                          ? "Your Spotify playlists"
-                          : "Your YouTube playlists"}
+                        Your YouTube playlists
                       </h3>
                       <ul className="space-y-2 text-sm">
                         {personalData.data.playlists
