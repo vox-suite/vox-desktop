@@ -9,7 +9,10 @@ import type {
 
 export const pulseApi = {
   listSchemas: () =>
-    platform().http.request<Schema[]>({ method: "GET", path: "/v1/me/schemas" }),
+    platform().http.request<Schema[]>({
+      method: "GET",
+      path: "/v1/me/schemas",
+    }),
   suggestCharts: (schemaIds: string[]) =>
     platform().http.request<ChartSuggestion[]>({
       method: "POST",
@@ -36,5 +39,59 @@ export const pulseApi = {
     platform().http.request<ChartDataResult[]>({
       method: "GET",
       path: `/v1/me/charts/boards/${id}/data`,
+    }),
+};
+
+import type {
+  CanvasResponse,
+  DiscoveryResponse,
+  Measurement,
+  PulseDefinition,
+  PulseResult,
+  SavedPulseChart,
+} from "./discovery-types";
+export const pulseTimezone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone;
+export const discoveryApi = {
+  getCanvas: (refresh = false, cursor?: string) =>
+    platform().http.request<CanvasResponse>({
+      method: "GET",
+      path: "/v1/me/pulse/canvas",
+      query: {
+        timezone: pulseTimezone(),
+        refresh: String(refresh),
+        ...(cursor ? { cursor } : {}),
+      },
+    }),
+  listMeasurements: () =>
+    platform().http.request<Measurement[]>({
+      method: "GET",
+      path: "/v1/me/pulse/measurements",
+      query: { timezone: pulseTimezone() },
+    }),
+  discover: (refresh = false) =>
+    platform().http.request<DiscoveryResponse>({
+      method: "POST",
+      path: "/v1/me/pulse/suggestions",
+      body: { timezone: pulseTimezone(), refresh },
+      timeoutMs: 45000,
+    }),
+  preview: (definition: PulseDefinition) =>
+    platform().http.request<PulseResult>({
+      method: "POST",
+      path: "/v1/me/pulse/preview",
+      body: definition,
+    }),
+  save: (title: string, definition: PulseDefinition, idempotencyKey: string) =>
+    platform().http.request<SavedPulseChart>({
+      method: "POST",
+      path: "/v1/me/pulse/charts",
+      body: { title, definition, idempotency_key: idempotencyKey },
+    }),
+  dismiss: (definition: PulseDefinition) =>
+    platform().http.request<void>({
+      method: "POST",
+      path: "/v1/me/pulse/dismissals",
+      body: definition,
     }),
 };

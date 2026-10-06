@@ -1020,6 +1020,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/connections/maps_timeline/history/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_maps_timeline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/connections/setup/{id}/cancel": {
         parameters: {
             query?: never;
@@ -1068,6 +1084,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/connections/youtube/history/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_youtube_history"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/connections/{id}/disconnect": {
         parameters: {
             query?: never;
@@ -1100,6 +1132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/connections/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["read_personal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/connections/{id}/refresh": {
         parameters: {
             query?: never;
@@ -1126,6 +1174,102 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["list_connectors"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/canvas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_canvas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/dismissals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dismiss"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_measurements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pulse/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["discover"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1542,6 +1686,14 @@ export interface components {
     schemas: {
         /** @enum {string} */
         Aggregation: "sum" | "count" | "avg" | "min" | "max";
+        /** @enum {string} */
+        Bucket: "day" | "week" | "month";
+        CanvasResponse: {
+            charts: components["schemas"]["SavedPulseChart"][];
+            legacy_boards: unknown[];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
         Chart: {
             /** Format: uuid */
             board_id: string;
@@ -1701,6 +1853,21 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        DiscoveryInput: {
+            refresh?: boolean;
+            timezone: string;
+        };
+        DiscoveryResponse: {
+            /** Format: date-time */
+            computed_at: string;
+            connections: components["schemas"]["PulseConnection"][];
+            /** Format: int32 */
+            profiled_days: number;
+            /** Format: int64 */
+            record_count: number;
+            source_count: number;
+            suggestions: components["schemas"]["PulseSuggestion"][];
+        };
         ErrorResponse: {
             code: string;
             details?: Record<string, never>;
@@ -1719,6 +1886,23 @@ export interface components {
             /** Format: int64 */
             limit?: number | null;
         };
+        Measurement: {
+            buckets: components["schemas"]["Bucket"][];
+            default_dimension?: string | null;
+            description: string;
+            dimensions: string[];
+            field?: string | null;
+            id: string;
+            kind: components["schemas"]["MeasurementKind"];
+            profile: components["schemas"]["SourceProfile"];
+            quality: string;
+            /** Format: double */
+            scale: number;
+            title: string;
+            unit: string;
+        };
+        /** @enum {string} */
+        MeasurementKind: "event_count" | "numeric_sum" | "numeric_average" | "known_interval_duration" | "recurring_cost_projection";
         NewSpan: {
             category?: string | null;
             collection_ids?: string[];
@@ -1750,6 +1934,53 @@ export interface components {
             assistant_read?: boolean | null;
             sync_timeline?: boolean | null;
         };
+        PulseConnection: {
+            assistant_read: boolean;
+            authorization_state: string;
+            connector_id: string;
+            /** Format: date-time */
+            last_synced_at?: string | null;
+            sync_timeline: boolean;
+        };
+        PulseDefinition: {
+            bucket?: null | components["schemas"]["Bucket"];
+            chart_type: components["schemas"]["ChartType"];
+            dimension?: string | null;
+            measurement_id: string;
+            /** Format: int32 */
+            period_days: number;
+            timezone: string;
+            /** Format: int32 */
+            version: number;
+        };
+        PulsePoint: {
+            label: string;
+            /** Format: double */
+            value?: number | null;
+        };
+        PulseResult: {
+            /** Format: date-time */
+            computed_at: string;
+            /** Format: date-time */
+            data_as_of?: string | null;
+            description: string;
+            error?: string | null;
+            points: components["schemas"]["PulsePoint"][];
+            quality: string;
+            /** Format: int64 */
+            record_count: number;
+            source: string;
+            /** Format: int64 */
+            undated_count: number;
+            unit: string;
+        };
+        PulseSuggestion: {
+            definition: components["schemas"]["PulseDefinition"];
+            measurement: components["schemas"]["Measurement"];
+            preview: components["schemas"]["PulseResult"];
+            reason: string;
+            title: string;
+        };
         QuerySpec: {
             aggregation: components["schemas"]["Aggregation"];
             group_by: string;
@@ -1775,6 +2006,21 @@ export interface components {
         };
         /** @enum {string} */
         RunState: "idle" | "running" | "failed";
+        SavePulseInput: {
+            definition: components["schemas"]["PulseDefinition"];
+            /** Format: uuid */
+            idempotency_key: string;
+            title: string;
+        };
+        SavedPulseChart: {
+            /** Format: date-time */
+            created_at: string;
+            definition: components["schemas"]["PulseDefinition"];
+            /** Format: uuid */
+            id: string;
+            result?: null | components["schemas"]["PulseResult"];
+            title: string;
+        };
         /** @enum {string} */
         SchemaState: "active" | "deprecated";
         SendSpaceChatInput: {
@@ -1785,6 +2031,32 @@ export interface components {
             connection_id?: string | null;
             error?: string | null;
             status: string;
+        };
+        SourceProfile: {
+            action: string;
+            category: string;
+            /** Format: uuid */
+            connection_id?: string | null;
+            /** Format: int64 */
+            count: number;
+            currency: string;
+            /** Format: int64 */
+            dated_count: number;
+            fields: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            first_at?: string | null;
+            key: string;
+            /** Format: int64 */
+            known_intervals: number;
+            /** Format: date-time */
+            last_at?: string | null;
+            samples: unknown[];
+            /** Format: uuid */
+            schema_id?: string | null;
+            source: string;
+            timing: string;
         };
         Space: {
             agent_spec: unknown;
@@ -1964,6 +2236,10 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             token: string;
+        };
+        YouTubeHistoryImportRequest: {
+            consent: boolean;
+            history: unknown;
         };
     };
     responses: never;
@@ -2270,6 +2546,29 @@ export interface operations {
             };
         };
     };
+    import_maps_timeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["YouTubeHistoryImportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     cancel_setup: {
         parameters: {
             query?: never;
@@ -2333,6 +2632,29 @@ export interface operations {
             };
         };
     };
+    import_youtube_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["YouTubeHistoryImportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     disconnect_connection: {
         parameters: {
             query?: never;
@@ -2377,6 +2699,27 @@ export interface operations {
             };
         };
     };
+    read_personal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     refresh_connection: {
         parameters: {
             query?: never;
@@ -2413,6 +2756,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConnectorDescriptor"][];
+                };
+            };
+        };
+    };
+    get_canvas: {
+        parameters: {
+            query: {
+                timezone: string;
+                refresh?: boolean;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CanvasResponse"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePulseInput"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedPulseChart"];
+                };
+            };
+        };
+    };
+    dismiss: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PulseDefinition"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_measurements: {
+        parameters: {
+            query: {
+                timezone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Measurement"][];
+                };
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PulseDefinition"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PulseResult"];
+                };
+            };
+        };
+    };
+    discover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoveryInput"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveryResponse"];
                 };
             };
         };

@@ -1,139 +1,141 @@
 import { useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  ArrowRight,
-  BarChart3,
-  Calendar,
-  Plus,
-  RotateCw,
-} from "lucide-react";
+import { ArrowRight, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useChartBoards } from "@/hooks/use-chart-boards";
-import { BoardView } from "@/components/pulse/board-view";
-import { CreateBoardFlow } from "@/components/pulse/create-board-flow";
-
+import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
+import { BoardView } from "./board-view";
+import { AddPulseDialog } from "./add-pulse-dialog";
+import { PulseChartCard } from "./chart-card";
 export function PulseView() {
-  const { boards, loading, error, reload } = useChartBoards();
-  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
-  const [showCreateFlow, setShowCreateFlow] = useState(false);
-
-  if (selectedBoardId) {
+  const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
+  const [adding, setAdding] = useState(false);
+  const [boardId, setBoardId] = useState<string | null>(null);
+  if (boardId)
     return (
       <BoardView
-        boardId={selectedBoardId}
+        boardId={boardId}
         onBack={() => {
-          setSelectedBoardId(null);
+          setBoardId(null);
           void reload();
         }}
       />
     );
-  }
-
+  const empty =
+    canvas?.charts.length === 0 && canvas.legacy_boards.length === 0;
   return (
-    <div className="flex flex-col h-full w-full overflow-y-auto bg-background p-4 text-foreground sm:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-foreground" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Pulse Analytics
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Revisitable visual boards and pattern analytics from your tracked categories
-          </p>
-        </div>
-
-        <Button
-          onClick={() => setShowCreateFlow(true)}
-          className="bg-primary text-black hover:bg-primary gap-1.5 shadow-sm"
+    <div className="flex h-full w-full flex-col overflow-y-auto bg-background p-4 text-foreground sm:p-6">
+      {loading && !canvas ? (
+        <div
+          role="status"
+          aria-label="Loading Pulse"
+          className="flex flex-1 items-center justify-center"
         >
-          <Plus className="h-4 w-4" />
-          <span>New Board</span>
-        </Button>
-      </div>
-
-      {loading && boards.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-20 text-muted-foreground">
-          <RotateCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <RotateCw className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
-      ) : error ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-20 text-center text-destructive">
-          <AlertTriangle className="h-8 w-8 mb-2" />
-          <p className="text-sm font-semibold">Failed to load boards</p>
-          <p className="text-xs text-muted-foreground mt-1">{error}</p>
-        </div>
-      ) : boards.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-24 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-card border border-border text-muted-foreground mb-4 shadow-inner">
-            <Activity className="h-7 w-7 text-foreground" />
-          </div>
-          <h2 className="text-base font-semibold text-muted-foreground">
-            No boards yet
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            Create your first Pulse board to get AI-suggested charts tailored to
-            your real data shapes and categories.
-          </p>
-          <Button
-            onClick={() => setShowCreateFlow(true)}
-            className="mt-5 bg-primary text-black hover:bg-primary gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Board</span>
+      ) : error && !canvas ? (
+        <div
+          role="alert"
+          className="flex flex-1 flex-col items-center justify-center gap-3"
+        >
+          <p className="text-sm text-muted-foreground">Could not load Pulse.</p>
+          <p className="text-xs text-destructive">{error}</p>
+          <Button variant="outline" onClick={() => void reload()}>
+            Retry
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {boards.map((board) => {
-            const count = board.chart_count;
-
-            return (
-              <Card
-                key={board.id}
-                onClick={() => setSelectedBoardId(board.id)}
-                className="group flex flex-col justify-between cursor-pointer border border-border bg-card p-5 transition-all duration-200 hover:border-border hover:bg-accent shadow-sm"
+        <>
+          <div
+            className={
+              empty
+                ? "flex flex-1 items-center justify-center"
+                : "mb-5 flex items-center justify-between"
+            }
+          >
+            {!empty && <h1 className="text-lg font-medium">Pulse</h1>}
+            <div className="flex items-center gap-2">
+              {!empty && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Refresh charts"
+                  disabled={refreshing}
+                  onClick={() => void reload(true)}
+                >
+                  <RotateCw
+                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Add to Pulse"
+                className={empty ? "h-12 w-12 rounded-full" : ""}
+                onClick={() => setAdding(true)}
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
-                      {board.name}
-                    </h3>
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground group-hover:bg-primary group-hover:text-black transition-all">
-                      <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                <Plus className={empty ? "h-5 w-5" : "h-4 w-4"} />
+              </Button>
+            </div>
+          </div>
+          {error && (
+            <p role="alert" className="mb-4 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {canvas?.charts.map((chart) => (
+              <PulseChartCard
+                key={chart.id}
+                title={chart.title}
+                definition={chart.definition}
+                result={chart.result}
+              />
+            ))}
+          </div>
+          {canvas?.next_cursor && (
+            <Button
+              variant="outline"
+              className="mx-auto mt-4"
+              disabled={refreshing}
+              onClick={() =>
+                void reload(false, canvas.next_cursor ?? undefined)
+              }
+            >
+              Load more
+            </Button>
+          )}
+          {!!canvas?.legacy_boards.length && (
+            <div className="mt-6">
+              <p className="mb-3 text-xs text-muted-foreground">Your boards</p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {canvas.legacy_boards.map((board) => (
+                  <button
+                    key={board.id}
+                    onClick={() => setBoardId(board.id)}
+                    className="flex items-center justify-between rounded-lg border border-border p-4 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                  >
                     <span>
-                      {count} {count === 1 ? "chart" : "charts"}
+                      <span className="block text-sm font-medium">
+                        {board.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {board.chart_count} charts
+                      </span>
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {new Date(board.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
-
-      {showCreateFlow && (
-        <CreateBoardFlow
-          onClose={() => setShowCreateFlow(false)}
-          onCreated={(boardId) => {
-            setShowCreateFlow(false);
-            void reload();
-            setSelectedBoardId(boardId);
+      {adding && (
+        <AddPulseDialog
+          onClose={() => setAdding(false)}
+          onSaved={() => {
+            setAdding(false);
+            void reload(true);
           }}
         />
       )}

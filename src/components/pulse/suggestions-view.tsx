@@ -1,0 +1,198 @@
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { discoveryApi } from "@/features/pulse/api";
+import type {
+  DiscoveryResponse,
+  PulseSuggestion,
+} from "@/features/pulse/discovery-types";
+import { PulseChartCard } from "./chart-card";
+import { ChartEditor } from "./chart-editor";
+export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
+  const [response, setResponse] = useState<DiscoveryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState<PulseSuggestion | null>(null);
+  const active = useRef(true);
+  async function load(refresh: boolean) {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await discoveryApi.discover(refresh);
+      if (active.current) setResponse(data);
+    } catch (e) {
+      if (active.current) setError(String(e));
+    } finally {
+      if (active.current) setLoading(false);
+    }
+  }
+  useEffect(() => {
+    active.current = true;
+    queueMicrotask(() => void load(false));
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  async function dismiss(s: PulseSuggestion) {
+    try {
+      await discoveryApi.dismiss(s.definition);
+      setResponse((current) =>
+        current
+          ? {
+              ...current,
+              suggestions: current.suggestions.filter(
+                (item) => item.definition !== s.definition,
+              ),
+            }
+          : current,
+      );
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+  if (editing)
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>
+          <ArrowLeft className="h-3 w-3" />
+          Suggestions
+        </Button>
+        <ChartEditor
+          initialDefinition={editing.definition}
+          initialPreview={editing.preview}
+          initialTitle={editing.title}
+          measurement={editing.measurement}
+          onSaved={onSaved}
+        />
+      </div>
+    );
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-xs text-muted-foreground">
+          {response
+            ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data sources.`
+            : "Looking through your activity and connections…"}
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Refresh suggestions"
+          disabled={loading}
+          onClick={() => void load(true)}
+        >
+          <RotateCw
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+          />
+        </Button>
+      </div>
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 text-xs text-destructive"
+        >
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => void load(false)}>
+            Retry
+          </Button>
+        </div>
+      )}
+      {loading && !response && (
+        <p
+          role="status"
+          className="py-12 text-center text-sm text-muted-foreground"
+        >
+          Finding charts your data can support…
+        </p>
+      )}
+      {response && response.suggestions.length === 0 && (
+        <div className="py-8 text-sm text-muted-foreground">
+          <p>No new charts with enough recorded data yet.</p>
+          <p className="mt-2 text-xs">
+            Sync your connected apps or add dated entries. Saved and dismissed
+            charts are excluded.
+          </p>
+          {response.connections.length > 0 && (
+            <p className="mt-3 text-xs">
+              Connections:{" "}
+              {response.connections
+                .map(
+                  (c) =>
+                    `${c.connector_id.replaceAll("_", " ")}${c.authorization_state !== "authorized" ? " (reconnect needed)" : !c.sync_timeline || !c.assistant_read ? " (capture or read access off)" : ""}`,
+                )
+                .join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {response?.suggestions.map((s) => (
+          <Suggestion
+            key={s.definition.measurement_id + JSON.stringify(s.definition)}
+            suggestion={s}
+            onSaved={onSaved}
+            onEdit={() => setEditing(s)}
+            onDismiss={() => void dismiss(s)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+function Suggestion({
+  suggestion: s,
+  onSaved,
+  onEdit,
+  onDismiss,
+}: {
+  suggestion: PulseSuggestion;
+  onSaved: () => void;
+  onEdit: () => void;
+  onDismiss: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const key = useRef(crypto.randomUUID());
+  const inFlight = useRef(false);
+  async function save() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      await discoveryApi.save(s.title, s.definition, key.current);
+      onSaved();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      inFlight.current = false;
+      setSaving(false);
+    }
+  }
+  return (
+    <PulseChartCard
+      title={s.title}
+      definition={s.definition}
+      result={s.preview}
+      source={s.measurement.profile.source}
+    >
+      <p className="mb-3 text-xs text-muted-foreground">{s.reason}</p>
+      {error && (
+        <p role="alert" className="mb-2 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" disabled={saving} onClick={() => void save()}>
+          {saving ? "Adding…" : "Add to Pulse"}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={saving} onClick={onEdit}>
+          Customize
+        </Button>
+        <Button variant="ghost" size="sm" disabled={saving} onClick={onDismiss}>
+          Dismiss
+        </Button>
+      </div>
+    </PulseChartCard>
+  );
+}
