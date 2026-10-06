@@ -13,17 +13,32 @@ export function CreatePulsePage({
 }) {
   const [mode, setMode] = useState<"ask" | "suggestions">("suggestions");
   return (
-    <section
-      className="pulse-surface pulse-create h-full overflow-y-auto"
-      aria-label="Create a Pulse chart"
-    >
-      <div className="pulse-create-inner">
-        <Button variant="ghost" className="pulse-back" onClick={onClose}>
-          <ArrowLeft size={15} /> Back to Pulse
-        </Button>
-        <div className="flex items-center justify-between py-6">
-          <h1 className="text-xl font-medium">Add a chart</h1>
-          <div className="pulse-seg" role="group" aria-label="Chart creation options">
+    <div className="pulse-surface relative h-full overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-96"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 100% at 100% 0%, #3ecf8e55 0%, #3ecf8e22 40%, #3ecf8e0a 65%, transparent 85%)",
+        }}
+      />
+      <section
+        className="pulse-create relative h-full overflow-y-auto"
+        aria-label="Create a Pulse chart"
+      >
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-background/70 px-6 py-3 backdrop-blur">
+          <div className="flex items-center gap-2 text-sm">
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <ArrowLeft size={15} /> Pulse
+            </Button>
+            <span className="text-muted-foreground">/</span>
+            <h1 className="font-medium">Add a chart</h1>
+          </div>
+          <div
+            className="pulse-seg"
+            role="group"
+            aria-label="Chart creation options"
+          >
             <button
               aria-pressed={mode === "suggestions"}
               onClick={() => setMode("suggestions")}
@@ -37,16 +52,18 @@ export function CreatePulsePage({
               Ask Pulse
             </button>
           </div>
+        </header>
+        <div className="pulse-create-inner" style={{ paddingTop: 24 }}>
+          <div className="pulse-create-content">
+            {mode === "ask" ? (
+              <AskView onSaved={onSaved} />
+            ) : (
+              <SuggestionsView onSaved={onSaved} />
+            )}
+          </div>
         </div>
-        <div className="pulse-create-content">
-          {mode === "ask" ? (
-            <AskView onSaved={onSaved} />
-          ) : (
-            <SuggestionsView onSaved={onSaved} />
-          )}
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 

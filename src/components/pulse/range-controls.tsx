@@ -69,7 +69,7 @@ export function RangeControls({
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
-      {buckets.length > 1 && (
+      {buckets.length > 1 && definition.chart_type !== "stat" && (
         <div className="pulse-seg" role="group" aria-label="Group by">
           {buckets.map((b) => (
             <button
