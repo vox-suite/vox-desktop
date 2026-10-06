@@ -91,7 +91,7 @@ export function ChartEditor({
     }
   }
   return (
-    <div className="space-y-4">
+    <div className="pulse-editor">
       <label className="block space-y-1 text-xs">
         <span>Chart name</span>
         <Input
@@ -104,7 +104,7 @@ export function ChartEditor({
           }}
         />
       </label>
-      <div className="flex flex-wrap gap-3">
+      <div className="pulse-editor-fields">
         <label className="flex flex-col gap-1 text-xs">
           Group by
           <select
@@ -192,7 +192,10 @@ export function ChartEditor({
           </select>
         </label>
       </div>
-      <div aria-busy={loading} className={loading ? "opacity-50" : ""}>
+      <div
+        aria-busy={loading}
+        className={`pulse-editor-preview ${loading ? "opacity-50" : ""}`}
+      >
         <PulseChartCard
           title={title || measurement.title}
           definition={definition}
@@ -213,7 +216,9 @@ export function ChartEditor({
           !preview ||
           !title.trim() ||
           Boolean(preview.error) ||
-          !preview.points.some((p) => p.value !== null)
+          !preview.points.some(
+            (p) => typeof p.value === "number" && Number.isFinite(p.value),
+          )
         }
       >
         {saving ? "Adding…" : loading ? "Loading preview…" : "Add to Pulse"}

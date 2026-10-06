@@ -1,0 +1,319 @@
+.pulse-surface {
+  --background: #202221;
+  --foreground: #eeeeeb;
+  --card: #111312;
+  --card-foreground: #eeeeeb;
+  --muted: #252826;
+  --muted-foreground: #a0a6a2;
+  --border: #343835;
+  --input: #404642;
+  --primary: #52e2ac;
+  --primary-foreground: #10261c;
+  --accent: #303a34;
+  --accent-foreground: #eeeeeb;
+  color: var(--foreground);
+  background: var(--background);
+  color-scheme: dark;
+}
+.pulse-create-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 30px 42px 64px;
+}
+.pulse-back {
+  color: #b3b9b5;
+  margin-left: -12px;
+}
+.pulse-create-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 42px 0 35px;
+}
+.pulse-create-heading h1 {
+  font-size: clamp(28px, 3.2vw, 44px);
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  line-height: 1.15;
+}
+.pulse-create-heading p {
+  margin-top: 18px;
+  color: #a0a6a2;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.pulse-orbit {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  flex-shrink: 0;
+}
+.pulse-orbit svg {
+  width: 100%;
+  height: 100%;
+}
+.pulse-orbit > svg:last-child {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  inset: calc(50% - 13.5px);
+  color: #52e2ac;
+}
+.pulse-create-navigation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 34px;
+}
+.pulse-create-navigation button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  padding: 20px 22px;
+  border: 1px solid #3b413d;
+  border-radius: 12px;
+  background: #262926;
+  cursor: pointer;
+}
+.pulse-create-navigation button.is-selected {
+  border-color: #52e2ac;
+  background: #26392e;
+}
+.pulse-create-navigation button > svg:first-child {
+  color: #52e2ac;
+}
+.pulse-create-navigation button > svg:last-child {
+  margin-left: auto;
+  color: #a0a6a2;
+}
+.pulse-create-navigation strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.pulse-create-navigation small {
+  display: block;
+  margin-top: 5px;
+  color: #a0a6a2;
+  font-size: 12px;
+}
+.pulse-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
+  align-items: start;
+  gap: 22px;
+}
+.pulse-chart {
+  min-width: 0;
+  border: 1px solid #111312;
+  border-radius: 13px;
+  background: #111312;
+  padding: 4px;
+  color: #eeeeeb;
+  overflow: hidden;
+}
+.pulse-chart-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px 17px;
+}
+.pulse-source-icon {
+  width: 31px;
+  height: 31px;
+  border: 1px dashed #515752;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #d5dad6;
+}
+.pulse-chart-header h3 {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.pulse-chart-header p {
+  color: #969d97;
+  font-size: 11px;
+  margin-top: 3px;
+}
+.pulse-chart-body {
+  border-radius: 9px;
+  background: #1d201e;
+  padding: 17px 16px 14px;
+}
+.pulse-chart-stat {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 21px;
+}
+.pulse-chart-stat strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 25px;
+  font-weight: 400;
+  letter-spacing: -1px;
+}
+.pulse-chart-stat span {
+  color: #52e2ac;
+  font-size: 11px;
+}
+.pulse-chart-foot {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #a0a6a2;
+  line-height: 1.7;
+}
+.pulse-chart-foot summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.pulse-chart-foot details p {
+  margin-top: 8px;
+}
+.pulse-chart-actions {
+  border-top: 1px solid #343835;
+  padding-top: 13px;
+  margin-top: 14px;
+}
+.pulse-legend {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.pulse-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a0a6a2;
+}
+.pulse-legend-row i {
+  height: 7px;
+  width: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.pulse-legend-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pulse-legend-row b {
+  margin-left: auto;
+  font-weight: 400;
+  color: #eeeeeb;
+}
+.pulse-measurements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.pulse-measurements button {
+  padding: 18px;
+  text-align: left;
+  border: 1px solid #3b413d;
+  background: #272b28;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.pulse-measurements button[aria-pressed="true"] {
+  border-color: #52e2ac;
+  background: #26392e;
+}
+.pulse-measurements strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+.pulse-measurements small {
+  display: block;
+  color: #a0a6a2;
+  margin-top: 7px;
+  font-size: 11px;
+}
+.pulse-surface button:focus-visible,
+.pulse-surface select:focus-visible,
+.pulse-surface summary:focus-visible {
+  outline: 2px solid #52e2ac;
+  outline-offset: 4px;
+}
+@media (max-width: 640px) {
+  .pulse-create-inner {
+    padding: 18px 20px 36px;
+  }
+  .pulse-create-heading {
+    padding: 32px 0;
+  }
+  .pulse-create-heading h1 {
+    letter-spacing: -1px;
+  }
+  .pulse-orbit {
+    display: none;
+  }
+  .pulse-create-navigation {
+    gap: 10px;
+  }
+  .pulse-create-navigation button {
+    padding: 16px 12px;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .pulse-create-navigation button > svg:last-child {
+    display: none;
+  }
+  .pulse-create-navigation small {
+    line-height: 1.5;
+  }
+}
+.pulse-editor {
+  display: grid;
+  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr);
+  column-gap: 42px;
+  row-gap: 20px;
+  align-items: start;
+  padding-top: 22px;
+}
+.pulse-editor > label {
+  grid-column: 1;
+  grid-row: 1;
+}
+.pulse-editor-fields {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  gap: 20px;
+}
+.pulse-editor-fields select {
+  height: 42px;
+  margin-top: 4px;
+}
+.pulse-editor-preview {
+  grid-column: 2;
+  grid-row: 1 / span 4;
+  max-width: 480px;
+  width: 100%;
+}
+.pulse-editor > p {
+  grid-column: 1;
+}
+.pulse-editor > button {
+  grid-column: 1;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .pulse-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .pulse-editor > label,
+  .pulse-editor-fields {
+    width: 100%;
+  }
+}

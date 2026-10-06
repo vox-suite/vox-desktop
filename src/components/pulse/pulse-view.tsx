@@ -3,12 +3,23 @@ import { ArrowRight, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { BoardView } from "./board-view";
-import { AddPulseDialog } from "./add-pulse-dialog";
+import { CreatePulsePage } from "./create-pulse-page";
+import "./pulse.css";
 import { PulseChartCard } from "./chart-card";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const [adding, setAdding] = useState(false);
   const [boardId, setBoardId] = useState<string | null>(null);
+  if (adding)
+    return (
+      <CreatePulsePage
+        onClose={() => setAdding(false)}
+        onSaved={() => {
+          setAdding(false);
+          void reload(true);
+        }}
+      />
+    );
   if (boardId)
     return (
       <BoardView
@@ -22,7 +33,7 @@ export function PulseView() {
   const empty =
     canvas?.charts.length === 0 && canvas.legacy_boards.length === 0;
   return (
-    <div className="flex h-full w-full flex-col overflow-y-auto bg-background p-4 text-foreground sm:p-6">
+    <div className="pulse-surface flex h-full w-full flex-col overflow-y-auto p-4 sm:p-6">
       {loading && !canvas ? (
         <div
           role="status"
@@ -82,7 +93,7 @@ export function PulseView() {
               {error}
             </p>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="pulse-chart-grid">
             {canvas?.charts.map((chart) => (
               <PulseChartCard
                 key={chart.id}
@@ -129,15 +140,6 @@ export function PulseView() {
             </div>
           )}
         </>
-      )}
-      {adding && (
-        <AddPulseDialog
-          onClose={() => setAdding(false)}
-          onSaved={() => {
-            setAdding(false);
-            void reload(true);
-          }}
-        />
       )}
     </div>
   );

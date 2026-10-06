@@ -43,21 +43,24 @@ export function ManualChartFlow({ onSaved }: { onSaved: () => void }) {
     );
   return (
     <div className="space-y-4">
-      <label className="flex flex-col gap-2 text-sm">
-        What would you like to chart?
-        <select
-          className="h-10 rounded-md border border-input bg-background px-3 text-xs"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          <option value="">Choose a measurement</option>
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium">Pick something to follow</h2>
+        <div className="pulse-measurements" aria-label="Available measurements">
           {measurements.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.title} · {m.profile.source}
-            </option>
+            <button
+              key={m.id}
+              aria-pressed={selected === m.id}
+              onClick={() => setSelected(m.id)}
+            >
+              <strong>{m.title}</strong>
+              <small>
+                {m.profile.source.replaceAll("_", " ")} · {m.unit} ·{" "}
+                {m.quality.replaceAll("_", " ")}
+              </small>
+            </button>
           ))}
-        </select>
-      </label>
+        </div>
+      </div>
       {!measurements.length && (
         <p className="text-sm text-muted-foreground">
           No supported measurements yet. Sync activity or add dated entries to

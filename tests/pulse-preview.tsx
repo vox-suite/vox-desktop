@@ -67,6 +67,62 @@ const preview: PulseResult = {
   data_as_of: measurement.profile.last_at,
   error: null,
 };
+function fixturePreview(d: PulseDefinition): PulseResult {
+  if (d.dimension)
+    return {
+      ...preview,
+      points: [
+        { label: "Mira", value: 3 },
+        { label: "Common Ground", value: 2 },
+        { label: "Sol", value: 1 },
+      ],
+    };
+  if (d.bucket === "week")
+    return {
+      ...preview,
+      points: [
+        { label: "2026-09-28", value: 5 },
+        { label: "2026-10-05", value: 1 },
+      ],
+    };
+  return preview;
+}
+const suggestions = [
+  {
+    title: measurement.title,
+    reason: "Six recorded plays, with uncaptured days left as gaps.",
+    definition,
+    measurement,
+    preview,
+  },
+  {
+    title: "Artists on repeat",
+    reason: "See the share of recorded plays for each artist.",
+    definition: {
+      ...definition,
+      bucket: null,
+      dimension: "artist",
+      chart_type: "pie",
+    } as PulseDefinition,
+    measurement,
+    preview: fixturePreview({
+      ...definition,
+      bucket: null,
+      dimension: "artist",
+    }),
+  },
+  {
+    title: "Your weekly soundtrack",
+    reason: "Compare recorded plays across weeks.",
+    definition: {
+      ...definition,
+      bucket: "week",
+      chart_type: "area",
+    } as PulseDefinition,
+    measurement,
+    preview: fixturePreview({ ...definition, bucket: "week" }),
+  },
+];
 const charts: SavedPulseChart[] = [];
 const saves = new Map<string, SavedPulseChart>();
 const mode = new URLSearchParams(location.search).get("mode");
@@ -82,26 +138,15 @@ installPlatform({
         result = mode === "none" ? [] : [measurement];
       else if (req.path.endsWith("/suggestions"))
         result = {
-          suggestions:
-            mode === "none"
-              ? []
-              : [
-                  {
-                    title: measurement.title,
-                    reason:
-                      "Based on six recorded plays in this verification fixture.",
-                    definition,
-                    measurement,
-                    preview,
-                  },
-                ],
+          suggestions: mode === "none" ? [] : suggestions,
           connections: [],
           source_count: 1,
           record_count: 6,
           profiled_days: 90,
           computed_at: new Date().toISOString(),
         };
-      else if (req.path.endsWith("/preview")) result = preview;
+      else if (req.path.endsWith("/preview"))
+        result = fixturePreview(req.body as PulseDefinition);
       else if (req.path.endsWith("/charts")) {
         const body = req.body as {
           idempotency_key: string;
@@ -115,7 +160,7 @@ installPlatform({
             title: body.title,
             definition: body.definition,
             created_at: new Date().toISOString(),
-            result: preview,
+            result: fixturePreview(body.definition),
           };
           charts.push(chart);
           saves.set(body.idempotency_key, chart);

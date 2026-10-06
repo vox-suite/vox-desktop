@@ -71,7 +71,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
           {response
-            ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data sources.`
+            ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data ${response.source_count === 1 ? "source" : "sources"}.`
             : "Looking through your activity and connections…"}
         </p>
         <Button
@@ -125,7 +125,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
           )}
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="pulse-chart-grid">
         {response?.suggestions.map((s) => (
           <Suggestion
             key={s.definition.measurement_id + JSON.stringify(s.definition)}
