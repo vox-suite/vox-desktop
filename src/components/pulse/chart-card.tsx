@@ -6,8 +6,6 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -19,27 +17,113 @@ import {
   Wallet,
   Play,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import type {
   PulseDefinition,
   PulseResult,
 } from "@/features/pulse/discovery-types";
 
-const colors = ["#52e2ac", "#a2aaa4", "#77b6a1", "#6b766e", "#d4dad6"];
+const colors = ["#3ecf8e", "#a2aaa4", "#77b6a1", "#6b766e", "#d4dad6"];
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function friendly(label: unknown, long = false) {
+  const text = String(label ?? "");
+  const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (day) {
+    const d = new Date(+day[1], +day[2] - 1, +day[3]);
+    return long
+      ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+      : `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  }
+  const month = /^(\d{4})-(\d{2})$/.exec(text);
+  if (month) return `${MONTHS[+month[2] - 1]} ${month[1]}`;
+  return text;
+}
+const clip = (value: unknown, max = 16) => {
+  const text = String(value ?? "");
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
+};
+
+function HairlineBar(props: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  horizontal: boolean;
+  fill?: string;
+  dimmed?: boolean;
+}) {
+  const { x = 0, y = 0, width = 0, height = 0, horizontal, fill, dimmed } = props;
+  if (width <= 0 || height <= 0) return null;
+  const gap = 4;
+  const thick = Math.min(horizontal ? height : width, 14);
+  const lines = [];
+  if (horizontal) {
+    const cy = y + height / 2;
+    for (let px = x + 0.5; px <= x + width; px += gap)
+      lines.push(<line key={px} x1={px} x2={px} y1={cy - thick / 2} y2={cy + thick / 2} />);
+  } else {
+    const cx = x + width / 2;
+    for (let py = y + height - 0.5; py >= y; py -= gap)
+      lines.push(<line key={py} y1={py} y2={py} x1={cx - thick / 2} x2={cx + thick / 2} />);
+  }
+  return (
+    <g
+      stroke={fill}
+      strokeWidth={1}
+      shapeRendering="crispEdges"
+      opacity={dimmed ? 0.2 : 1}
+      style={{ transition: "opacity 120ms" }}
+    >
+      {lines}
+    </g>
+  );
+}
+export function PulseChartSkeleton() {
+  return (
+    <Card className="pulse-chart h-full" aria-hidden="true">
+      <div className="flex items-center gap-3 px-4 pt-3.5 pb-4">
+        <Skeleton className="h-8 w-8 rounded-md" />
+        <div className="space-y-2">
+          <Skeleton className="h-3.5 w-44" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+      </div>
+      <div className="pulse-chart-body space-y-4">
+        <Skeleton className="h-7 w-24" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-8 w-28" />
+      </div>
+    </Card>
+  );
+}
+
 export function PulseChartCard({
   title,
   definition,
   result,
   source,
   children,
+  compact = !!children,
 }: {
   title: string;
   definition: PulseDefinition;
   result: PulseResult | null;
   source?: string;
   children?: ReactNode;
+  compact?: boolean;
 }) {
-  const points = result?.points ?? [];
+  const [active, setActive] = useState<number | null>(null);
+  const allPoints = result?.points ?? [];
+  const points =
+    !definition.bucket && allPoints.length > 8 ? allPoints.slice(0, 8) : allPoints;
   const observed = points.filter(
     (p) => typeof p.value === "number" && Number.isFinite(p.value),
   );
@@ -62,30 +146,35 @@ export function PulseChartCard({
     undefined,
   );
   const headline = categorical ? largest : latest;
+  const chartConfig = { value: { label: title, color: colors[0] } };
   const tooltip = (
-    <Tooltip
-      contentStyle={{
-        background: "#292d2a",
-        border: "1px solid #444c46",
-        color: "#eeeeeb",
-        fontFamily: "ui-monospace, monospace",
-        borderRadius: 8,
-        fontSize: 12,
-      }}
-      formatter={(value) => [
-        `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${result?.unit ?? ""}`,
-        title,
-      ]}
+    <ChartTooltip
+      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+      content={
+        <ChartTooltipContent
+          hideIndicator
+          labelFormatter={(label) => friendly(label, true)}
+          formatter={(value) => (
+            <span className="font-mono">
+              {Number(value).toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              {result?.unit}
+            </span>
+          )}
+        />
+      }
     />
   );
   const axes = (
     <>
-      <CartesianGrid stroke="#343a35" vertical={false} strokeDasharray="3 5" />
+      <CartesianGrid stroke="#1f1f1f" vertical={false} strokeDasharray="3 5" />
       <XAxis
         dataKey="label"
         tick={{ fontSize: 10, fill: "#a0a6a2" }}
         axisLine={false}
         tickLine={false}
+        tickFormatter={(v) => friendly(v)}
         minTickGap={28}
       />
       <YAxis
@@ -98,7 +187,7 @@ export function PulseChartCard({
     </>
   );
   return (
-    <article className="pulse-chart">
+    <Card className="pulse-chart h-full overflow-visible">
       <header className="pulse-chart-header">
         <div className="pulse-source-icon">
           <Icon size={17} aria-hidden="true" />
@@ -137,7 +226,16 @@ export function PulseChartCard({
             <span>{categorical ? headline.label : "latest recorded"}</span>
           </div>
         )}
-        <div className="h-48 min-w-0" aria-label={`${title} chart`}>
+        <div
+          className="min-w-0"
+          style={{
+            flexShrink: 0,
+            height: categorical && definition.chart_type !== "pie"
+              ? Math.max(192, observed.length * 28 + 36)
+              : 192,
+          }}
+          aria-label={`${title} chart`}
+        >
           {result?.error ? (
             <div className="flex h-full items-center gap-2 text-sm text-muted-foreground">
               <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -150,7 +248,7 @@ export function PulseChartCard({
           ) : definition.chart_type === "pie" ? (
             <SegmentedRing points={observed} colors={colors} />
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ChartContainer config={chartConfig} className="aspect-auto h-full w-full">
               {definition.chart_type === "line" ? (
                 <LineChart data={points}>
                   {axes}
@@ -158,7 +256,7 @@ export function PulseChartCard({
                     type="monotone"
                     dataKey="value"
                     stroke={colors[0]}
-                    strokeWidth={2}
+                    strokeWidth={1}
                     dot={false}
                     connectNulls={false}
                     isAnimationActive={false}
@@ -181,11 +279,16 @@ export function PulseChartCard({
                 <BarChart
                   data={points}
                   layout={categorical ? "vertical" : "horizontal"}
+                  onMouseMove={(state) => {
+                    const i = Number(state?.activeTooltipIndex);
+                    setActive(Number.isFinite(i) ? i : null);
+                  }}
+                  onMouseLeave={() => setActive(null)}
                 >
                   {categorical ? (
                     <>
                       <CartesianGrid
-                        stroke="#343a35"
+                        stroke="#1f1f1f"
                         horizontal={false}
                         strokeDasharray="3 5"
                       />
@@ -198,7 +301,8 @@ export function PulseChartCard({
                       <YAxis
                         type="category"
                         dataKey="label"
-                        width={85}
+                        width={110}
+                        tickFormatter={(v) => clip(v)}
                         tick={{ fontSize: 10, fill: "#a0a6a2" }}
                         axisLine={false}
                         tickLine={false}
@@ -211,16 +315,21 @@ export function PulseChartCard({
                   <Bar
                     dataKey="value"
                     fill={colors[0]}
-                    radius={categorical ? [0, 3, 3, 0] : [3, 3, 0, 0]}
-                    barSize={categorical ? 7 : undefined}
+                    shape={(p: object & { index?: number }) => (
+                      <HairlineBar
+                        {...p}
+                        horizontal={categorical}
+                        dimmed={active !== null && active !== p.index}
+                      />
+                    )}
                     isAnimationActive={false}
                   />
                 </BarChart>
               )}
-            </ResponsiveContainer>
+            </ChartContainer>
           )}
         </div>
-        {categorical && observed.length > 0 && (
+        {!compact && categorical && observed.length > 0 && (
           <div className="pulse-legend">
             {observed.slice(0, 5).map((point, index) => (
               <div className="pulse-legend-row" key={point.label}>
@@ -236,7 +345,7 @@ export function PulseChartCard({
             ))}
           </div>
         )}
-        {categorical && observed.length > 5 && (
+        {!compact && categorical && observed.length > 5 && (
           <details className="pulse-chart-foot">
             <summary>All {observed.length} groups</summary>
             <div className="pulse-legend">
@@ -257,7 +366,7 @@ export function PulseChartCard({
             </div>
           </details>
         )}
-        {result && (
+        {!compact && result && (
           <footer className="pulse-chart-foot">
             <p>
               {result.record_count.toLocaleString()} dated entries · Updated{" "}
@@ -281,7 +390,7 @@ export function PulseChartCard({
         )}
         {children && <div className="pulse-chart-actions">{children}</div>}
       </div>
-    </article>
+    </Card>
   );
 }
 

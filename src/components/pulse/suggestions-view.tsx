@@ -6,7 +6,7 @@ import type {
   DiscoveryResponse,
   PulseSuggestion,
 } from "@/features/pulse/discovery-types";
-import { PulseChartCard } from "./chart-card";
+import { PulseChartCard, PulseChartSkeleton } from "./chart-card";
 import { ChartEditor } from "./chart-editor";
 export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
   const [response, setResponse] = useState<DiscoveryResponse | null>(null);
@@ -70,9 +70,11 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
-          {response
+          {loading
+            ? "Generating suggestions from your activity…"
+            : response
             ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data ${response.source_count === 1 ? "source" : "sources"}.`
-            : "Looking through your activity and connections…"}
+            : "Looking through your activity…"}
         </p>
         <Button
           variant="ghost"
@@ -97,15 +99,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
           </Button>
         </div>
       )}
-      {loading && !response && (
-        <p
-          role="status"
-          className="py-12 text-center text-sm text-muted-foreground"
-        >
-          Finding charts your data can support…
-        </p>
-      )}
-      {response && response.suggestions.length === 0 && (
+      {!loading && response && response.suggestions.length === 0 && (
         <div className="py-8 text-sm text-muted-foreground">
           <p>No new charts with enough recorded data yet.</p>
           <p className="mt-2 text-xs">
@@ -125,8 +119,10 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
           )}
         </div>
       )}
-      <div className="pulse-chart-grid">
-        {response?.suggestions.map((s) => (
+      <div className="pulse-chart-grid" aria-busy={loading}>
+        {loading &&
+          Array.from({ length: 4 }, (_, i) => <PulseChartSkeleton key={i} />)}
+        {!loading && response?.suggestions.map((s) => (
           <Suggestion
             key={s.definition.measurement_id + JSON.stringify(s.definition)}
             suggestion={s}

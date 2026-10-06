@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { ArrowRight, Plus, RotateCw } from "lucide-react";
+import { ArrowRight, Music2, Gamepad2, Plus, RotateCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { BoardView } from "./board-view";
-import { CreatePulsePage } from "./create-pulse-page";
+import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
 import "./pulse.css";
-import { PulseChartCard } from "./chart-card";
+import { PulseChartCard, PulseChartSkeleton } from "./chart-card";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const [adding, setAdding] = useState(false);
@@ -38,9 +38,11 @@ export function PulseView() {
         <div
           role="status"
           aria-label="Loading Pulse"
-          className="flex flex-1 items-center justify-center"
+          className="pulse-chart-grid"
         >
-          <RotateCw className="h-5 w-5 animate-spin text-muted-foreground" />
+          {Array.from({ length: 4 }, (_, i) => (
+            <PulseChartSkeleton key={i} />
+          ))}
         </div>
       ) : error && !canvas ? (
         <div
@@ -55,16 +57,41 @@ export function PulseView() {
         </div>
       ) : (
         <>
-          <div
-            className={
-              empty
-                ? "flex flex-1 items-center justify-center"
-                : "mb-5 flex items-center justify-between"
-            }
-          >
-            {!empty && <h1 className="text-lg font-medium">Pulse</h1>}
-            <div className="flex items-center gap-2">
-              {!empty && (
+          {empty ? (
+            <div className="mx-auto flex flex-1 flex-col items-center justify-center gap-6 text-center">
+              <PulseOrbit />
+              <div>
+                <h1 className="text-xl font-medium">
+                  No charts yet
+                </h1>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Pulse turns your connected apps into small, living charts —
+                  what you listen to, what you play, where your money goes.
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+                {[
+                  [Music2, "Top artists this month"],
+                  [Gamepad2, "Hours played per week"],
+                  [Wallet, "Spend by category"],
+                ].map(([Icon, label]) => (
+                  <span
+                    key={label as string}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5"
+                  >
+                    <Icon className="h-3.5 w-3.5 text-primary" />
+                    {label as string}
+                  </span>
+                ))}
+              </div>
+              <Button onClick={() => setAdding(true)}>
+                <Plus className="h-4 w-4" /> Add your first chart
+              </Button>
+            </div>
+          ) : (
+            <div className="mb-5 flex items-center justify-between">
+              <h1 className="text-lg font-medium">Pulse</h1>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -76,18 +103,17 @@ export function PulseView() {
                     className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                   />
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Add to Pulse"
-                className={empty ? "h-12 w-12 rounded-full" : ""}
-                onClick={() => setAdding(true)}
-              >
-                <Plus className={empty ? "h-5 w-5" : "h-4 w-4"} />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Add to Pulse"
+                  onClick={() => setAdding(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
           {error && (
             <p role="alert" className="mb-4 text-xs text-destructive">
               {error}
