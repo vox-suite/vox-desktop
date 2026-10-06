@@ -1959,6 +1959,11 @@ export interface components {
             /** Format: int32 */
             period_days: number;
             timezone: string;
+            /**
+             * Format: int32
+             * @description Keep only the largest N groups of a category chart (1-20).
+             */
+            top_n?: number | null;
             /** Format: int32 */
             version: number;
         };
