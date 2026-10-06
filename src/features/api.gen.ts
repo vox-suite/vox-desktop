@@ -2051,6 +2051,13 @@ export interface components {
             error?: string | null;
             status: string;
         };
+        /** @description Optional per-field hints declared by a data schema (`x-unit`, `x-aggregation`, `title`, `x-measure`). */
+        FieldHint: {
+            aggregation?: string | null;
+            ignore?: boolean;
+            label?: string | null;
+            unit?: string | null;
+        };
         SourceProfile: {
             action: string;
             category: string;
@@ -2061,6 +2068,9 @@ export interface components {
             currency: string;
             /** Format: int64 */
             dated_count: number;
+            field_hints?: {
+                [key: string]: components["schemas"]["FieldHint"];
+            };
             fields: {
                 [key: string]: string;
             };
