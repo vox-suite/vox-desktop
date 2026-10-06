@@ -4,8 +4,8 @@ type S = components["schemas"];
 export type Bucket = S["Bucket"];
 export type PulseDefinition = Omit<
   Required<S["PulseDefinition"]>,
-  "version"
-> & { version: 2 };
+  "version" | "offset_days"
+> & { version: 2; offset_days?: number };
 export type SourceProfile = Required<S["SourceProfile"]>;
 export type Measurement = Omit<Required<S["Measurement"]>, "profile"> & {
   profile: SourceProfile;
@@ -31,3 +31,11 @@ export type CanvasResponse = Omit<
   Required<S["CanvasResponse"]>,
   "charts" | "legacy_boards"
 > & { charts: SavedPulseChart[]; legacy_boards: ChartBoard[] };
+export type ComposeMessage = { role: "user" | "assistant"; content: string };
+export type ComposeResponse = {
+  reply: string;
+  title: string | null;
+  definition: PulseDefinition | null;
+  measurement: Measurement | null;
+  preview: PulseResult | null;
+};

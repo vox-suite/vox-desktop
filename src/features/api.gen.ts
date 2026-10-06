@@ -1951,6 +1951,11 @@ export interface components {
             chart_type: components["schemas"]["ChartType"];
             dimension?: string | null;
             measurement_id: string;
+            /**
+             * Format: int32
+             * @description Shift the window back by this many days.
+             */
+            offset_days?: number;
             /** Format: int32 */
             period_days: number;
             timezone: string;

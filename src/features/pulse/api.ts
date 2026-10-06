@@ -44,6 +44,8 @@ export const pulseApi = {
 
 import type {
   CanvasResponse,
+  ComposeMessage,
+  ComposeResponse,
   DiscoveryResponse,
   Measurement,
   PulseDefinition,
@@ -75,6 +77,22 @@ export const discoveryApi = {
       path: "/v1/me/pulse/suggestions",
       body: { timezone: pulseTimezone(), refresh: false, ...opts },
       timeoutMs: 200000,
+    }),
+  compose: (
+    messages: ComposeMessage[],
+    current: PulseDefinition | null,
+    currentTitle: string | null,
+  ) =>
+    platform().http.request<ComposeResponse>({
+      method: "POST",
+      path: "/v1/me/pulse/compose",
+      body: {
+        timezone: pulseTimezone(),
+        messages,
+        current,
+        current_title: currentTitle,
+      },
+      timeoutMs: 150000,
     }),
   preview: (definition: PulseDefinition) =>
     platform().http.request<PulseResult>({
