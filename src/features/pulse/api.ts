@@ -69,12 +69,12 @@ export const discoveryApi = {
       path: "/v1/me/pulse/measurements",
       query: { timezone: pulseTimezone() },
     }),
-  discover: (refresh = false) =>
+  discover: (opts: { refresh?: boolean; more?: boolean; prompt?: string } = {}) =>
     platform().http.request<DiscoveryResponse>({
       method: "POST",
       path: "/v1/me/pulse/suggestions",
-      body: { timezone: pulseTimezone(), refresh },
-      timeoutMs: 45000,
+      body: { timezone: pulseTimezone(), refresh: false, ...opts },
+      timeoutMs: 200000,
     }),
   preview: (definition: PulseDefinition) =>
     platform().http.request<PulseResult>({

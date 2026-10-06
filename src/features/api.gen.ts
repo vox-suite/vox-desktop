@@ -1854,6 +1854,10 @@ export interface components {
             version: number;
         };
         DiscoveryInput: {
+            /** @description Append a fresh batch to the stored suggestions. */
+            more?: boolean;
+            /** @description Free-text request; returns ad-hoc suggestions without touching the stored list. */
+            prompt?: string | null;
             refresh?: boolean;
             timezone: string;
         };

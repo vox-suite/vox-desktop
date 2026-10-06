@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, RotateCw } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { discoveryApi } from "@/features/pulse/api";
 import type {
@@ -14,11 +14,11 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<PulseSuggestion | null>(null);
   const active = useRef(true);
-  async function load(refresh: boolean) {
+  async function load(more: boolean) {
     setLoading(true);
     setError("");
     try {
-      const data = await discoveryApi.discover(refresh);
+      const data = await discoveryApi.discover({ more });
       if (active.current) setResponse(data);
     } catch (e) {
       if (active.current) setError(String(e));
@@ -71,21 +71,19 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
           {loading
-            ? "Generating suggestions from your activity…"
+            ? "Generating suggestions from your activity — this can take a minute…"
             : response
             ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data ${response.source_count === 1 ? "source" : "sources"}.`
             : "Looking through your activity…"}
         </p>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          aria-label="Refresh suggestions"
           disabled={loading}
           onClick={() => void load(true)}
         >
-          <RotateCw
-            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-          />
+          <Plus className="h-3.5 w-3.5" />
+          Generate more
         </Button>
       </div>
       {error && (
@@ -120,9 +118,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
         </div>
       )}
       <div className="pulse-chart-grid" aria-busy={loading}>
-        {loading &&
-          Array.from({ length: 4 }, (_, i) => <PulseChartSkeleton key={i} />)}
-        {!loading && response?.suggestions.map((s) => (
+        {response?.suggestions.map((s) => (
           <Suggestion
             key={s.definition.measurement_id + JSON.stringify(s.definition)}
             suggestion={s}
@@ -131,11 +127,15 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
             onDismiss={() => void dismiss(s)}
           />
         ))}
+        {loading &&
+          Array.from({ length: response ? 2 : 8 }, (_, i) => (
+            <PulseChartSkeleton key={`s${i}`} />
+          ))}
       </div>
     </div>
   );
 }
-function Suggestion({
+export function Suggestion({
   suggestion: s,
   onSaved,
   onEdit,

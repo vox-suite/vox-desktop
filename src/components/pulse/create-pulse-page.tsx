@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ManualChartFlow } from "./manual-chart-flow";
+import { AskView } from "./ask-view";
 import { SuggestionsView } from "./suggestions-view";
 
 export function CreatePulsePage({
@@ -11,7 +11,7 @@ export function CreatePulsePage({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [mode, setMode] = useState<"manual" | "suggestions">("suggestions");
+  const [mode, setMode] = useState<"ask" | "suggestions">("suggestions");
   return (
     <section
       className="pulse-surface pulse-create h-full overflow-y-auto"
@@ -31,16 +31,16 @@ export function CreatePulsePage({
               Suggestions
             </button>
             <button
-              aria-pressed={mode === "manual"}
-              onClick={() => setMode("manual")}
+              aria-pressed={mode === "ask"}
+              onClick={() => setMode("ask")}
             >
-              Manual
+              Ask Pulse
             </button>
           </div>
         </div>
         <div className="pulse-create-content">
-          {mode === "manual" ? (
-            <ManualChartFlow onSaved={onSaved} />
+          {mode === "ask" ? (
+            <AskView onSaved={onSaved} />
           ) : (
             <SuggestionsView onSaved={onSaved} />
           )}
