@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { discoveryApi } from "@/features/pulse/api";
 import type {
@@ -10,27 +10,13 @@ import type {
   PulseResult,
 } from "@/features/pulse/discovery-types";
 import { PulseChartCard, PulseChartSkeleton } from "./chart-card";
+import { RangeControls } from "./range-controls";
 
 const examples = [
   "Hours I game each week",
   "My top artists this month",
   "Daily Spotify listening, last 30 days",
 ];
-const ranges = [
-  { label: "7 days", days: 7 },
-  { label: "30 days", days: 30 },
-  { label: "90 days", days: 90 },
-];
-const fmt = (d: Date) =>
-  d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-function windowLabel(d: PulseDefinition) {
-  const end = new Date();
-  end.setDate(end.getDate() - (d.offset_days ?? 0));
-  const start = new Date(end);
-  start.setDate(start.getDate() - (d.period_days - 1));
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
 export function AskView({ onSaved }: { onSaved: () => void }) {
   const [messages, setMessages] = useState<ComposeMessage[]>([]);
   const [text, setText] = useState("");
@@ -103,14 +89,6 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
     }
   }
 
-  const shift = (dir: 1 | -1) =>
-    definition &&
-    tweak({
-      offset_days: Math.max(
-        0,
-        (definition.offset_days ?? 0) + dir * definition.period_days,
-      ),
-    });
   const buckets: Bucket[] = measurement?.buckets ?? [];
 
   return (
@@ -208,67 +186,11 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
           <PulseChartSkeleton />
         ) : definition && preview && title ? (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {definition.bucket && (
-                <>
-                  <div className="pulse-seg" role="group" aria-label="Range">
-                    {ranges.map((r) => (
-                      <button
-                        key={r.days}
-                        aria-pressed={definition.period_days === r.days}
-                        onClick={() =>
-                          void tweak({
-                            period_days: r.days,
-                            offset_days: 0,
-                            bucket:
-                              r.days > 60 && definition.bucket === "day"
-                                ? "week"
-                                : definition.bucket,
-                          })
-                        }
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Earlier"
-                      onClick={() => void shift(1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="min-w-28 text-center font-mono">
-                      {windowLabel(definition)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Later"
-                      disabled={(definition.offset_days ?? 0) === 0}
-                      onClick={() => void shift(-1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {buckets.length > 1 && (
-                    <div className="pulse-seg" role="group" aria-label="Group by">
-                      {buckets.map((b) => (
-                        <button
-                          key={b}
-                          aria-pressed={definition.bucket === b}
-                          onClick={() => void tweak({ bucket: b })}
-                        >
-                          {b[0].toUpperCase() + b.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <RangeControls
+              definition={definition}
+              buckets={buckets}
+              onChange={(p) => void tweak(p)}
+            />
             <div className={refreshing ? "opacity-60 transition-opacity" : ""}>
               <PulseChartCard
                 title={title}

@@ -5,7 +5,8 @@ import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { BoardView } from "./board-view";
 import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
 import "./pulse.css";
-import { PulseChartCard, PulseChartSkeleton } from "./chart-card";
+import { PulseChartSkeleton } from "./chart-card";
+import { SavedChart } from "./saved-chart";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const [adding, setAdding] = useState(false);
@@ -121,7 +122,7 @@ export function PulseView() {
           )}
           <div className="pulse-chart-grid">
             {canvas?.charts.map((chart) => (
-              <PulseChartCard
+              <SavedChart
                 key={chart.id}
                 title={chart.title}
                 definition={chart.definition}

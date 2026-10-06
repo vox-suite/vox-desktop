@@ -120,7 +120,7 @@ export function PulseChartCard({
   children?: ReactNode;
   compact?: boolean;
 }) {
-  const [active, setActive] = useState<number | null>(null);
+  const [active, setActive] = useState<string | null>(null);
   const allPoints = result?.points ?? [];
   const points =
     !definition.bucket && allPoints.length > 8 ? allPoints.slice(0, 8) : allPoints;
@@ -149,7 +149,7 @@ export function PulseChartCard({
   const chartConfig = { value: { label: title, color: colors[0] } };
   const tooltip = (
     <ChartTooltip
-      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+      cursor={false}
       content={
         <ChartTooltipContent
           hideIndicator
@@ -280,8 +280,8 @@ export function PulseChartCard({
                   data={points}
                   layout={categorical ? "vertical" : "horizontal"}
                   onMouseMove={(state) => {
-                    const i = Number(state?.activeTooltipIndex);
-                    setActive(Number.isFinite(i) ? i : null);
+                    const label = state?.activeLabel;
+                    setActive(label == null ? null : String(label));
                   }}
                   onMouseLeave={() => setActive(null)}
                 >
@@ -315,11 +315,11 @@ export function PulseChartCard({
                   <Bar
                     dataKey="value"
                     fill={colors[0]}
-                    shape={(p: object & { index?: number }) => (
+                    shape={(p: object & { payload?: { label?: string } }) => (
                       <HairlineBar
                         {...p}
                         horizontal={categorical}
-                        dimmed={active !== null && active !== p.index}
+                        dimmed={active !== null && active !== p.payload?.label}
                       />
                     )}
                     isAnimationActive={false}
