@@ -3,7 +3,11 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatTotal } from "@/features/pulse/format";
-import { goalsApi, type GoalStatus, type GoalView } from "@/features/pulse/goals";
+import {
+  goalsApi,
+  type GoalStatus,
+  type GoalView,
+} from "@/features/pulse/goals";
 
 const TICKS = 48;
 const statusText: Record<GoalStatus, string> = {
@@ -49,13 +53,18 @@ function details(g: GoalView): string[] {
     out.push(`${fmt(g.remaining, g.unit)} to go`);
   }
   if (g.period) {
-    out.push(`this ${g.period}${g.period_ends_on ? ` · ends ${shortDate(g.period_ends_on)}` : ""}`);
+    out.push(
+      `this ${g.period}${g.period_ends_on ? ` · ends ${shortDate(g.period_ends_on)}` : ""}`,
+    );
   } else if (g.deadline) {
-    out.push(`by ${shortDate(g.deadline)}${g.days_left != null ? ` · ${g.days_left} days left` : ""}`);
+    out.push(
+      `by ${shortDate(g.deadline)}${g.days_left != null ? ` · ${g.days_left} days left` : ""}`,
+    );
   }
   if (g.per_week_needed && g.status !== "done")
     out.push(`need ${fmt(g.per_week_needed, g.unit)} a week`);
-  if (g.projected_on && !g.deadline) out.push(`on pace for ${shortDate(g.projected_on)}`);
+  if (g.projected_on && !g.deadline)
+    out.push(`on pace for ${shortDate(g.projected_on)}`);
   else if (g.projected_on && g.status === "behind")
     out.push(`at this pace: ${shortDate(g.projected_on)}`);
   return out;
@@ -141,7 +150,9 @@ export function GoalCard({
           />
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">{details(goal).join(" · ")}</p>
+      <p className="text-xs text-muted-foreground">
+        {details(goal).join(" · ")}
+      </p>
       {goal.kind === "saving" && !preview && (
         <form
           className="mt-auto flex gap-2 border-t border-border pt-3"
