@@ -67,6 +67,8 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
     const mine = ++ticket.current;
     setDefinition(next);
     setRefreshing(true);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (mine !== ticket.current) return;
     try {
       const result = await discoveryApi.preview(next);
       if (mine === ticket.current) setPreview(result);

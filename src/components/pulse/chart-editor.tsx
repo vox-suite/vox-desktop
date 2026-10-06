@@ -180,7 +180,7 @@ export function ChartEditor({
             }
           >
             {(definition.bucket
-              ? ["bar", "line", "area"]
+              ? ["bar", "line", "area", "stat"]
               : measurement.profile.currency
                 ? ["bar"]
                 : ["bar", "pie"]

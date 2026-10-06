@@ -1750,7 +1750,7 @@ export interface components {
             title: string;
         };
         /** @enum {string} */
-        ChartType: "line" | "bar" | "pie" | "area";
+        ChartType: "line" | "bar" | "pie" | "area" | "stat";
         Collection: {
             /** Format: date-time */
             created_at: string;
@@ -1970,6 +1970,11 @@ export interface components {
         PulseResult: {
             /** Format: date-time */
             computed_at: string;
+            /**
+             * Format: double
+             * @description Headline value for the window: the sum of points, or their mean for averaged measurements.
+             */
+            total?: number | null;
             /** Format: date-time */
             data_as_of?: string | null;
             description: string;

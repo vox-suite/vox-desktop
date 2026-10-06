@@ -32,6 +32,44 @@ import type {
 
 const colors = ["#3ecf8e", "#a2aaa4", "#77b6a1", "#6b766e", "#d4dad6"];
 
+const SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" };
+function formatTotal(value: number, unit: string) {
+  const abs = Math.abs(value);
+  const number = new Intl.NumberFormat(undefined, {
+    notation: abs >= 10000 ? "compact" : "standard",
+    maximumFractionDigits: abs >= 100 ? 0 : 2,
+  })
+    .format(value)
+    .replace(/K$/, "k");
+  if (SYMBOLS[unit]) return { text: `${SYMBOLS[unit]}${number}`, unit: "" };
+  const label =
+    unit === "hours" ? "hrs" : value === 1 && unit === "events" ? "event" : unit;
+  return { text: number, unit: label };
+}
+function Sparkline({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+  return (
+    <svg
+      viewBox={`0 0 ${values.length * 4} 40`}
+      preserveAspectRatio="none"
+      className="h-10 w-full"
+      aria-hidden="true"
+    >
+      {values.map((v, i) => (
+        <line
+          key={i}
+          x1={i * 4 + 2}
+          x2={i * 4 + 2}
+          y1={40}
+          y2={40 - Math.max(1, (v / max) * 38)}
+          stroke={colors[0]}
+          strokeWidth="1"
+          opacity="0.7"
+        />
+      ))}
+    </svg>
+  );
+}
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function friendly(label: unknown, long = false) {
   const text = String(label ?? "");
@@ -145,6 +183,9 @@ export function PulseChartCard({
       !best || (point.value ?? 0) > (best.value ?? 0) ? point : best,
     undefined,
   );
+  const isStat = definition.chart_type === "stat";
+  const statValue =
+    result?.total ?? (observed.reduce((sum, p) => sum + (p.value ?? 0), 0) || null);
   const headline = categorical ? largest : latest;
   const chartConfig = { value: { label: title, color: colors[0] } };
   const tooltip = (
@@ -211,7 +252,7 @@ export function PulseChartCard({
         </div>
       </header>
       <div className="pulse-chart-body">
-        {headline && !result?.error && (
+        {headline && !result?.error && !isStat && (
           <div className="pulse-chart-stat">
             <strong>
               {headline.value?.toLocaleString(undefined, {
@@ -230,9 +271,11 @@ export function PulseChartCard({
           className="min-w-0"
           style={{
             flexShrink: 0,
-            height: categorical && definition.chart_type !== "pie"
-              ? Math.max(192, observed.length * 28 + 36)
-              : 192,
+            height: isStat
+              ? "auto"
+              : categorical && definition.chart_type !== "pie"
+                ? Math.max(192, observed.length * 28 + 36)
+                : 192,
           }}
           aria-label={`${title} chart`}
         >
@@ -244,6 +287,18 @@ export function PulseChartCard({
           ) : !observed.length ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
               No recorded values in this period
+            </div>
+          ) : isStat && statValue !== null ? (
+            <div className="space-y-4 py-2">
+              <p className="font-mono text-5xl tracking-tight">
+                {formatTotal(statValue, result?.unit ?? "").text}
+                <span className="ml-2 text-xl text-[#d4dad6]">
+                  {formatTotal(statValue, result?.unit ?? "").unit}
+                </span>
+              </p>
+              {definition.bucket && (
+                <Sparkline values={observed.map((p) => p.value ?? 0)} />
+              )}
             </div>
           ) : definition.chart_type === "pie" ? (
             <SegmentedRing points={observed} colors={colors} />
