@@ -112,7 +112,7 @@ Configure these **environment variables** on the `production` environment in `vo
 | ------------------------ | ------------------------------------------- |
 | `VOX_SUPABASE_URL`       | Public Supabase project URL                 |
 | `VOX_SUPABASE_ANON_KEY`  | Public Supabase anon / publishable key      |
-| `VOX_API_URL`            | Core API origin (`https://api.voxagent.in`) |
+| `VOX_API_URL`            | Core API origin (`https://api.callvox.in`) |
 | `VOX_BRIDGE_URL`         | Bridge origin (usually same as API)         |
 | `VOX_OAUTH_REDIRECT_URI` | Optional; defaults to `vox://auth/callback` |
 

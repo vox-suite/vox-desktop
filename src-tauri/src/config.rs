@@ -36,7 +36,7 @@ impl PublicConfig {
         let api_url = first_nonempty(&[
             &env::var("VOX_API_URL").unwrap_or_default(),
             option_env!("VOX_API_URL").unwrap_or(""),
-            "https://api.voxagent.in",
+            "https://api.callvox.in",
         ])
         .unwrap();
 

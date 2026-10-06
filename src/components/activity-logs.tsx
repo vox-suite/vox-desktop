@@ -38,10 +38,10 @@ export function ActivityLogs() {
   return (
     <Card
       aria-label="Activity Logs"
-      className="pointer-events-auto absolute right-4 top-4 z-30 w-85 gap-0 p-0 select-text"
+      className="pointer-events-auto fixed right-2 top-2 z-30 w-85 max-w-[calc(100vw-1rem)] gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 select-text"
     >
       <ScrollArea className="max-h-[50vh]">
-        <div className="flex flex-col gap-1.5 p-3 font-mono text-xs">
+        <div className="flex flex-col gap-1 p-1 font-mono text-[9px] leading-snug">
           {[...events].reverse().map((ev) => {
             const { glyph, tone } = KIND[ev.kind] ?? KIND.status;
             const text =
@@ -49,13 +49,15 @@ export function ActivityLogs() {
                 ? ev.text.slice(2)
                 : ev.text;
             return (
-              <div key={ev.id} className="flex items-baseline justify-between gap-2">
-                <span className={cn("min-w-0 flex-1 break-words", tone)}>
-                  {glyph ? <span className="mr-1.5 select-none">{glyph}</span> : null}
-                  {text}
-                </span>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
+              <div key={ev.id} className="flex items-baseline gap-2">
+                <span className="shrink-0 text-[8px] text-muted-foreground">
                   {ev.timestamp}
+                </span>
+                <span className={cn("min-w-0 flex-1 break-words", tone)}>
+                  {glyph ? (
+                    <span className="mr-1.5 select-none">{glyph}</span>
+                  ) : null}
+                  {text}
                 </span>
               </div>
             );
