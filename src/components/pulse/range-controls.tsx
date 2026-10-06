@@ -1,12 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Bucket, PulseDefinition } from "@/features/pulse/discovery-types";
-import { windowLabel } from "@/features/pulse/window";
+import { ALL_TIME_DAYS, windowLabel } from "@/features/pulse/window";
 
 const ranges = [
   { label: "7 days", days: 7 },
   { label: "30 days", days: 30 },
   { label: "90 days", days: 90 },
+  { label: "All", days: ALL_TIME_DAYS },
 ];
 export function RangeControls({
   definition,
@@ -19,6 +20,9 @@ export function RangeControls({
 }) {
   if (!definition.bucket) return null;
   const offset = definition.offset_days ?? 0;
+  const allTime = definition.period_days >= ALL_TIME_DAYS;
+  const groupings =
+    definition.period_days > 365 ? buckets.filter((b) => b !== "day") : buckets;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="pulse-seg" role="group" aria-label="Range">
@@ -31,9 +35,11 @@ export function RangeControls({
                 period_days: r.days,
                 offset_days: 0,
                 bucket:
-                  r.days > 60 && definition.bucket === "day"
-                    ? "week"
-                    : definition.bucket,
+                  r.days > 365 && definition.bucket !== "month"
+                    ? "month"
+                    : r.days > 60 && definition.bucket === "day"
+                      ? "week"
+                      : definition.bucket,
               })
             }
           >
@@ -41,37 +47,41 @@ export function RangeControls({
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Earlier"
-          onClick={() =>
-            onChange({ offset_days: offset + definition.period_days })
-          }
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="min-w-28 text-center font-mono">
-          {windowLabel(definition)}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Later"
-          disabled={offset === 0}
-          onClick={() =>
-            onChange({
-              offset_days: Math.max(0, offset - definition.period_days),
-            })
-          }
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-      {buckets.length > 1 && definition.chart_type !== "stat" && (
+      {allTime ? (
+        <span className="text-xs text-muted-foreground">All time</span>
+      ) : (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Earlier"
+            onClick={() =>
+              onChange({ offset_days: offset + definition.period_days })
+            }
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-28 text-center font-mono">
+            {windowLabel(definition)}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Later"
+            disabled={offset === 0}
+            onClick={() =>
+              onChange({
+                offset_days: Math.max(0, offset - definition.period_days),
+              })
+            }
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      {groupings.length > 1 && definition.chart_type !== "stat" && (
         <div className="pulse-seg" role="group" aria-label="Group by">
-          {buckets.map((b) => (
+          {groupings.map((b) => (
             <button
               key={b}
               aria-pressed={definition.bucket === b}

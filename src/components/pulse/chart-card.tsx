@@ -216,7 +216,7 @@ export function PulseChartCard({
             {[
               sourceName.replaceAll("_", " "),
               definition.bucket
-                ? `${definition.period_days} days · by ${definition.bucket}`
+                ? `${definition.period_days >= 3650 ? "all time" : `${definition.period_days} days`} · by ${definition.bucket}`
                 : definition.dimension?.replaceAll("_", " "),
               result?.quality &&
               !["recorded", "measured"].includes(result.quality)
