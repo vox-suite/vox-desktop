@@ -1,22 +1,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Bucket, PulseDefinition } from "@/features/pulse/discovery-types";
+import { windowLabel } from "@/features/pulse/window";
 
 const ranges = [
   { label: "7 days", days: 7 },
   { label: "30 days", days: 30 },
   { label: "90 days", days: 90 },
 ];
-const fmt = (d: Date) =>
-  d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-function windowLabel(d: PulseDefinition) {
-  const end = new Date();
-  end.setDate(end.getDate() - (d.offset_days ?? 0));
-  const start = new Date(end);
-  start.setDate(start.getDate() - (d.period_days - 1));
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
 export function RangeControls({
   definition,
   buckets = [],

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
+import { windowLabel } from "@/features/pulse/window";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChartContainer,
@@ -45,30 +46,6 @@ function formatTotal(value: number, unit: string) {
   const label =
     unit === "hours" ? "hrs" : value === 1 && unit === "events" ? "event" : unit;
   return { text: number, unit: label };
-}
-function Sparkline({ values }: { values: number[] }) {
-  const max = Math.max(...values, 1);
-  return (
-    <svg
-      viewBox={`0 0 ${values.length * 4} 40`}
-      preserveAspectRatio="none"
-      className="h-10 w-full"
-      aria-hidden="true"
-    >
-      {values.map((v, i) => (
-        <line
-          key={i}
-          x1={i * 4 + 2}
-          x2={i * 4 + 2}
-          y1={40}
-          y2={40 - Math.max(1, (v / max) * 38)}
-          stroke={colors[0]}
-          strokeWidth="1"
-          opacity="0.7"
-        />
-      ))}
-    </svg>
-  );
 }
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function friendly(label: unknown, long = false) {
@@ -297,7 +274,9 @@ export function PulseChartCard({
                 </span>
               </p>
               {definition.bucket && (
-                <Sparkline values={observed.map((p) => p.value ?? 0)} />
+                <p className="text-xs text-muted-foreground">
+                  {windowLabel(definition)}
+                </p>
               )}
             </div>
           ) : definition.chart_type === "pie" ? (
