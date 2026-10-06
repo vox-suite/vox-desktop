@@ -14,6 +14,7 @@ import {
   KeyRound,
   Loader2,
   Lightbulb,
+  MapPin,
   Upload,
   Music2,
   Youtube,
@@ -33,13 +34,14 @@ import { swiggy } from "@/connectors/swiggy";
 import { zomato } from "@/connectors/zomato";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import youtubeLogo from "@/assets/brands/youtube.svg";
+import googleMapsLogo from "@/assets/brands/google-maps.svg";
 import wizLogo from "@/assets/brands/wiz.svg";
 import { WizConnectionPanel } from "@/components/wiz-connection-panel";
 import type { WizStatus } from "@/platform/ports";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
-import { takeoutHtmlToHistory } from "@/lib/takeout-history";
+import { mapsTimelineToVisits, takeoutHtmlToHistory } from "@/lib/takeout-history";
 import {
   Sheet,
   SheetContent,
@@ -93,6 +95,13 @@ const BRANDS: Record<
     color: "#ff0033",
     tagline: "Playlists, likes, and subscriptions",
   },
+  maps_timeline: {
+    icon: MapPin,
+    logo: googleMapsLogo,
+    bare: true,
+    color: "#34a853",
+    tagline: "Places you've visited",
+  },
   wiz: {
     icon: Lightbulb,
     logo: wizLogo,
@@ -128,6 +137,15 @@ const KNOWN_CONNECTORS: Connector[] = [
   },
   swiggy.descriptor,
   zomato.descriptor,
+  {
+    id: "maps_timeline",
+    name: "Google Maps Timeline",
+    description:
+      "Places you visited, imported from a Google Maps Timeline export.",
+    supported_features: ["timeline_sync", "assistant_read"],
+    auth_type: "import",
+    available: true,
+  },
   {
     id: "spotify",
     name: "Spotify",
@@ -186,6 +204,76 @@ function StatusMessage({
     </div>
   );
 }
+type TakeoutConfig = {
+  id: string;
+  title: string;
+  blurb: string;
+  help: string;
+  consent: string;
+  button: string;
+  endpoint: string;
+  noun: string;
+  noRecords: string;
+  maxMb: number;
+  parse: (file: File) => Promise<unknown[] | string>;
+};
+
+const YOUTUBE_IMPORT: TakeoutConfig = {
+  id: "youtube",
+  title: "Personal watch history",
+  blurb:
+    "Import your Google Takeout watch-history file (HTML or JSON). Vox uses its recorded watch times. This is an imported snapshot; upload another export to add newer watches.",
+  help: "Select YouTube and YouTube Music, include history, and either HTML or JSON works for the history format. Use an English-language export, extract it, and select watch-history below. The selected history is sent to Vox’s server for validation and import.",
+  consent:
+    "I allow Vox to store this watch history in my timeline and use it to answer my questions.",
+  button: "Import watch history",
+  endpoint: "connections/youtube/history/import",
+  noun: "watch records",
+  noRecords:
+    "No valid watch records found. Choose the YouTube watch-history file from Google Takeout.",
+  maxMb: 10,
+  parse: async (file) => {
+    let history: unknown;
+    try {
+      const text = await file.text();
+      history = file.name.endsWith(".html")
+        ? takeoutHtmlToHistory(text)
+        : JSON.parse(text);
+    } catch {
+      return "This file is not valid JSON. Select the extracted watch-history file, not the ZIP archive.";
+    }
+    return Array.isArray(history)
+      ? history
+      : "Select a Google Takeout watch-history.json file containing an array of records.";
+  },
+};
+
+const MAPS_IMPORT: TakeoutConfig = {
+  id: "maps_timeline",
+  title: "Maps Timeline places",
+  blurb:
+    "Import your Google Maps Timeline export (JSON). Vox adds the places you visited, with arrival and departure times, to your timeline. This is an imported snapshot; upload another export to add newer visits.",
+  help: "On your phone, open Google Maps > Settings > Timeline > Export Timeline data, or use Google Takeout and select Maps (your places) > Timeline. Select the exported Timeline.json (or a Semantic Location History month file) below. Only place visits are read; the file is processed on this device and just the visits are sent to Vox’s server.",
+  consent:
+    "I allow Vox to store these visited places in my timeline and use them to answer my questions.",
+  button: "Import Timeline",
+  endpoint: "connections/maps_timeline/history/import",
+  noun: "place visits",
+  noRecords:
+    "No valid place visits found. Choose the Timeline.json file exported from Google Maps.",
+  maxMb: 300,
+  parse: async (file) => {
+    try {
+      const visits = mapsTimelineToVisits(JSON.parse(await file.text()));
+      return visits.length
+        ? visits
+        : "No place visits found in this file. Choose the Timeline.json exported from Google Maps.";
+    } catch {
+      return "This file is not valid JSON. Select the extracted Timeline.json, not the ZIP archive.";
+    }
+  },
+};
+
 const IMPORT_CHUNK = 500;
 type Status = "all" | "connected" | "available";
 const PENDING_KEY = "vox.pending-connection-setup";
@@ -391,19 +479,25 @@ export function ConnectedAppsView() {
       } else setMessage("Account connected.");
     });
   const q = query.trim().toLowerCase();
+  const importedHistory = connections.find(
+    (account) => account.connector_id === "youtube_history",
+  );
+  const accountFor = (id: string) =>
+    connections.find((c) => c.connector_id === id) ??
+    (id === "youtube" ? importedHistory : undefined);
   const isConnected = (id: string) =>
-    id === "wiz"
-      ? wizStatus.enabled
-      : connections.some((c) => c.connector_id === id);
+    id === "wiz" ? wizStatus.enabled : !!accountFor(id);
+  const isSynced = (id: string) =>
+    id === "wiz" ? wizStatus.enabled : !!accountFor(id)?.last_synced_at;
   const matchesQuery = (c: Connector) =>
     !q ||
     c.name.toLowerCase().includes(q) ||
     c.description.toLowerCase().includes(q);
   const counts = {
     all: connectors.filter(matchesQuery).length,
-    connected: connectors.filter((c) => matchesQuery(c) && isConnected(c.id))
+    connected: connectors.filter((c) => matchesQuery(c) && isSynced(c.id))
       .length,
-    available: connectors.filter((c) => matchesQuery(c) && !isConnected(c.id))
+    available: connectors.filter((c) => matchesQuery(c) && !isSynced(c.id))
       .length,
   };
   const filtered = connectors
@@ -411,11 +505,11 @@ export function ConnectedAppsView() {
     .filter(
       (c) =>
         statusFilter === "all" ||
-        (statusFilter === "connected") === isConnected(c.id),
+        (statusFilter === "connected") === isSynced(c.id),
     )
     .sort(
       (a, b) =>
-        Number(isConnected(b.id)) - Number(isConnected(a.id)) ||
+        Number(isSynced(b.id)) - Number(isSynced(a.id)) ||
         a.name.localeCompare(b.name),
     );
   const shown = filtered.slice(0, visible);
@@ -454,12 +548,127 @@ export function ConnectedAppsView() {
   }, []);
   const openApp = connectors.find((c) => c.id === openId) ?? null;
   const openBrand = openApp ? (BRANDS[openApp.id] ?? FALLBACK_BRAND) : null;
-  const importedHistory = connections.find(
-    (account) => account.connector_id === "youtube_history",
-  );
   const openAccount = openApp
     ? connections.find((c) => c.connector_id === openApp.id)
     : undefined;
+  const takeoutImport = (cfg: TakeoutConfig) => {
+    const imported =
+      cfg.id === "youtube"
+        ? importedHistory
+        : connections.find((c) => c.connector_id === cfg.id);
+    return (
+      <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <h3 className="text-sm font-medium">{cfg.title}</h3>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          {cfg.blurb}
+        </p>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => void openHelp("https://takeout.google.com/", "Google Takeout")}
+        >
+          Open Google Takeout
+        </Button>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {cfg.help}
+        </p>
+        <label className="flex items-start gap-3 text-sm">
+          <Checkbox
+            checked={historyConsent}
+            disabled={busy}
+            onCheckedChange={(value) => setHistoryConsent(value === true)}
+          />
+          <span>{cfg.consent}</span>
+        </label>
+        <input
+          ref={historyInput}
+          type="file"
+          accept=".json,.html,application/json,text/html"
+          aria-label={cfg.title}
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file || !historyConsent) return;
+            if (file.size > cfg.maxMb * 1024 * 1024) {
+              setMessage(`Choose a file smaller than ${cfg.maxMb} MB.`);
+              return;
+            }
+            void run(async () => {
+              const parsed = await cfg.parse(file);
+              if (typeof parsed === "string") {
+                setMessage(parsed);
+                return;
+              }
+              let importedCount = 0;
+              let skipped = 0;
+              let rejected = 0;
+              for (let i = 0; i < parsed.length; i += IMPORT_CHUNK) {
+                const chunk = parsed.slice(i, i + IMPORT_CHUNK);
+                setMessage(
+                  `Importing ${Math.min(i + IMPORT_CHUNK, parsed.length).toLocaleString()} of ${parsed.length.toLocaleString()} records…`,
+                );
+                try {
+                  const result = await request<{
+                    imported: number;
+                    skipped: number;
+                  }>(cfg.endpoint, { consent: historyConsent, history: chunk });
+                  importedCount += result.imported;
+                  skipped += result.skipped;
+                } catch (err) {
+                  if (!/failed: 400/.test(errorMessage(err))) throw err;
+                  skipped += chunk.length;
+                  rejected += 1;
+                }
+              }
+              if (rejected * IMPORT_CHUNK >= parsed.length) {
+                setMessage(cfg.noRecords);
+                return;
+              }
+              setMessage(
+                `Imported ${importedCount.toLocaleString()} new ${cfg.noun}. ${skipped.toLocaleString()} records were skipped.`,
+              );
+            });
+          }}
+        />
+        <Button
+          className="w-full gap-2"
+          variant="secondary"
+          disabled={busy || !historyConsent}
+          onClick={() => historyInput.current?.click()}
+        >
+          <Upload className="size-4" />
+          {cfg.button}
+        </Button>
+        {imported && (
+          <div className="space-y-2 border-t border-white/10 pt-3">
+            <p className="text-xs text-muted-foreground">
+              Synced
+              {imported.last_synced_at
+                ? ` on ${new Date(imported.last_synced_at).toLocaleString()}`
+                : ""}
+              .
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await request(`connections/${imported.id}/disconnect`);
+                  setMessage(
+                    "History disconnected. Imported timeline records are retained.",
+                  );
+                })
+              }
+            >
+              Disconnect imported history
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
   useEffect(() => {
     let active = true;
     const id = openAccount?.id;
@@ -522,7 +731,7 @@ export function ConnectedAppsView() {
               [
                 ["all", "All"],
                 ["connected", "Connected"],
-                ["available", "Not connected"],
+                ["available", "Not synced"],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -680,9 +889,7 @@ export function ConnectedAppsView() {
             <div className="grid auto-rows-fr items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
               {shown.map((app) => {
                 const brand = BRANDS[app.id] ?? FALLBACK_BRAND;
-                const account = connections.find(
-                  (c) => c.connector_id === app.id,
-                );
+                const account = accountFor(app.id);
                 const needsAttention =
                   !!account &&
                   (!!account.failure_code ||
@@ -712,7 +919,7 @@ export function ConnectedAppsView() {
                     </div>
                     <div className="relative mt-3">
                       <StatusPill
-                        connected={isConnected(app.id)}
+                        synced={isSynced(app.id)}
                         attention={needsAttention}
                       />
                     </div>
@@ -734,7 +941,9 @@ export function ConnectedAppsView() {
                       ) : (
                         <Plug className="size-4" />
                       )}
-                      {app.id === "youtube"
+                      {app.id === "maps_timeline"
+                        ? "Import"
+                        : app.id === "youtube"
                         ? "Sync"
                         : isConnected(app.id)
                           ? "Configure"
@@ -808,7 +1017,7 @@ export function ConnectedAppsView() {
                     </SheetTitle>
                     <div className="mt-1">
                       <StatusPill
-                        connected={isConnected(openApp.id)}
+                        synced={isSynced(openApp.id)}
                         attention={
                           !!openAccount &&
                           (!!openAccount.failure_code ||
@@ -855,165 +1064,9 @@ export function ConnectedAppsView() {
                     </p>
                   )}
 
-                  {openApp.id === "youtube" && (
-                    <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                      <h3 className="text-sm font-medium">
-                        Personal watch history
-                      </h3>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        Import your Google Takeout watch-history file (HTML or
-                        JSON). Vox uses its recorded watch times. This is an
-                        imported snapshot; upload another export to add newer
-                        watches.
-                      </p>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() =>
-                          void openHelp(
-                            "https://takeout.google.com/",
-                            "Google Takeout",
-                          )
-                        }
-                      >
-                        Open Google Takeout
-                      </Button>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        Select YouTube and YouTube Music, include history, and
-                        either HTML or JSON works for the history format. Use an
-                        English-language export, extract it, and select
-                        watch-history below. The selected history is sent to
-                        Vox’s server for validation and import.
-                      </p>
-                      <label className="flex items-start gap-3 text-sm">
-                        <Checkbox
-                          checked={historyConsent}
-                          disabled={busy}
-                          onCheckedChange={(value) =>
-                            setHistoryConsent(value === true)
-                          }
-                        />
-                        <span>
-                          I allow Vox to store this watch history in my timeline
-                          and use it to answer my questions.
-                        </span>
-                      </label>
-                      <input
-                        ref={historyInput}
-                        type="file"
-                        accept=".json,.html,application/json,text/html"
-                        aria-label="Google Takeout watch history"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = "";
-                          if (!file || !historyConsent) return;
-                          if (file.size > 10 * 1024 * 1024) {
-                            setMessage(
-                              "Choose a watch-history file smaller than 10 MB.",
-                            );
-                            return;
-                          }
-                          void run(async () => {
-                            let history: unknown;
-                            try {
-                              const text = await file.text();
-                              history = file.name.endsWith(".html")
-                                ? takeoutHtmlToHistory(text)
-                                : JSON.parse(text);
-                            } catch {
-                              setMessage(
-                                "This file is not valid JSON. Select the extracted watch-history file, not the ZIP archive.",
-                              );
-                              return;
-                            }
-                            if (!Array.isArray(history)) {
-                              setMessage(
-                                "Select a Google Takeout watch-history.json file containing an array of records.",
-                              );
-                              return;
-                            }
-                            let imported = 0;
-                            let skipped = 0;
-                            let rejected = 0;
-                            for (
-                              let i = 0;
-                              i < history.length;
-                              i += IMPORT_CHUNK
-                            ) {
-                              const chunk = history.slice(i, i + IMPORT_CHUNK);
-                              setMessage(
-                                `Importing ${Math.min(i + IMPORT_CHUNK, history.length).toLocaleString()} of ${history.length.toLocaleString()} records…`,
-                              );
-                              try {
-                                const result = await request<{
-                                  imported: number;
-                                  skipped: number;
-                                }>("connections/youtube/history/import", {
-                                  consent: historyConsent,
-                                  history: chunk,
-                                });
-                                imported += result.imported;
-                                skipped += result.skipped;
-                              } catch (err) {
-                                // A chunk with no valid watch records is rejected; skip it.
-                                if (!/failed: 400/.test(errorMessage(err)))
-                                  throw err;
-                                skipped += chunk.length;
-                                rejected += 1;
-                              }
-                            }
-                            if (rejected * IMPORT_CHUNK >= history.length) {
-                              setMessage(
-                                "No valid watch records found. Choose the YouTube watch-history file from Google Takeout.",
-                              );
-                              return;
-                            }
-                            setMessage(
-                              `Imported ${imported.toLocaleString()} new watch records. ${skipped.toLocaleString()} records were skipped.`,
-                            );
-                          });
-                        }}
-                      />
-                      <Button
-                        className="w-full gap-2"
-                        variant="secondary"
-                        disabled={busy || !historyConsent}
-                        onClick={() => historyInput.current?.click()}
-                      >
-                        <Upload className="size-4" />
-                        Import watch history
-                      </Button>
-                      {importedHistory && (
-                        <div className="space-y-2 border-t border-white/10 pt-3">
-                          <p className="text-xs text-muted-foreground">
-                            History imported
-                            {importedHistory.last_synced_at
-                              ? ` on ${new Date(importedHistory.last_synced_at).toLocaleString()}`
-                              : ""}
-                            .
-                          </p>
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            disabled={busy}
-                            onClick={() =>
-                              void run(async () => {
-                                await request(
-                                  `connections/${importedHistory.id}/disconnect`,
-                                );
-                                setMessage(
-                                  "History disconnected. Imported timeline records are retained.",
-                                );
-                              })
-                            }
-                          >
-                            Disconnect imported history
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {openApp.id === "youtube" && takeoutImport(YOUTUBE_IMPORT)}
+                  {openApp.id === "maps_timeline" &&
+                    takeoutImport(MAPS_IMPORT)}
 
                   {personalLoading && (
                     <p
@@ -1319,16 +1372,16 @@ export function ConnectedAppsView() {
 }
 
 function StatusPill({
-  connected,
+  synced,
   attention,
 }: {
-  connected: boolean;
+  synced: boolean;
   attention: boolean;
 }) {
-  if (!connected) {
+  if (!synced && !attention) {
     return (
       <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        Not connected
+        Not synced
       </span>
     );
   }
@@ -1346,7 +1399,7 @@ function StatusPill({
       ) : (
         <Check className="size-3" />
       )}
-      {attention ? "Needs attention" : "Connected"}
+      {attention ? "Needs attention" : "Synced"}
     </span>
   );
 }

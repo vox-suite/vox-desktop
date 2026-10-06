@@ -1,9 +1,12 @@
 import { createElement } from "react";
+import { RefreshCw, Wallet } from "lucide-react";
 import playstationLogo from "@/assets/brands/playstation.svg";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import youtubeLogo from "@/assets/brands/youtube.svg";
+import googleMapsLogo from "@/assets/brands/google-maps.svg";
 import { schemaIcon } from "@/lib/schema-tokens";
 import type { Span } from "@/features/spans/types";
+import { moneyKind } from "@/lib/span-format";
 import { cn } from "@/lib/utils";
 
 export function CategoryIndicator({
@@ -22,11 +25,20 @@ export function CategoryIndicator({
         ? playstationLogo
         : span.source === "youtube"
           ? youtubeLogo
-          : null;
+          : span.source === "google_maps"
+            ? googleMapsLogo
+            : null;
   if (logo) {
     return (
       <img src={logo} alt="" className="size-3.5 shrink-0 rounded-[4px]" />
     );
+  }
+  const money = moneyKind(span);
+  if (money) {
+    return createElement(money === "subscription" ? RefreshCw : Wallet, {
+      className: "size-3.5 shrink-0",
+      style: { color },
+    });
   }
   if (span.schema_icon_token !== null && span.schema_icon_token !== undefined) {
     return createElement(schemaIcon(span.schema_icon_token), {

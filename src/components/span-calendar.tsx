@@ -108,7 +108,7 @@ function SpanHoverCard({
   return (
     <HoverCard openDelay={80} closeDelay={60}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
-      <HoverCardContent side="right" align="start" className="w-72 p-3">
+      <HoverCardContent side="top" align="center" sideOffset={8} collisionPadding={12} className="w-72 p-3">
         <div className="flex items-center gap-3">
           {cover ? (
             <img

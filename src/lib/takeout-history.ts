@@ -131,3 +131,15 @@ export function takeoutHtmlToHistory(html: string): unknown[] {
       };
     });
 }
+
+export function mapsTimelineToVisits(json: unknown): unknown[] {
+  if (Array.isArray(json)) return json;
+  const doc = json as {
+    semanticSegments?: { visit?: unknown }[];
+    timelineObjects?: { placeVisit?: unknown }[];
+  } | null;
+  return [
+    ...(doc?.semanticSegments ?? []).filter((s) => s?.visit),
+    ...(doc?.timelineObjects ?? []).filter((o) => o?.placeVisit),
+  ];
+}

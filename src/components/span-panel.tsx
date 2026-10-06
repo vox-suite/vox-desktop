@@ -131,13 +131,14 @@ const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
 ];
 
 // The server rejects title/time/status edits for these sources.
-const PROVIDER_OWNED = new Set(["google_calendar", "spotify", "youtube"]);
+const PROVIDER_OWNED = new Set(["google_calendar", "spotify", "youtube", "google_maps"]);
 
 const SOURCE_LABELS: Record<string, string> = {
   spotify: "Spotify",
   google_calendar: "Google Calendar",
   playstation: "PlayStation",
   youtube: "YouTube",
+  google_maps: "Google Maps",
   swiggy: "Swiggy",
   zomato: "Zomato",
 };

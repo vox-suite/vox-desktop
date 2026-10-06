@@ -222,6 +222,14 @@ const PLAYSTATION_STYLE: CategoryStyle = {
   subtext: "rgba(147, 197, 253, 0.8)",
 };
 
+const MAPS_STYLE: CategoryStyle = {
+  bg: "rgba(12, 40, 30, 0.9)",
+  border: "rgba(52, 168, 83, 0.45)",
+  dot: "#34a853",
+  text: "#ffffff",
+  subtext: "rgba(167, 243, 208, 0.8)",
+};
+
 const YOUTUBE_STYLE: CategoryStyle = {
   bg: "rgba(58, 10, 16, 0.9)",
   border: "rgba(255, 0, 51, 0.45)",
@@ -230,7 +238,29 @@ const YOUTUBE_STYLE: CategoryStyle = {
   subtext: "rgba(252, 165, 165, 0.8)",
 };
 
+const MONEY_STYLE: CategoryStyle = {
+  bg: "rgba(58, 32, 10, 0.88)",
+  border: "rgba(245, 158, 11, 0.4)",
+  dot: "#fbbf24",
+  text: "#ffffff",
+  subtext: "rgba(253, 230, 138, 0.75)",
+};
+
+const SUBSCRIPTION_RE = /subscri|recurring|renewal|membership/i;
+const FINANCE_RE =
+  /expense|payment|financ|bill|invoice|transaction|purchase|refund|salary|transfer|bank/i;
+
+export function moneyKind(span: Span): "subscription" | "financial" | null {
+  if (SUBSCRIPTION_RE.test(span.category)) return "subscription";
+  if (FINANCE_RE.test(span.category) || formatAmount(span) !== null)
+    return "financial";
+  return null;
+}
+
 export function spanStyle(span: Span): CategoryStyle {
+  if (span.source === "google_maps") return MAPS_STYLE;
+  if (moneyKind(span) && !["spotify", "youtube", "playstation"].includes(span.source))
+    return MONEY_STYLE;
   if (span.source === "spotify") return SPOTIFY_STYLE;
   if (span.source === "youtube") return YOUTUBE_STYLE;
   if (span.source === "playstation") return PLAYSTATION_STYLE;
