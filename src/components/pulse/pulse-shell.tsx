@@ -6,11 +6,14 @@ export function PulseShell({
   header,
   glow = false,
   label,
+  scroll = true,
   children,
 }: {
   header: ReactNode;
   glow?: boolean;
   label?: string;
+  /** Set to false for full-height workspaces that manage their own scrolling. */
+  scroll?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -31,9 +34,13 @@ export function PulseShell({
       <header className="relative z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-3">
         {header}
       </header>
-      <ScrollArea className="pulse-scroll relative min-h-0 flex-1">
-        {children}
-      </ScrollArea>
+      {scroll ? (
+        <ScrollArea className="pulse-scroll relative min-h-0 flex-1">
+          {children}
+        </ScrollArea>
+      ) : (
+        <div className="relative min-h-0 flex-1">{children}</div>
+      )}
     </section>
   );
 }

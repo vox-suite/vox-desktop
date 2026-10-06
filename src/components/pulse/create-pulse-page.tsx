@@ -18,6 +18,7 @@ export function CreatePulsePage({
   );
   return (
     <PulseShell
+      scroll={mode === "suggestions"}
       glow
       label="Create a Pulse chart"
       header={
