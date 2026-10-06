@@ -342,3 +342,20 @@
   color: #fafafa;
   border: 1px solid #2a2a2a;
 }
+
+.pulse-scroll [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  min-height: 100%;
+}
+.pulse-scroll [data-slot="scroll-area-scrollbar"] {
+  width: 6px;
+  padding: 1px;
+  border: 0;
+  position: absolute;
+}
+.pulse-scroll [data-slot="scroll-area-thumb"] {
+  background: #2e2e2e;
+}
+.pulse-scroll [data-slot="scroll-area-thumb"]:hover {
+  background: #444;
+}

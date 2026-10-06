@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AskView } from "./ask-view";
+import { PulseShell } from "./pulse-shell";
 import { SuggestionsView } from "./suggestions-view";
 
 export function CreatePulsePage({
@@ -13,20 +14,11 @@ export function CreatePulsePage({
 }) {
   const [mode, setMode] = useState<"ask" | "suggestions">("suggestions");
   return (
-    <div className="pulse-surface relative h-full overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-96"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 100% at 100% 0%, #3ecf8e55 0%, #3ecf8e22 40%, #3ecf8e0a 65%, transparent 85%)",
-        }}
-      />
-      <section
-        className="pulse-create relative h-full overflow-y-auto"
-        aria-label="Create a Pulse chart"
-      >
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-background/70 px-6 py-3 backdrop-blur">
+    <PulseShell
+      glow
+      label="Create a Pulse chart"
+      header={
+        <>
           <div className="flex items-center gap-2 text-sm">
             <Button variant="ghost" size="sm" onClick={onClose}>
               <ArrowLeft size={15} /> Pulse
@@ -52,18 +44,19 @@ export function CreatePulsePage({
               Ask Pulse
             </button>
           </div>
-        </header>
-        <div className="pulse-create-inner" style={{ paddingTop: 24 }}>
-          <div className="pulse-create-content">
-            {mode === "ask" ? (
-              <AskView onSaved={onSaved} />
-            ) : (
-              <SuggestionsView onSaved={onSaved} />
-            )}
-          </div>
+        </>
+      }
+    >
+      <div className="pulse-create-inner" style={{ paddingTop: 24 }}>
+        <div className="pulse-create-content">
+          {mode === "ask" ? (
+            <AskView onSaved={onSaved} />
+          ) : (
+            <SuggestionsView onSaved={onSaved} />
+          )}
         </div>
-      </section>
-    </div>
+      </div>
+    </PulseShell>
   );
 }
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { BoardView } from "./board-view";
 import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
-import "./pulse.css";
+import { PulseShell } from "./pulse-shell";
 import { PulseChartSkeleton } from "./chart-card";
 import { SavedChart } from "./saved-chart";
 export function PulseView() {
@@ -34,7 +34,37 @@ export function PulseView() {
   const empty =
     canvas?.charts.length === 0 && canvas.legacy_boards.length === 0;
   return (
-    <div className="pulse-surface flex h-full w-full flex-col overflow-y-auto p-4 sm:p-6">
+    <PulseShell
+      header={
+        <>
+          <h1 className="text-sm font-medium">Pulse</h1>
+          {!empty && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Refresh charts"
+                disabled={refreshing}
+                onClick={() => void reload(true)}
+              >
+                <RotateCw
+                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Add to Pulse"
+                onClick={() => setAdding(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
+      }
+    >
+      <div className="flex min-h-full flex-col p-4 sm:p-6">
       {loading && !canvas ? (
         <div
           role="status"
@@ -62,9 +92,7 @@ export function PulseView() {
             <div className="mx-auto flex flex-1 flex-col items-center justify-center gap-6 text-center">
               <PulseOrbit />
               <div>
-                <h1 className="text-xl font-medium">
-                  No charts yet
-                </h1>
+                <h2 className="text-xl font-medium">No charts yet</h2>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
                   Pulse turns your connected apps into small, living charts —
                   what you listen to, what you play, where your money goes.
@@ -89,32 +117,7 @@ export function PulseView() {
                 <Plus className="h-4 w-4" /> Add your first chart
               </Button>
             </div>
-          ) : (
-            <div className="mb-5 flex items-center justify-between">
-              <h1 className="text-lg font-medium">Pulse</h1>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Refresh charts"
-                  disabled={refreshing}
-                  onClick={() => void reload(true)}
-                >
-                  <RotateCw
-                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Add to Pulse"
-                  onClick={() => setAdding(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+          ) : null}
           {error && (
             <p role="alert" className="mb-4 text-xs text-destructive">
               {error}
@@ -168,6 +171,7 @@ export function PulseView() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </PulseShell>
   );
 }
