@@ -47,8 +47,22 @@ export function CreatePulsePage({
         </>
       }
     >
-      <div className="pulse-create-inner" style={{ paddingTop: 24 }}>
-        <div className="pulse-create-content">
+      <div
+        className={
+          mode === "ask" ? "pulse-create-inner h-full" : "pulse-create-inner"
+        }
+        style={{
+          paddingTop: 24,
+          ...(mode === "ask" ? { paddingBottom: 24 } : {}),
+        }}
+      >
+        <div
+          className={
+            mode === "ask"
+              ? "pulse-create-content h-full"
+              : "pulse-create-content"
+          }
+        >
           {mode === "ask" ? (
             <AskView onSaved={onSaved} />
           ) : (

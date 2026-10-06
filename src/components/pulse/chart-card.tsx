@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui/card";
+import { formatTotal } from "@/features/pulse/format";
 import { windowLabel } from "@/features/pulse/window";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -33,20 +34,6 @@ import type {
 
 const colors = ["#3ecf8e", "#a2aaa4", "#77b6a1", "#6b766e", "#d4dad6"];
 
-const SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£" };
-function formatTotal(value: number, unit: string) {
-  const abs = Math.abs(value);
-  const number = new Intl.NumberFormat(undefined, {
-    notation: abs >= 10000 ? "compact" : "standard",
-    maximumFractionDigits: abs >= 100 ? 0 : 2,
-  })
-    .format(value)
-    .replace(/K$/, "k");
-  if (SYMBOLS[unit]) return { text: `${SYMBOLS[unit]}${number}`, unit: "" };
-  const label =
-    unit === "hours" ? "hrs" : value === 1 && unit === "events" ? "event" : unit;
-  return { text: number, unit: label };
-}
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function friendly(label: unknown, long = false) {
   const text = String(label ?? "");

@@ -94,7 +94,7 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
   const buckets: Bucket[] = measurement?.buckets ?? [];
 
   return (
-    <div className="grid min-h-[70vh] gap-6 lg:grid-cols-[minmax(300px,2fr)_3fr]">
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[minmax(300px,2fr)_3fr] lg:grid-rows-[minmax(0,1fr)]">
       <section className="flex min-h-0 flex-col" aria-label="Chat">
         <div className="flex-1 space-y-4 overflow-y-auto pb-4">
           {messages.length === 0 && (
@@ -183,11 +183,16 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
         </form>
       </section>
 
-      <section className="min-w-0" aria-label="Preview">
+      <section
+        className="flex min-h-0 min-w-0 items-center justify-center overflow-y-auto rounded-xl border border-dashed border-border p-6"
+        aria-label="Preview"
+      >
         {busy && !preview ? (
-          <PulseChartSkeleton />
+          <div className="w-full max-w-xl">
+            <PulseChartSkeleton />
+          </div>
         ) : definition && preview && title ? (
-          <div className="space-y-3">
+          <div className="w-full max-w-xl space-y-3">
             <RangeControls
               definition={definition}
               buckets={buckets}
@@ -208,9 +213,9 @@ export function AskView({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
         ) : (
-          <div className="flex h-full min-h-72 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Your chart will appear here
-          </div>
+          </p>
         )}
       </section>
     </div>
