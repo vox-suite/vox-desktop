@@ -19,11 +19,11 @@ export const spacesApi = {
       method: "GET",
       path: `/v1/me/spaces/${id}`,
     }),
-  createSpace: (title: string, intent: string) =>
+  createSpace: (intent: string) =>
     platform().http.request<Space>({
       method: "POST",
       path: "/v1/me/spaces",
-      body: { title, intent },
+      body: { intent },
       timeoutMs: CREATE_TIMEOUT_MS,
     }),
   dropSpace: (id: string) =>

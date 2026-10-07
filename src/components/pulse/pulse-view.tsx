@@ -15,12 +15,14 @@ import { PulseShell } from "./pulse-shell";
 import { PulseChartSkeleton } from "./chart-card";
 import { SavedChart } from "./saved-chart";
 import { GoalCard } from "./goal-card";
+import { discoveryApi } from "@/features/pulse/api";
 import { goalsApi, type GoalView } from "@/features/pulse/goals";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const [adding, setAdding] = useState(false);
   const [boardId, setBoardId] = useState<string | null>(null);
   const [goals, setGoals] = useState<GoalView[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
   useEffect(() => {
     if (adding) return;
     let active = true;
@@ -180,14 +182,21 @@ export function PulseView() {
               </div>
             )}
             <div className="pulse-chart-grid">
-              {canvas?.charts.map((chart) => (
-                <SavedChart
-                  key={chart.id}
-                  title={chart.title}
-                  definition={chart.definition}
-                  result={chart.result}
-                />
-              ))}
+              {canvas?.charts
+                .filter((chart) => !removed.includes(chart.id))
+                .map((chart) => (
+                  <SavedChart
+                    key={chart.id}
+                    onRemove={() => {
+                      void discoveryApi
+                        .deleteChart(chart.id)
+                        .then(() => setRemoved((ids) => [...ids, chart.id]));
+                    }}
+                    title={chart.title}
+                    definition={chart.definition}
+                    result={chart.result}
+                  />
+                ))}
             </div>
             {canvas?.next_cursor && (
               <Button

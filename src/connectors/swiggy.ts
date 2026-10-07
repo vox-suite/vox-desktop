@@ -18,7 +18,7 @@ export const swiggy = {
       "Read real food orders and delivery status through Swiggy account authorization.",
     supported_features: ["timeline_sync", "assistant_read"],
     auth_type: "oauth2",
-    available: false,
+    available: true,
   },
   authUrl: "https://mcp.swiggy.com/auth/authorize",
 };

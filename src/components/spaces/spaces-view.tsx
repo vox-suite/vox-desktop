@@ -11,13 +11,10 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,7 +27,6 @@ export function SpacesView() {
   const { spaces, loading, error, reload, create, drop } = useSpaces();
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [title, setTitle] = useState("");
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -39,12 +35,11 @@ export function SpacesView() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !intent.trim() || creating) return;
+    if (!intent.trim() || creating) return;
     setCreating(true);
     setCreateError("");
     try {
-      const created = await create(title.trim(), intent.trim());
-      setTitle("");
+      const created = await create(intent.trim());
       setIntent("");
       setShowCreateDialog(false);
       setSelectedSpaceId(created.id);
@@ -92,24 +87,17 @@ export function SpacesView() {
     running ? "#ff5a67" : state === "committed" ? "#cfe3f1" : "#f5b83d";
 
   return (
-    <div className="spaces-workbench spaces-library relative flex h-full w-full flex-col overflow-x-hidden overflow-y-auto bg-black p-6 text-foreground">
+    <div className="spaces-workbench spaces-library relative flex h-full w-full flex-col overflow-x-hidden overflow-y-auto bg-[#111] p-6 text-foreground">
       <SpacesOrbit />
-      <header className="relative z-10 mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Vox / Spaces
-          </p>
-          <h1 className="mt-2 text-2xl font-medium tracking-tight">Spaces</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Explore an idea. Compare options. Build a plan.
-          </p>
-        </div>
+      <header className="relative z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between gap-4 border-b border-border px-6 py-3">
+        <h1 className="text-sm font-medium">Spaces</h1>
         <Button
           onClick={openCreate}
-          className="gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground hover:bg-primary/90"
+          variant="outline"
+          size="icon"
+          aria-label="New space"
         >
           <Plus className="h-4 w-4" />
-          <span>New space</span>
         </Button>
       </header>
 
@@ -204,16 +192,15 @@ export function SpacesView() {
       )}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent
+          aria-describedby={undefined}
+          className="gap-5 p-6 sm:max-w-lg"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Create a Space
             </DialogTitle>
-            <DialogDescription>
-              Describe what you are thinking of doing. Vox will research options
-              using your available data and build a visual plan.
-            </DialogDescription>
           </DialogHeader>
 
           {createError && (
@@ -231,33 +218,23 @@ export function SpacesView() {
             </Alert>
           )}
 
-          <form onSubmit={(e) => void handleCreate(e)} className="space-y-4">
-            <div>
-              <Label htmlFor="space-title">Title</Label>
-              <Input
-                id="space-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Weekend getaway near Bangalore"
-                disabled={creating}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="space-intent">Vision &amp; Intent</Label>
+          <form onSubmit={(e) => void handleCreate(e)} className="space-y-5">
+            <div className="space-y-2">
               <Textarea
                 id="space-intent"
+                aria-label="Intent"
+                autoFocus
                 value={intent}
                 onChange={(e) => setIntent(e.target.value)}
-                placeholder="e.g. Planning a short trip with a friend this weekend. Avoid crowded places, check my recent expenditure to estimate a realistic budget, and give me a few options with pros, cons, and driving time."
+                placeholder="What are you thinking about?"
                 rows={4}
+                className="min-h-28 resize-none py-2.5 leading-relaxed"
                 disabled={creating}
                 required
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-1">
               <Button
                 type="button"
                 variant="ghost"
@@ -269,7 +246,7 @@ export function SpacesView() {
               </Button>
               <Button
                 type="submit"
-                disabled={creating || !title.trim() || !intent.trim()}
+                disabled={creating || !intent.trim()}
                 size="sm"
                 className="gap-1.5"
               >

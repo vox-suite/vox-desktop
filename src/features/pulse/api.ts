@@ -71,7 +71,9 @@ export const discoveryApi = {
       path: "/v1/me/pulse/measurements",
       query: { timezone: pulseTimezone() },
     }),
-  discover: (opts: { refresh?: boolean; more?: boolean; prompt?: string } = {}) =>
+  discover: (
+    opts: { refresh?: boolean; more?: boolean; prompt?: string } = {},
+  ) =>
     platform().http.request<DiscoveryResponse>({
       method: "POST",
       path: "/v1/me/pulse/suggestions",
@@ -105,6 +107,11 @@ export const discoveryApi = {
       method: "POST",
       path: "/v1/me/pulse/charts",
       body: { title, definition, idempotency_key: idempotencyKey },
+    }),
+  deleteChart: (id: string) =>
+    platform().http.request<void>({
+      method: "DELETE",
+      path: `/v1/me/pulse/charts/${id}`,
     }),
   dismiss: (definition: PulseDefinition) =>
     platform().http.request<void>({

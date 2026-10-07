@@ -50,10 +50,10 @@ export function useSpaces(enabled = true) {
   }, [enabled, load]);
 
   const create = useCallback(
-    async (title: string, intent: string) => {
+    async (intent: string) => {
       setLoading(true);
       try {
-        const created = await spacesApi.createSpace(title, intent);
+        const created = await spacesApi.createSpace(intent);
         await load();
         return created;
       } catch (err) {

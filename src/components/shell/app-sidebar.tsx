@@ -145,7 +145,7 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-2">
+        <div className="-mx-2 flex items-center gap-1 border-t border-sidebar-border px-2 pt-2 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-2">
           <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
             <SidebarMenuItem>
               <DropdownMenu>

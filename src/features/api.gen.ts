@@ -1829,7 +1829,7 @@ export interface components {
         };
         CreateSpaceInput: {
             intent: string;
-            title: string;
+            title?: string;
         };
         DataSchema: {
             /** Format: int32 */
