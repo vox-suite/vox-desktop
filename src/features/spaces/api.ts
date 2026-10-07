@@ -31,11 +31,21 @@ export const spacesApi = {
       method: "DELETE",
       path: `/v1/me/spaces/${id}`,
     }),
-  sendSpaceChat: (id: string, message: string) =>
+  sendSpaceChat: (id: string, message: string, nodeId?: string) =>
     platform().http.request<{ status: string }>({
       method: "POST",
       path: `/v1/me/spaces/${id}/chat`,
-      body: { message },
+      body: { message, node_id: nodeId },
+    }),
+  stopSpace: (id: string) =>
+    platform().http.request<{ status: string }>({
+      method: "POST",
+      path: `/v1/me/spaces/${id}/stop`,
+    }),
+  retryNode: (id: string, node: string) =>
+    platform().http.request<{ status: string }>({
+      method: "POST",
+      path: `/v1/me/spaces/${id}/nodes/${node}/retry`,
     }),
   commitSpace: (id: string) =>
     platform().http.request<CommitSpaceResult>({

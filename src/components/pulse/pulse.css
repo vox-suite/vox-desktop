@@ -167,7 +167,8 @@
   font-size: 11px;
 }
 .pulse-chart-foot {
-  margin-top: 18px;
+  margin-top: auto;
+  padding-top: 18px;
   font-size: 11px;
   color: #a0a6a2;
   line-height: 1.7;

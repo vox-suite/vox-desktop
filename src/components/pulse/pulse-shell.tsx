@@ -17,7 +17,6 @@ export function PulseShell({
   header: ReactNode;
   glow?: boolean;
   label?: string;
-  /** Set to false for full-height workspaces that manage their own scrolling. */
   scroll?: boolean;
   children: ReactNode;
 }) {

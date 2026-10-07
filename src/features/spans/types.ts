@@ -34,4 +34,13 @@ export type SpanDaySummary = {
   count: number;
   categories: SpanCategoryCount[];
 };
-export type SpanDayPage = { items: Span[]; next_cursor: string | null };
+export type SpanDays = {
+  revision: number;
+  unchanged: boolean;
+  days: SpanDaySummary[];
+};
+export type SpanDayPage = {
+  revision: number;
+  items: Span[];
+  next_cursor: string | null;
+};

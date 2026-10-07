@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { discoveryApi } from "@/features/pulse/api";
 import type { CanvasResponse } from "@/features/pulse/discovery-types";
-import { LatestRequest, uniqueCharts } from "@/features/pulse/settings";
+import { LatestRequest, uniqueCharts } from "@/features/pulse/utils";
 import { platform } from "@/platform";
 export function usePulseCanvas() {
   const [canvas, setCanvas] = useState<CanvasResponse | null>(null);

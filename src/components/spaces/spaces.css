@@ -157,7 +157,7 @@
 
 @media (min-width: 768px) {
   .spaces-workbench .spaces-flow-with-chat {
-    width: calc(100% - 352px) !important;
+    width: 100% !important;
   }
 }
 .space-orbits {
@@ -338,4 +338,25 @@
   top: -2px;
   background: #ee87a1;
   border-radius: 50%;
+}
+
+.space-workflow-node {
+  width: 260px;
+  height: 200px;
+  overflow: hidden;
+  border: 1px solid #343438;
+  border-radius: 0;
+  background: #202023;
+  color: #f2f2f3;
+  box-shadow: 0 8px 24px #0003;
+}
+.space-workflow-node.is-selected {
+  border-color: #aaaab4;
+  box-shadow: 0 0 0 1px #aaaab433;
+}
+.space-workflow-node .react-flow__handle {
+  width: 7px;
+  height: 7px;
+  background: #96969c;
+  border: 1px solid #202023;
 }

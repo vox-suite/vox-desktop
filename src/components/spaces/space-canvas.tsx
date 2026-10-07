@@ -1,13 +1,11 @@
-import {
-  PageContainer,
-  PageHeader,
-  PageBody,
-} from "@/components/ui/page-container";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Controls,
   MiniMap,
+  Background,
+  BackgroundVariant,
+  MarkerType,
   ReactFlowProvider,
   useReactFlow,
   type Node,
@@ -17,28 +15,15 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./spaces.css";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  MessageSquare,
-  Compass,
-  Flag,
-  RotateCw,
-  X,
-} from "lucide-react";
+import { RotateCw } from "lucide-react";
+import { spacesApi } from "@/features/spaces/api";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SpaceRadialNode, SpaceOrbitNode } from "./space-radial-node";
-import { radialLayout } from "./radial-layout";
+import { PageContainer, PageBody } from "@/components/ui/page-container";
+import { SpaceWorkflowNode } from "./space-workflow-node";
+import { dependencyLayout } from "./dependency-layout";
 import { SpaceChatPanel } from "@/components/spaces/space-chat-panel";
+import { SpaceCanvasHeader } from "./space-canvas-header";
+import { CommitSpaceDialog } from "./commit-space-dialog";
 import type {
   CommitSpaceResult,
   SpaceGraph,
@@ -46,7 +31,7 @@ import type {
   SpaceNode,
 } from "@/features/spaces/types";
 
-const nodeTypes = { spaceNode: SpaceRadialNode, orbit: SpaceOrbitNode };
+const nodeTypes = { spaceNode: SpaceWorkflowNode };
 
 function SpaceCanvasInner({
   graph,
@@ -65,7 +50,7 @@ function SpaceCanvasInner({
   sending: boolean;
   committing: boolean;
   onBack: () => void;
-  onSendMessage: (msg: string) => Promise<void>;
+  onSendMessage: (msg: string, nodeId?: string) => Promise<void>;
   onCommit: () => Promise<unknown>;
   onUpdateNode: (
     nodeId: string,
@@ -76,37 +61,25 @@ function SpaceCanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
-  const [commitResult, setCommitResult] = useState<CommitSpaceResult | null>(
-    null,
-  );
+  const [commitResult, setCommitResult] = useState<CommitSpaceResult | null>(null);
+  const [chatOpen, setChatOpen] = useState(true);
+  const [actionError, setActionError] = useState("");
 
   const { fitView } = useReactFlow();
   const prevCountRef = useRef(0);
 
   useEffect(() => {
-    const layout = radialLayout(graph.nodes);
+    const layout = dependencyLayout(graph.nodes, graph.edges);
     const nodeStateMap = new Map(graph.nodes.map((n) => [n.id, n.state]));
     setNodes((current) => {
       const currMap = new Map(current.map((n) => [n.id, n]));
-      const orbit: Node = {
-        id: "__space_orbits",
-        type: "orbit",
-        position: { x: -layout.radius, y: -layout.radius },
-        data: { radius: layout.radius },
-        selectable: false,
-        draggable: false,
-        connectable: false,
-        focusable: false,
-        zIndex: -1,
-      };
       return [
-        orbit,
         ...graph.nodes.map((node) => {
           const radial = layout.positions.get(node.id)!;
           return {
             id: node.id,
             type: "spaceNode",
-            position: currMap.get(node.id)?.position ?? {
+            position: {
               x: radial.x,
               y: radial.y,
             },
@@ -127,7 +100,8 @@ function SpaceCanvasInner({
           sourceHandle: "right",
           targetHandle: "left",
           target: e.to_node,
-          type: "default",
+          type: "straight",
+          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
           animated: isRunning,
           style: {
             stroke:
@@ -148,22 +122,13 @@ function SpaceCanvasInner({
   }, [graph.nodes, graph.edges, selectedNodeId, setNodes, setEdges]);
 
   useEffect(() => {
-    if (nodes.length > 0 && nodes.length > prevCountRef.current) {
+    if (nodes.length > 0 && prevCountRef.current === 0) {
       window.requestAnimationFrame(() => {
         void fitView({ duration: 300, padding: 0.2 });
       });
     }
     prevCountRef.current = nodes.length;
   }, [nodes.length, fitView]);
-
-  const handleNodeDragStop = useCallback(
-    (_: unknown, node: Node) => {
-      void onUpdateNode(node.id, { position: node.position });
-    },
-    [onUpdateNode],
-  );
-
-  const [chatOpen, setChatOpen] = useState(true);
 
   const handleNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === "orbit") return;
@@ -190,84 +155,50 @@ function SpaceCanvasInner({
       ),
     [graph.nodes],
   );
-  const canCommit = committableNodes.length > 0 && !isCommitted;
+
+  const canCommit =
+    committableNodes.length > 0 &&
+    !isCommitted &&
+    graph.nodes.every((n) => n.state === "done");
+
+  const runAction = async (action: () => Promise<unknown>) => {
+    setActionError("");
+    try {
+      await action();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const cyclic = dependencyLayout(graph.nodes, graph.edges).cyclic.length > 0;
 
   return (
     <PageContainer className="spaces-workbench flex-row">
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <PageHeader className="z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 backdrop-blur-md sm:px-5 sm:py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="text-muted-foreground hover:text-foreground p-1.5 h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Compass className="h-4 w-4 text-foreground" />
-                <h1 className="truncate text-base font-bold text-foreground">
-                  {graph.space.title}
-                </h1>
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                    isCommitted
-                      ? "border-border bg-muted text-muted-foreground"
-                      : "border-ring bg-primary/10 text-foreground"
-                  }`}
-                >
-                  {graph.space.state}
-                </span>
-                {graph.space.run_state === "running" && (
-                  <span className="flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    <RotateCw className="h-2.5 w-2.5 animate-spin" />
-                    running
-                  </span>
-                )}
-                {loading && (
-                  <RotateCw className="h-3 w-3 animate-spin text-muted-foreground" />
-                )}
-              </div>
-            </div>
-          </div>
+        <SpaceCanvasHeader
+          graph={graph}
+          loading={loading}
+          committing={committing}
+          canCommit={canCommit}
+          selectedNode={selectedNode}
+          chatOpen={chatOpen}
+          onBack={onBack}
+          onStop={() => void runAction(() => spacesApi.stopSpace(graph.space.id))}
+          onRetryNode={() =>
+            selectedNode &&
+            void runAction(() => spacesApi.retryNode(graph.space.id, selectedNode.id))
+          }
+          onToggleChat={() => setChatOpen((open) => !open)}
+          onOpenCommitDialog={() => setShowCommitDialog(true)}
+        />
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setChatOpen((open) => !open)}
-              className="h-8 w-8 p-1.5 text-muted-foreground hover:text-foreground"
-              title={chatOpen ? "Hide chat" : "Show chat"}
-              aria-label={chatOpen ? "Hide chat" : "Show chat"}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
-            {isCommitted ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted border border-border px-3 py-1.5 rounded-lg">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Committed to Timeline</span>
-                <span className="sm:hidden">Committed</span>
-              </div>
-            ) : (
-              <Button
-                onClick={() => setShowCommitDialog(true)}
-                disabled={committing || !canCommit}
-                size="sm"
-                className="bg-muted hover:bg-muted text-foreground font-medium gap-1.5 text-xs shadow-sm"
-              >
-                {committing ? (
-                  <RotateCw className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Flag className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">Commit to Timeline</span>
-                <span className="sm:hidden">Commit</span>
-              </Button>
-            )}
+        {(actionError || cyclic || graph.space.run_error) && (
+          <div role="alert" className="px-5 py-2 text-xs text-destructive">
+            {actionError ||
+              graph.space.run_error ||
+              "This legacy graph has a dependency cycle. Its hierarchy needs repair."}
           </div>
-        </PageHeader>
+        )}
 
         <PageBody scroll={false}>
           {graph.nodes.length === 0 && graph.space.run_state === "running" && (
@@ -292,12 +223,18 @@ function SpaceCanvasInner({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={handleNodeClick}
-            onNodeDragStop={handleNodeDragStop}
+            onPaneClick={() => setSelectedNodeId(null)}
+            nodesDraggable={false}
             nodeTypes={nodeTypes}
-            proOptions={{ hideAttribution: true }}
             fitView
             className={cn("bg-background", chatOpen && "spaces-flow-with-chat")}
           >
+            <Background
+              variant={BackgroundVariant.Dots}
+              gap={24}
+              size={1}
+              color="#303033"
+            />
             <Controls className="!bg-card !border-border !text-muted-foreground" />
             <MiniMap
               className="!bg-card !border !border-border max-md:!hidden"
@@ -311,7 +248,7 @@ function SpaceCanvasInner({
               nodeStrokeColor={(node) =>
                 node.type === "orbit" ? "transparent" : "#777"
               }
-              nodeBorderRadius={8}
+              nodeBorderRadius={0}
               pannable
               zoomable
               ariaLabel="Space overview — drag to pan, scroll to zoom"
@@ -321,30 +258,8 @@ function SpaceCanvasInner({
         </PageBody>
       </div>
 
-      <div
-        className={cn(
-          chatOpen &&
-            "spaces-chat-dock max-md:!top-auto max-md:!right-0 max-md:!bottom-0 max-md:!left-0",
-          chatOpen
-            ? "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:flex max-md:h-[78%] max-md:flex-col max-md:overflow-hidden max-md:rounded-t-2xl max-md:border-t max-md:border-border max-md:bg-card max-md:shadow-2xl"
-            : "hidden",
-        )}
-      >
-        <div className="flex items-center justify-between border-b border-border px-4 py-2 md:hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Space chat
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setChatOpen(false)}
-            className="h-7 w-7 p-1 text-muted-foreground hover:text-foreground"
-            title="Close"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="min-h-0 h-full flex-1">
+      {chatOpen && (
+        <div className="pointer-events-auto absolute bottom-5 left-1/2 z-20 w-[min(580px,calc(100%-32px))] -translate-x-1/2">
           <SpaceChatPanel
             space={graph.space}
             messages={messages}
@@ -355,113 +270,19 @@ function SpaceCanvasInner({
             onUpdateNode={onUpdateNode}
           />
         </div>
-      </div>
+      )}
 
-      <Dialog open={showCommitDialog} onOpenChange={setShowCommitDialog}>
-        <DialogContent className="max-w-md bg-card border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">
-              {commitResult ? "Space Committed" : "Commit to Timeline"}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              {commitResult
-                ? `Created ${commitResult.committed_spans_count} spans in your timeline.`
-                : `This will create spans in a new collection for all completed plan and step nodes.`}
-            </DialogDescription>
-          </DialogHeader>
-
-          {commitResult ? (
-            <div className="space-y-4 py-2">
-              <div className="rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                <div>
-                  <span className="font-semibold">Successfully committed!</span>
-                  <p className="mt-1 text-muted-foreground/90">
-                    {commitResult.committed_spans_count} spans created under
-                    collection{" "}
-                    <span className="font-medium underline">
-                      "{graph.space.title}"
-                    </span>
-                    .
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setShowCommitDialog(false);
-                    onBack();
-                  }}
-                  className="bg-primary hover:bg-primary text-foreground text-xs"
-                >
-                  Back to Spaces
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 py-2">
-              <div className="text-xs">
-                <span className="font-medium text-muted-foreground">
-                  Collection Name:{" "}
-                </span>
-                <span className="font-semibold text-foreground">
-                  {graph.space.title}
-                </span>
-              </div>
-              <div>
-                <span className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Spans to create ({committableNodes.length}):
-                </span>
-                <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-lg border border-border bg-card p-2.5">
-                  {committableNodes.map((n) => (
-                    <div
-                      key={n.id}
-                      className="flex items-center gap-2 rounded px-2 py-1 text-xs bg-card border border-border"
-                    >
-                      <span className="rounded bg-primary/15 text-foreground border border-ring px-1.5 py-0.2 font-mono text-[10px] uppercase">
-                        {n.kind}
-                      </span>
-                      <span className="text-muted-foreground truncate">
-                        {n.title}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <DialogFooter className="mt-4 gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCommitDialog(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    const res = await onCommit();
-                    if (res) {
-                      setCommitResult(res as CommitSpaceResult);
-                    }
-                  }}
-                  disabled={committing}
-                  className="bg-muted hover:bg-muted text-foreground text-xs gap-1.5"
-                >
-                  {committing ? (
-                    <RotateCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Flag className="h-3.5 w-3.5" />
-                  )}
-                  <span>Confirm & Commit</span>
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <CommitSpaceDialog
+        open={showCommitDialog}
+        onOpenChange={setShowCommitDialog}
+        graph={graph}
+        committableNodes={committableNodes}
+        committing={committing}
+        commitResult={commitResult}
+        setCommitResult={setCommitResult}
+        onCommit={onCommit}
+        onBack={onBack}
+      />
     </PageContainer>
   );
 }
@@ -473,7 +294,7 @@ export function SpaceCanvas(props: {
   sending: boolean;
   committing: boolean;
   onBack: () => void;
-  onSendMessage: (msg: string) => Promise<void>;
+  onSendMessage: (msg: string, nodeId?: string) => Promise<void>;
   onCommit: () => Promise<unknown>;
   onUpdateNode: (
     nodeId: string,

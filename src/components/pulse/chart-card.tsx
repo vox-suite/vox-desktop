@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -16,96 +17,36 @@ import {
   Gamepad2,
   Wallet,
   Play,
+  Info,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatTotal } from "@/features/pulse/format";
-import { windowLabel } from "@/features/pulse/window";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  CHART_COLORS,
+  clipText,
+  formatTotal,
+  friendlyDate,
+  windowLabel,
+} from "@/features/pulse";
 import type {
   PulseDefinition,
   PulseResult,
 } from "@/features/pulse/discovery-types";
+import { HairlineBar } from "./chart/hairline-bar";
+import { SegmentedRing } from "./chart/segmented-ring";
+import { ChartLegend } from "./chart/chart-legend";
 
-const colors = ["#3ecf8e", "#a2aaa4", "#77b6a1", "#6b766e", "#d4dad6"];
-
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-function friendly(label: unknown, long = false) {
-  const text = String(label ?? "");
-  const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
-  if (day) {
-    const d = new Date(+day[1], +day[2] - 1, +day[3]);
-    return long
-      ? d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })
-      : `${MONTHS[d.getMonth()]} ${d.getDate()}`;
-  }
-  const month = /^(\d{4})-(\d{2})$/.exec(text);
-  if (month) return `${MONTHS[+month[2] - 1]} ${month[1]}`;
-  return text;
-}
-const clip = (value: unknown, max = 16) => {
-  const text = String(value ?? "");
-  return text.length > max ? text.slice(0, max - 1) + "…" : text;
-};
-
-function HairlineBar(props: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  horizontal: boolean;
-  fill?: string;
-  dimmed?: boolean;
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, horizontal, fill, dimmed } = props;
-  if (width <= 0 || height <= 0) return null;
-  const gap = 4;
-  const thick = Math.min(horizontal ? height : width, 14);
-  const lines = [];
-  if (horizontal) {
-    const cy = y + height / 2;
-    for (let px = x + 0.5; px <= x + width; px += gap)
-      lines.push(<line key={px} x1={px} x2={px} y1={cy - thick / 2} y2={cy + thick / 2} />);
-  } else {
-    const cx = x + width / 2;
-    for (let py = y + height - 0.5; py >= y; py -= gap)
-      lines.push(<line key={py} y1={py} y2={py} x1={cx - thick / 2} x2={cx + thick / 2} />);
-  }
-  return (
-    <g
-      stroke={fill}
-      strokeWidth={1}
-      shapeRendering="crispEdges"
-      opacity={dimmed ? 0.2 : 1}
-      style={{ transition: "opacity 120ms" }}
-    >
-      {lines}
-    </g>
-  );
-}
-export function PulseChartSkeleton() {
-  return (
-    <Card className="pulse-chart h-full" aria-hidden="true">
-      <div className="flex items-center gap-3 px-4 pt-3.5 pb-4">
-        <Skeleton className="h-8 w-8 rounded-md" />
-        <div className="space-y-2">
-          <Skeleton className="h-3.5 w-44" />
-          <Skeleton className="h-3 w-28" />
-        </div>
-      </div>
-      <div className="pulse-chart-body space-y-4">
-        <Skeleton className="h-7 w-24" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-8 w-28" />
-      </div>
-    </Card>
-  );
-}
+export { PulseChartSkeleton } from "./chart/chart-skeleton";
 
 export function PulseChartCard({
   title,
@@ -113,6 +54,8 @@ export function PulseChartCard({
   result,
   source,
   children,
+  headerAction,
+  footerAction,
   compact = !!children,
 }: {
   title: string;
@@ -120,6 +63,8 @@ export function PulseChartCard({
   result: PulseResult | null;
   source?: string;
   children?: ReactNode;
+  headerAction?: ReactNode;
+  footerAction?: ReactNode;
   compact?: boolean;
 }) {
   const [active, setActive] = useState<string | null>(null);
@@ -153,14 +98,15 @@ export function PulseChartCard({
   const statValue =
     result?.total ?? (observed.reduce((sum, p) => sum + (p.value ?? 0), 0) || null);
   const headline = categorical ? largest : latest;
-  const chartConfig = { value: { label: title, color: colors[0] } };
+  const chartConfig = { value: { label: title, color: CHART_COLORS[0] } };
+
   const tooltip = (
     <ChartTooltip
       cursor={false}
       content={
         <ChartTooltipContent
           hideIndicator
-          labelFormatter={(label) => friendly(label, true)}
+          labelFormatter={(label) => friendlyDate(label, true)}
           formatter={(value) => (
             <span className="font-mono">
               {Number(value).toLocaleString(undefined, {
@@ -173,6 +119,7 @@ export function PulseChartCard({
       }
     />
   );
+
   const axes = (
     <>
       <CartesianGrid stroke="#1f1f1f" vertical={false} strokeDasharray="3 5" />
@@ -181,7 +128,7 @@ export function PulseChartCard({
         tick={{ fontSize: 10, fill: "#a0a6a2" }}
         axisLine={false}
         tickLine={false}
-        tickFormatter={(v) => friendly(v)}
+        tickFormatter={(v) => friendlyDate(v)}
         minTickGap={28}
       />
       <YAxis
@@ -193,6 +140,7 @@ export function PulseChartCard({
       {tooltip}
     </>
   );
+
   return (
     <Card className="pulse-chart h-full overflow-visible">
       <header className="pulse-chart-header">
@@ -216,7 +164,54 @@ export function PulseChartCard({
               .join(" · ")}
           </p>
         </div>
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          {result && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  aria-label="About this measurement"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 text-xs">
+                <div className="space-y-2">
+                  <p className="font-medium text-foreground">
+                    About this measurement
+                  </p>
+                  {result.description && (
+                    <p className="text-muted-foreground leading-relaxed">
+                      {result.description}
+                    </p>
+                  )}
+                  <div className="space-y-1 pt-1.5 text-[11px] text-muted-foreground/80 border-t border-border/50">
+                    <p>
+                      {result.record_count.toLocaleString()} dated entries ·
+                      Updated{" "}
+                      {new Date(result.computed_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p>
+                      Missing capture periods appear as gaps.
+                      {result.undated_count > 0 &&
+                        ` ${result.undated_count} entries have no event date.`}
+                      {result.data_as_of &&
+                        ` Latest activity ${new Date(result.data_as_of).toLocaleDateString()}.`}
+                    </p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          {headerAction}
+        </div>
       </header>
+
       <div className="pulse-chart-body">
         {headline && !result?.error && !isStat && (
           <div className="pulse-chart-stat">
@@ -233,15 +228,17 @@ export function PulseChartCard({
             <span>{categorical ? headline.label : "latest recorded"}</span>
           </div>
         )}
+
         <div
-          className="min-w-0"
+          className={`min-w-0 ${isStat ? "flex flex-1 flex-col items-center justify-center text-center my-auto" : ""}`}
           style={{
             flexShrink: 0,
             height: isStat
-              ? "auto"
+              ? "100%"
               : categorical && definition.chart_type !== "pie"
                 ? Math.max(192, observed.length * 28 + 36)
                 : 192,
+            minHeight: isStat ? 160 : undefined,
           }}
           aria-label={`${title} chart`}
         >
@@ -255,7 +252,7 @@ export function PulseChartCard({
               No recorded values in this period
             </div>
           ) : isStat && statValue !== null ? (
-            <div className="space-y-4 py-2">
+            <div className="flex flex-col items-center justify-center text-center space-y-2 py-4">
               <p className="font-mono text-5xl tracking-tight">
                 {formatTotal(statValue, result?.unit ?? "").text}
                 <span className="ml-2 text-xl text-[#d4dad6]">
@@ -269,16 +266,19 @@ export function PulseChartCard({
               )}
             </div>
           ) : definition.chart_type === "pie" ? (
-            <SegmentedRing points={observed} colors={colors} />
+            <SegmentedRing points={observed} colors={CHART_COLORS} />
           ) : (
-            <ChartContainer config={chartConfig} className="aspect-auto h-full w-full">
+            <ChartContainer
+              config={chartConfig}
+              className="aspect-auto h-full w-full"
+            >
               {definition.chart_type === "line" ? (
                 <LineChart data={points}>
                   {axes}
                   <Line
                     type="monotone"
                     dataKey="value"
-                    stroke={colors[0]}
+                    stroke={CHART_COLORS[0]}
                     strokeWidth={1}
                     dot={false}
                     connectNulls={false}
@@ -291,8 +291,8 @@ export function PulseChartCard({
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke={colors[0]}
-                    fill={colors[0]}
+                    stroke={CHART_COLORS[0]}
+                    fill={CHART_COLORS[0]}
                     fillOpacity={0.12}
                     connectNulls={false}
                     isAnimationActive={false}
@@ -325,7 +325,7 @@ export function PulseChartCard({
                         type="category"
                         dataKey="label"
                         width={110}
-                        tickFormatter={(v) => clip(v)}
+                        tickFormatter={(v) => clipText(v)}
                         tick={{ fontSize: 10, fill: "#a0a6a2" }}
                         axisLine={false}
                         tickLine={false}
@@ -337,7 +337,7 @@ export function PulseChartCard({
                   )}
                   <Bar
                     dataKey="value"
-                    fill={colors[0]}
+                    fill={CHART_COLORS[0]}
                     shape={(p: object & { payload?: { label?: string } }) => (
                       <HairlineBar
                         {...p}
@@ -352,150 +352,37 @@ export function PulseChartCard({
             </ChartContainer>
           )}
         </div>
+
         {!compact && categorical && observed.length > 0 && (
-          <div className="pulse-legend">
-            {observed.slice(0, 5).map((point, index) => (
-              <div className="pulse-legend-row" key={point.label}>
-                <i style={{ background: colors[index % colors.length] }} />
-                <span>{point.label}</span>
-                <b>
-                  {point.value?.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}{" "}
-                  {result?.unit}
-                </b>
-              </div>
-            ))}
-          </div>
+          <ChartLegend
+            points={observed}
+            colors={CHART_COLORS}
+            unit={result?.unit}
+          />
         )}
-        {!compact && categorical && observed.length > 5 && (
-          <details className="pulse-chart-foot">
-            <summary>All {observed.length} groups</summary>
-            <div className="pulse-legend">
-              {observed.slice(5).map((point, index) => (
-                <div className="pulse-legend-row" key={point.label}>
-                  <i
-                    style={{ background: colors[(index + 5) % colors.length] }}
-                  />
-                  <span>{point.label}</span>
-                  <b>
-                    {point.value?.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {result?.unit}
-                  </b>
-                </div>
-              ))}
-            </div>
-          </details>
-        )}
-        {!compact && result && (
+
+        {!compact && (result || footerAction) && (
           <footer className="pulse-chart-foot">
-            <p>
-              {result.record_count.toLocaleString()} dated entries · Updated{" "}
-              {new Date(result.computed_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-            <details>
-              <summary>About this measurement</summary>
-              <p>{result.description}</p>
-              <p>
-                Missing capture periods appear as gaps.
-                {result.undated_count > 0 &&
-                  ` ${result.undated_count} entries have no event date.`}
-                {result.data_as_of &&
-                  ` Latest activity ${new Date(result.data_as_of).toLocaleDateString()}.`}
-              </p>
-            </details>
+            <div className="flex items-center justify-between gap-2">
+              {result ? (
+                <p>
+                  {result.record_count.toLocaleString()} dated entries · Updated{" "}
+                  {new Date(result.computed_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              ) : (
+                <div />
+              )}
+              {footerAction && (
+                <div className="ml-auto shrink-0">{footerAction}</div>
+              )}
+            </div>
           </footer>
         )}
         {children && <div className="pulse-chart-actions">{children}</div>}
       </div>
     </Card>
-  );
-}
-
-function SegmentedRing({
-  points,
-  colors,
-}: {
-  points: { label: string; value?: number | null }[];
-  colors: string[];
-}) {
-  if (points.some((p) => (p.value ?? 0) < 0))
-    return (
-      <p className="text-xs text-muted-foreground">
-        Signed values need a bar chart to compare.
-      </p>
-    );
-  const positive = points.filter((p) => (p.value ?? 0) > 0);
-  const total = positive.reduce((sum, p) => sum + (p.value ?? 0), 0);
-  if (!total)
-    return (
-      <p className="text-xs text-muted-foreground">
-        No positive values to compare
-      </p>
-    );
-  const largest = positive.reduce((best, p) =>
-    (p.value ?? 0) > (best.value ?? 0) ? p : best,
-  );
-  const segments = positive.map((p, i) => ({
-    ...p,
-    color: colors[points.indexOf(p) % colors.length],
-    end:
-      positive
-        .slice(0, i + 1)
-        .reduce((sum, item) => sum + (item.value ?? 0), 0) / total,
-  }));
-  return (
-    <svg
-      viewBox="0 0 260 240"
-      className="mx-auto h-full w-full"
-      role="img"
-      aria-label={`${largest.label}: ${Math.round(((largest.value ?? 0) / total) * 100)} percent of plotted total`}
-    >
-      {Array.from({ length: 72 }, (_, i) => {
-        const segment =
-          segments.find((s) => s.end >= (i + 0.5) / 72) ??
-          segments[segments.length - 1];
-        return (
-          <line
-            key={i}
-            x1="130"
-            y1="23"
-            x2="130"
-            y2="35"
-            transform={`rotate(${i * 5} 130 120)`}
-            stroke={segment.color}
-            strokeWidth="3"
-            strokeLinecap="round"
-          >
-            <title>
-              {segment.label}: {segment.value}
-            </title>
-          </line>
-        );
-      })}
-      <text
-        x="130"
-        y="117"
-        textAnchor="middle"
-        fill="#eeeeeb"
-        fontSize="40"
-        letterSpacing="-2"
-      >
-        {Math.round(((largest.value ?? 0) / total) * 100)}%
-      </text>
-      <text x="130" y="140" textAnchor="middle" fill="#a0a6a2" fontSize="11">
-        of plotted total
-      </text>
-      <text x="130" y="158" textAnchor="middle" fill="#a0a6a2" fontSize="11">
-        {largest.label.length > 24
-          ? largest.label.slice(0, 23) + "…"
-          : largest.label}
-      </text>
-    </svg>
   );
 }

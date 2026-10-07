@@ -98,10 +98,20 @@ export function useSpace(spaceId: string | null) {
     };
   }, [spaceId, loadGraph, loadMessages]);
 
+  // The durable job worker runs independently of the API's websocket process.
+  useEffect(() => {
+    if (!spaceId) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible")
+        void Promise.all([loadGraph(), loadMessages()]);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [spaceId, loadGraph, loadMessages]);
+
   const updateNode = useCallback(
     async (
       nodeId: string,
-      patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>
+      patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>,
     ) => {
       if (!spaceId) return;
       let prevGraph: SpaceGraph | null = null;
@@ -111,7 +121,7 @@ export function useSpace(spaceId: string | null) {
         return {
           ...curr,
           nodes: curr.nodes.map((n) =>
-            n.id === nodeId ? { ...n, ...patch } : n
+            n.id === nodeId ? { ...n, ...patch } : n,
           ),
         };
       });
@@ -132,15 +142,15 @@ export function useSpace(spaceId: string | null) {
         throw err;
       }
     },
-    [spaceId]
+    [spaceId],
   );
 
   const sendMessage = useCallback(
-    async (message: string) => {
+    async (message: string, nodeId?: string) => {
       if (!spaceId || !message.trim()) return;
       setSending(true);
       try {
-        await spacesApi.sendSpaceChat(spaceId, message);
+        await spacesApi.sendSpaceChat(spaceId, message, nodeId);
         await Promise.all([loadGraph(), loadMessages()]);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
@@ -149,7 +159,7 @@ export function useSpace(spaceId: string | null) {
         setSending(false);
       }
     },
-    [spaceId, loadGraph, loadMessages]
+    [spaceId, loadGraph, loadMessages],
   );
 
   const commit = useCallback(async () => {

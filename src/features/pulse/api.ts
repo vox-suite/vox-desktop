@@ -5,7 +5,20 @@ import type {
   ChartDataResult,
   ChartSuggestion,
   Schema,
-} from "@/features/pulse/types";
+} from "./types";
+import type {
+  CanvasResponse,
+  ComposeMessage,
+  ComposeResponse,
+  DiscoveryResponse,
+  Measurement,
+  PulseDefinition,
+  PulseResult,
+  SavedPulseChart,
+} from "./discovery-types";
+
+export const pulseTimezone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const pulseApi = {
   listSchemas: () =>
@@ -42,18 +55,6 @@ export const pulseApi = {
     }),
 };
 
-import type {
-  CanvasResponse,
-  ComposeMessage,
-  ComposeResponse,
-  DiscoveryResponse,
-  Measurement,
-  PulseDefinition,
-  PulseResult,
-  SavedPulseChart,
-} from "./discovery-types";
-export const pulseTimezone = () =>
-  Intl.DateTimeFormat().resolvedOptions().timeZone;
 export const discoveryApi = {
   getCanvas: (refresh = false, cursor?: string) =>
     platform().http.request<CanvasResponse>({
@@ -64,6 +65,7 @@ export const discoveryApi = {
         refresh: String(refresh),
         ...(cursor ? { cursor } : {}),
       },
+      timeoutMs: 60000,
     }),
   listMeasurements: () =>
     platform().http.request<Measurement[]>({

@@ -8,6 +8,7 @@ const LIST_EVENTS = new Set([
   "space_dropped",
   "space_committed",
   "space_updated",
+  "space_graph_updated",
   "space_run_started",
   "space_run_finished",
   "space_run_failed",

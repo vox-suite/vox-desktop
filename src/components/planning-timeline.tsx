@@ -1,6 +1,8 @@
-import { SpanInfoTooltip } from "@/components/span-info-tooltip";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { SpanInfoTooltip } from "@/components/span-info-tooltip";
+import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
+import type { DayFrontier } from "@/hooks/use-span-days";
 import {
   displayTitle,
   formatAmount,
@@ -8,8 +10,8 @@ import {
   isEstimated,
   spanStyle,
 } from "@/lib/span-format";
-import { CategoryIndicator } from "@/components/category-indicator";
 import { cn } from "@/lib/utils";
+import { FrontierSentinel } from "./spans/frontier-sentinel";
 
 function durationLabel(start: number, end: number) {
   const minutes = Math.max(1, Math.round((end - start) / 60_000));
@@ -24,25 +26,24 @@ export function PlanningTimeline({
   spans,
   onSelect,
   loading,
-  hasMore = false,
-  frontier = null,
+  frontiers = [],
   onLoadMore,
 }: {
   days: Date[];
   spans: Span[];
   onSelect: (span: Span) => void;
   loading: boolean;
-  hasMore?: boolean;
-  frontier?: number | null;
-  onLoadMore?: () => void;
+  frontiers?: DayFrontier[];
+  onLoadMore?: (day: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => Date.now());
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
   const start = days[0].getTime();
   const endDate = new Date(days[days.length - 1]);
   endDate.setDate(endDate.getDate() + 1);
@@ -55,6 +56,7 @@ export function PlanningTimeline({
         : days.length * 400;
   const leadingSpace = 40;
   const scale = width / (end - start);
+
   const items = useMemo(() => {
     const lanes: number[] = [];
     return spans
@@ -84,6 +86,7 @@ export function PlanningTimeline({
         return { span, from, to, left, barWidth, lane };
       });
   }, [spans, start, end, scale, width]);
+
   const ticks =
     days.length === 1
       ? Array.from({ length: 24 }, (_, hour) => {
@@ -92,22 +95,7 @@ export function PlanningTimeline({
           return date;
         })
       : days.filter((_, index) => days.length <= 7 || index % 7 === 0);
-  const sentinelLeft =
-    frontier === null
-      ? leadingSpace
-      : leadingSpace + Math.max(0, frontier - start) * scale;
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || !hasMore || loading || !onLoadMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) onLoadMore();
-      },
-      { root: scrollRef.current, rootMargin: "0px 400px 0px 400px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, loading, onLoadMore, sentinelLeft, spans.length]);
+
   const nowLeft = (now - start) * scale;
   const showNow = now >= start && now < end;
   const height = Math.max(
@@ -124,14 +112,15 @@ export function PlanningTimeline({
         className="relative h-full"
         style={{ width: width + leadingSpace + 16, minHeight: height }}
       >
-        {hasMore ? (
-          <div
-            ref={sentinelRef}
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 h-px w-px"
-            style={{ left: sentinelLeft }}
+        {frontiers.map((f) => (
+          <FrontierSentinel
+            key={f.day}
+            root={scrollRef}
+            left={leadingSpace + Math.max(0, f.ms - start) * scale}
+            disabled={loading}
+            onReach={() => onLoadMore?.(f.day)}
           />
-        ) : null}
+        ))}
         <div className="relative h-8 border-b border-border text-xs text-muted-foreground">
           {ticks.map((date) => (
             <span

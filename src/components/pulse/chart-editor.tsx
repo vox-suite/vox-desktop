@@ -7,7 +7,7 @@ import type {
   PulseDefinition,
   PulseResult,
 } from "@/features/pulse/discovery-types";
-import { LatestRequest } from "@/features/pulse/settings";
+import { LatestRequest } from "@/features/pulse/utils";
 import { PulseChartCard } from "./chart-card";
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-2 text-xs";

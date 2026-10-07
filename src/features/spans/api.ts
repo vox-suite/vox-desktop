@@ -5,7 +5,7 @@ import type {
   NewSpan,
   Span,
   SpanDayPage,
-  SpanDaySummary,
+  SpanDays,
   SpanPatch,
   SpanQuery,
 } from "@/features/spans/types";
@@ -24,24 +24,40 @@ export const spansApi = {
       body,
     });
   },
-  getDays: (fromDay: string, toDay: string, timezone: string) =>
-    platform()
-      .http.request<{ days: SpanDaySummary[] }>({
-        method: "POST",
-        path: "/v1/spans/days",
-        body: { from_day: fromDay, to_day: toDay, timezone },
-      })
-      .then((r) => r.days),
+  getDays: (
+    fromDay: string,
+    toDay: string,
+    timezone: string,
+    opts: { collectionId?: string; ifRevision?: number } = {},
+  ) =>
+    platform().http.request<SpanDays>({
+      method: "POST",
+      path: "/v1/spans/days",
+      body: {
+        from_day: fromDay,
+        to_day: toDay,
+        timezone,
+        collection_id: opts.collectionId ?? null,
+        if_revision: opts.ifRevision ?? null,
+      },
+    }),
   getDayPage: (
     day: string,
     timezone: string,
     cursor: string | null,
+    collectionId?: string,
     limit = 40,
   ) =>
     platform().http.request<SpanDayPage>({
       method: "POST",
       path: "/v1/spans/day",
-      body: { day, timezone, cursor, limit },
+      body: {
+        day,
+        timezone,
+        cursor,
+        limit,
+        collection_id: collectionId ?? null,
+      },
     }),
   createSpan: (payload: NewSpan) =>
     platform().http.request<Span>({

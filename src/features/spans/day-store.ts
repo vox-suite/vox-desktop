@@ -25,12 +25,16 @@ export function dayKey(date: Date): string {
   return `${date.getFullYear()}-${m}-${d}`;
 }
 
+const errorText = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
+
 class SpanDayStore {
   private counts = new Map<string, SpanDaySummary>();
   private entries = new Map<string, DayEntry>();
   private loadedRanges = new Set<string>();
   private inflight = new Map<string, Promise<void>>();
   private listeners = new Set<() => void>();
+  private revision: number | null = null;
   private tick = 0;
   epoch = 0;
 
@@ -46,21 +50,34 @@ class SpanDayStore {
     this.listeners.forEach((l) => l());
   }
 
-  count(day: string): SpanDaySummary | undefined {
-    return this.counts.get(day);
+  count(scope: string, day: string): SpanDaySummary | undefined {
+    return this.counts.get(`${scope}|${day}`);
   }
 
-  entry(day: string): DayEntry {
-    return this.entries.get(day) ?? EMPTY_ENTRY;
+  entry(scope: string, day: string): DayEntry {
+    return this.entries.get(`${scope}|${day}`) ?? EMPTY_ENTRY;
   }
 
-  hasLoadedCounts(fromDay: string, toDay: string): boolean {
-    return this.loadedRanges.has(`${fromDay}:${toDay}`);
+  hasLoadedCounts(scope: string, fromDay: string, toDay: string): boolean {
+    return this.loadedRanges.has(`${scope}|${fromDay}:${toDay}`);
   }
 
   invalidate() {
     this.epoch++;
     this.emit();
+  }
+
+  async revalidate() {
+    if (this.revision === null) return;
+    const today = dayKey(new Date());
+    try {
+      const result = await spansApi.getDays(today, today, timezone(), {
+        ifRevision: this.revision,
+      });
+      if (!result.unchanged) this.invalidate();
+    } catch {
+      return;
+    }
   }
 
   private once(key: string, run: () => Promise<void>): Promise<void> {
@@ -71,10 +88,13 @@ class SpanDayStore {
     return promise;
   }
 
-  loadCounts(fromDay: string, toDay: string): Promise<void> {
-    return this.once(`counts:${fromDay}:${toDay}`, async () => {
-      const days = await spansApi.getDays(fromDay, toDay, timezone());
-      const found = new Map(days.map((d) => [d.day, d]));
+  loadCounts(scope: string, fromDay: string, toDay: string): Promise<void> {
+    return this.once(`counts:${scope}:${fromDay}:${toDay}`, async () => {
+      const result = await spansApi.getDays(fromDay, toDay, timezone(), {
+        collectionId: scope || undefined,
+      });
+      if (!scope) this.revision = result.revision;
+      const found = new Map(result.days.map((d) => [d.day, d]));
       for (
         let d = new Date(`${fromDay}T00:00:00`);
         dayKey(d) <= toDay;
@@ -82,50 +102,61 @@ class SpanDayStore {
       ) {
         const key = dayKey(d);
         const summary = found.get(key);
-        if (summary) this.counts.set(key, summary);
-        else this.counts.delete(key);
+        if (summary) this.counts.set(`${scope}|${key}`, summary);
+        else this.counts.delete(`${scope}|${key}`);
       }
-      this.loadedRanges.add(`${fromDay}:${toDay}`);
+      this.loadedRanges.add(`${scope}|${fromDay}:${toDay}`);
       this.emit();
     });
   }
 
-  private patch(day: string, next: Partial<DayEntry>) {
-    this.entries.set(day, { ...this.entry(day), ...next });
+  private patch(scope: string, day: string, next: Partial<DayEntry>) {
+    this.entries.set(`${scope}|${day}`, {
+      ...this.entry(scope, day),
+      ...next,
+    });
     this.emit();
   }
 
-  loadFirst(day: string): Promise<void> {
-    return this.once(`day:${day}`, async () => {
-      this.patch(day, { loading: true, error: "" });
+  loadFirst(scope: string, day: string): Promise<void> {
+    return this.once(`day:${scope}:${day}`, async () => {
+      this.patch(scope, day, { loading: true, error: "" });
       try {
-        const page = await spansApi.getDayPage(day, timezone(), null);
-        this.patch(day, {
+        const page = await spansApi.getDayPage(
+          day,
+          timezone(),
+          null,
+          scope || undefined,
+        );
+        this.patch(scope, day, {
           items: page.items,
           cursor: page.next_cursor,
           done: !page.next_cursor,
           loading: false,
         });
       } catch (err) {
-        this.patch(day, {
-          loading: false,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        this.patch(scope, day, { loading: false, error: errorText(err) });
       }
     });
   }
 
-  loadMore(day: string): Promise<void> {
-    const current = this.entry(day);
+  loadMore(scope: string, day: string): Promise<void> {
+    const current = this.entry(scope, day);
     if (current.done || !current.cursor) return Promise.resolve();
-    return this.once(`more:${day}`, async () => {
-      this.patch(day, { loading: true });
+    return this.once(`more:${scope}:${day}`, async () => {
+      this.patch(scope, day, { loading: true });
       try {
-        const page = await spansApi.getDayPage(day, timezone(), current.cursor);
-        const seen = new Set(this.entry(day).items.map((s) => s.id));
-        this.patch(day, {
+        const page = await spansApi.getDayPage(
+          day,
+          timezone(),
+          current.cursor,
+          scope || undefined,
+        );
+        const latest = this.entry(scope, day);
+        const seen = new Set(latest.items.map((s) => s.id));
+        this.patch(scope, day, {
           items: [
-            ...this.entry(day).items,
+            ...latest.items,
             ...page.items.filter((s) => !seen.has(s.id)),
           ],
           cursor: page.next_cursor,
@@ -133,10 +164,7 @@ class SpanDayStore {
           loading: false,
         });
       } catch (err) {
-        this.patch(day, {
-          loading: false,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        this.patch(scope, day, { loading: false, error: errorText(err) });
       }
     });
   }
