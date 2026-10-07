@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { Space, SpaceMessage, SpaceNode } from "@/features/spaces/types";
+import { NodeGoal } from "./node-goal";
 
 export function SpaceChatPanel({
   space,
@@ -243,6 +244,12 @@ export function SpaceChatPanel({
                 </Button>
               )}
             </div>
+
+            <NodeGoal
+              key={selectedNode.id}
+              spaceId={space.id}
+              node={selectedNode}
+            />
 
             <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
               <Button
