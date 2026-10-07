@@ -50,7 +50,6 @@ const NAV_ITEMS = [
   { id: "agent", label: "Agent", icon: Bot },
   { id: "timeline", label: "Span", icon: GanttChart },
   { id: "spaces", label: "Spaces", icon: Workflow },
-  { id: "connections", label: "Connected Apps", icon: Plug },
   { id: "pulse", label: "Pulse", icon: Activity },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
 
@@ -134,6 +133,18 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              isActive={activeTab === "connections"}
+              tooltip="Connected Apps"
+              onClick={() => onTabChange("connections")}
+            >
+              <Plug />
+              <span>Connected Apps</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col-reverse group-data-[collapsible=icon]:gap-2">
           <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
             <SidebarMenuItem>

@@ -20,7 +20,9 @@ const OAUTH_PENDING_TTL_SECS: i64 = 600;
 /// On Windows the vox:// scheme only works after the app is installed via the
 /// NSIS installer AND the OS has registered it — running the raw .exe gets
 /// no deep-link callback at all. Use the loopback for reliability.
+#[cfg(any(debug_assertions, windows))]
 const DEV_OAUTH_LOOPBACK: &str = "http://127.0.0.1:17843/auth/callback";
+#[cfg(any(debug_assertions, windows))]
 const DEV_OAUTH_PORT: u16 = 17843;
 
 /// Shared HTTP client with a 15-second connect+response timeout so a

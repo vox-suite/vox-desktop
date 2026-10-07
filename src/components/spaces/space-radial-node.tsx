@@ -52,7 +52,7 @@ export const SpaceRadialNode = memo(function SpaceRadialNode({
         {!central && node.body && (
           <p className="space-radial-summary">{node.body}</p>
         )}
-        {!central && (node.data.goal_id || node.data.goal_proposal) && (
+        {!central && Boolean(node.data.goal_id || node.data.goal_proposal) && (
           <span className="space-radial-status">
             {node.data.goal_id ? "goal linked" : "goal proposed"}
           </span>

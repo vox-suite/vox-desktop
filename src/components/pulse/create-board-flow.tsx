@@ -7,11 +7,13 @@ import {
   BarChart2,
   Check,
   CheckCircle2,
+  Hash,
   PieChart as PieIcon,
   RotateCw,
   Sparkles,
   TrendingUp,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,7 @@ import { schemaColorStyle, schemaIcon } from "@/lib/schema-tokens";
 import { pulseApi } from "@/features/pulse/api";
 import type { ChartSuggestion, ChartType, Schema } from "@/features/pulse/types";
 
-function getChartIcon(type: ChartType) {
+function getChartIcon(type: ChartType): LucideIcon {
   switch (type) {
     case "line":
       return TrendingUp;
@@ -31,6 +33,8 @@ function getChartIcon(type: ChartType) {
       return Activity;
     case "pie":
       return PieIcon;
+    case "stat":
+      return Hash;
   }
 }
 
