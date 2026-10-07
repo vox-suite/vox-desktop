@@ -23,7 +23,7 @@ export const spacesApi = {
     platform().http.request<Space>({
       method: "POST",
       path: "/v1/me/spaces",
-      body: { intent },
+      body: { intent, title: intent.split(/\s+/).slice(0, 5).join(" ") },
       timeoutMs: CREATE_TIMEOUT_MS,
     }),
   dropSpace: (id: string) =>

@@ -1,3 +1,8 @@
+import {
+  PageContainer,
+  PageHeader,
+  PageBody,
+} from "@/components/ui/page-container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "@/platform";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,7 +46,10 @@ import type { WizStatus } from "@/platform/ports";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
-import { mapsTimelineToVisits, takeoutHtmlToHistory } from "@/lib/takeout-history";
+import {
+  mapsTimelineToVisits,
+  takeoutHtmlToHistory,
+} from "@/lib/takeout-history";
 import {
   Sheet,
   SheetContent,
@@ -336,7 +344,7 @@ export function ConnectedAppsView() {
   const searchInput = useRef<HTMLInputElement>(null);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const historyInput = useRef<HTMLInputElement>(null);
-  const scroller = useRef<HTMLElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState("");
   const inProgress = useRef(false);
@@ -565,7 +573,9 @@ export function ConnectedAppsView() {
         <Button
           variant="outline"
           className="w-full"
-          onClick={() => void openHelp("https://takeout.google.com/", "Google Takeout")}
+          onClick={() =>
+            void openHelp("https://takeout.google.com/", "Google Takeout")
+          }
         >
           Open Google Takeout
         </Button>
@@ -706,269 +716,267 @@ export function ConnectedAppsView() {
     openId,
   ]);
   return (
-    <section
-      ref={scroller}
-      className="h-full overflow-auto p-5 text-foreground"
-    >
-      <div className="flex flex-col gap-5">
-        <header>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Connected Apps
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Connect the apps you love for personal context and everyday help, on
-            your terms.
-          </p>
-        </header>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div
-            role="radiogroup"
-            aria-label="Filter by status"
-            className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1"
-          >
-            {(
-              [
-                ["all", "All"],
-                ["connected", "Connected"],
-                ["available", "Not synced"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={statusFilter === value}
-                onClick={() => {
-                  setStatusFilter(value);
-                  setVisible(PAGE_SIZE);
-                }}
-                className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-md px-3 text-sm transition",
-                  statusFilter === value
-                    ? "bg-white/[0.08] text-foreground/80"
-                    : "text-muted-foreground/60 hover:text-foreground/80",
-                )}
-              >
-                {label}
-                <span
+    <PageContainer>
+      <PageHeader className="block">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Connected Apps
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Connect the apps you love for personal context and everyday help, on
+          your terms.
+        </p>
+      </PageHeader>
+      <PageBody ref={scroller} className="p-5">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              role="radiogroup"
+              aria-label="Filter by status"
+              className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1"
+            >
+              {(
+                [
+                  ["all", "All"],
+                  ["connected", "Connected"],
+                  ["available", "Not synced"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={statusFilter === value}
+                  onClick={() => {
+                    setStatusFilter(value);
+                    setVisible(PAGE_SIZE);
+                  }}
                   className={cn(
-                    "text-xs tabular-nums",
+                    "flex h-8 items-center gap-1.5 rounded-md px-3 text-sm transition",
                     statusFilter === value
-                      ? "text-foreground/50"
-                      : "text-muted-foreground/40",
+                      ? "bg-white/[0.08] text-foreground/80"
+                      : "text-muted-foreground/60 hover:text-foreground/80",
                   )}
                 >
-                  {counts[value]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div
-            className={cn(
-              "group flex h-11 min-w-[240px] flex-1 items-center gap-2.5 rounded-lg border bg-white/[0.02] pl-4 pr-2 transition",
-              "border-white/[0.06] focus-within:border-[#ff6363]/50 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_4px_rgba(255,99,99,0.12)]",
-            )}
-          >
-            <Search className="size-4 shrink-0 text-muted-foreground/50 transition group-focus-within:text-[#ff8a8a]" />
-            <input
-              ref={searchInput}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setVisible(PAGE_SIZE);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && query) {
-                  e.stopPropagation();
-                  setQuery("");
-                } else if (e.key === "Escape") {
-                  e.currentTarget.blur();
-                }
-              }}
-              placeholder="Search apps by name or what they do"
-              aria-label="Search apps"
-              autoComplete="off"
-              spellCheck={false}
-              className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/45"
-            />
-            {query ? (
-              <button
-                type="button"
-                aria-label="Clear search"
-                onClick={() => {
-                  setQuery("");
-                  searchInput.current?.focus();
-                }}
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            ) : (
-              <kbd className="mr-1 hidden shrink-0 rounded-md border border-white/[0.06] bg-transparent px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground/50 group-focus-within:hidden sm:block">
-                ⌘K
-              </kbd>
-            )}
-          </div>
-        </div>
-
-        {message && !openApp && (
-          <StatusMessage
-            message={message}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm"
-          />
-        )}
-
-        {pending && (
-          <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-4">
-            <Loader2 className="size-5 animate-spin text-amber-200" />
-            <p className="min-w-0 flex-1 text-sm text-foreground/90">
-              Finish authorization in your browser, then return here. Vox will
-              recover your setup automatically.
-            </p>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await request(`connections/setup/${pending}/cancel`);
-                  localStorage.removeItem(PENDING_KEY);
-                  setPending(null);
-                })
-              }
-            >
-              Cancel setup
-            </Button>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="grid auto-rows-fr items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }, (_, i) => (
-              <div
-                key={i}
-                className="flex h-full min-h-64 flex-col rounded-xl border border-white/10 bg-[#0e0f12] p-5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-5 w-2/3 bg-white/10" />
-                    <Skeleton className="h-3 w-1/2 bg-white/[0.06]" />
-                  </div>
-                  <Skeleton className="size-11 rounded-lg bg-white/10" />
-                </div>
-                <Skeleton className="mt-3 h-4 w-24 rounded-full bg-white/[0.06]" />
-                <div className="mt-3 space-y-2">
-                  <Skeleton className="h-3.5 w-full bg-white/[0.06]" />
-                  <Skeleton className="h-3.5 w-4/5 bg-white/[0.06]" />
-                </div>
-                <Skeleton className="mt-4 h-10 w-full rounded-lg bg-white/10" />
-              </div>
-            ))}
-          </div>
-        ) : loadError ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center">
-            <CircleAlert className="size-6 text-[#ff8a8a]" />
-            <p className="text-sm text-muted-foreground">
-              Connected apps are unavailable right now.
-            </p>
-            <Button variant="outline" onClick={() => void initialLoad()}>
-              Try again
-            </Button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <p className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center text-sm text-muted-foreground">
-            {q
-              ? `No apps match "${query.trim()}".`
-              : statusFilter === "connected"
-                ? "No connected apps yet."
-                : "No apps available."}
-          </p>
-        ) : (
-          <>
-            <div className="grid auto-rows-fr items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {shown.map((app) => {
-                const brand = BRANDS[app.id] ?? FALLBACK_BRAND;
-                const account = accountFor(app.id);
-                const needsAttention =
-                  !!account &&
-                  (!!account.failure_code ||
-                    account.authorization_state !== "authorized");
-                return (
-                  <article
-                    key={app.id}
-                    style={{ "--brand": brand.color } as React.CSSProperties}
-                    className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0e0f12] p-5 transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--brand)_55%,black)]"
+                  {label}
+                  <span
+                    className={cn(
+                      "text-xs tabular-nums",
+                      statusFilter === value
+                        ? "text-foreground/50"
+                        : "text-muted-foreground/40",
+                    )}
                   >
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute -right-[101px] -top-[101px] size-72 rounded-full opacity-20"
-                      style={{
-                        background: `radial-gradient(circle, ${brand.color} 0%, ${brand.color}55 35%, transparent 70%)`,
-                      }}
-                    />
-                    <div className="relative flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-heading text-lg font-semibold tracking-tight">
-                          {app.name}
-                        </h2>
-                        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                          {brand.tagline}
-                        </p>
-                      </div>
-                      <BrandMark brand={brand} />
-                    </div>
-                    <div className="relative mt-3">
-                      <StatusPill
-                        synced={isSynced(app.id)}
-                        attention={needsAttention}
-                      />
-                    </div>
-                    <p className="relative mb-4 mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                      {app.description}
-                    </p>
-                    <Button
-                      className="relative mt-auto h-10 w-full shrink-0 gap-2 rounded-lg"
-                      variant="secondary"
-                      onClick={() => {
-                        setMessage("");
-                        setOpenId(app.id);
-                      }}
-                    >
-                      {app.id === "youtube" ? (
-                        <RefreshCw className="size-4" />
-                      ) : isConnected(app.id) ? (
-                        <Settings2 className="size-4" />
-                      ) : (
-                        <Plug className="size-4" />
-                      )}
-                      {app.id === "maps_timeline"
-                        ? "Import"
-                        : app.id === "youtube"
-                        ? "Sync"
-                        : isConnected(app.id)
-                          ? "Configure"
-                          : ["spotify", "youtube"].includes(app.id) &&
-                              !app.available
-                            ? "Set up"
-                            : "Connect"}
-                    </Button>
-                  </article>
-                );
-              })}
+                    {counts[value]}
+                  </span>
+                </button>
+              ))}
             </div>
-            {hasMore && (
-              <div
-                ref={sentinel}
-                className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground"
+
+            <div
+              className={cn(
+                "group flex h-11 min-w-[240px] flex-1 items-center gap-2.5 rounded-lg border bg-white/[0.02] pl-4 pr-2 transition",
+                "border-white/[0.06] focus-within:border-[#ff6363]/50 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_4px_rgba(255,99,99,0.12)]",
+              )}
+            >
+              <Search className="size-4 shrink-0 text-muted-foreground/50 transition group-focus-within:text-[#ff8a8a]" />
+              <input
+                ref={searchInput}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setVisible(PAGE_SIZE);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && query) {
+                    e.stopPropagation();
+                    setQuery("");
+                  } else if (e.key === "Escape") {
+                    e.currentTarget.blur();
+                  }
+                }}
+                placeholder="Search apps by name or what they do"
+                aria-label="Search apps"
+                autoComplete="off"
+                spellCheck={false}
+                className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/45"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setQuery("");
+                    searchInput.current?.focus();
+                  }}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : (
+                <kbd className="mr-1 hidden shrink-0 rounded-md border border-white/[0.06] bg-transparent px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground/50 group-focus-within:hidden sm:block">
+                  ⌘K
+                </kbd>
+              )}
+            </div>
+          </div>
+
+          {message && !openApp && (
+            <StatusMessage
+              message={message}
+              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm"
+            />
+          )}
+
+          {pending && (
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-4">
+              <Loader2 className="size-5 animate-spin text-amber-200" />
+              <p className="min-w-0 flex-1 text-sm text-foreground/90">
+                Finish authorization in your browser, then return here. Vox will
+                recover your setup automatically.
+              </p>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await request(`connections/setup/${pending}/cancel`);
+                    localStorage.removeItem(PENDING_KEY);
+                    setPending(null);
+                  })
+                }
               >
-                <Loader2 className="size-4 animate-spin" />
-                Loading more
+                Cancel setup
+              </Button>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="grid auto-rows-fr items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div
+                  key={i}
+                  className="flex h-full min-h-64 flex-col rounded-xl border border-white/10 bg-[#0e0f12] p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-2/3 bg-white/10" />
+                      <Skeleton className="h-3 w-1/2 bg-white/[0.06]" />
+                    </div>
+                    <Skeleton className="size-11 rounded-lg bg-white/10" />
+                  </div>
+                  <Skeleton className="mt-3 h-4 w-24 rounded-full bg-white/[0.06]" />
+                  <div className="mt-3 space-y-2">
+                    <Skeleton className="h-3.5 w-full bg-white/[0.06]" />
+                    <Skeleton className="h-3.5 w-4/5 bg-white/[0.06]" />
+                  </div>
+                  <Skeleton className="mt-4 h-10 w-full rounded-lg bg-white/10" />
+                </div>
+              ))}
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center">
+              <CircleAlert className="size-6 text-[#ff8a8a]" />
+              <p className="text-sm text-muted-foreground">
+                Connected apps are unavailable right now.
+              </p>
+              <Button variant="outline" onClick={() => void initialLoad()}>
+                Try again
+              </Button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center text-sm text-muted-foreground">
+              {q
+                ? `No apps match "${query.trim()}".`
+                : statusFilter === "connected"
+                  ? "No connected apps yet."
+                  : "No apps available."}
+            </p>
+          ) : (
+            <>
+              <div className="grid auto-rows-fr items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {shown.map((app) => {
+                  const brand = BRANDS[app.id] ?? FALLBACK_BRAND;
+                  const account = accountFor(app.id);
+                  const needsAttention =
+                    !!account &&
+                    (!!account.failure_code ||
+                      account.authorization_state !== "authorized");
+                  return (
+                    <article
+                      key={app.id}
+                      style={{ "--brand": brand.color } as React.CSSProperties}
+                      className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0e0f12] p-5 transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--brand)_55%,black)]"
+                    >
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute -right-[101px] -top-[101px] size-72 rounded-full opacity-20"
+                        style={{
+                          background: `radial-gradient(circle, ${brand.color} 0%, ${brand.color}55 35%, transparent 70%)`,
+                        }}
+                      />
+                      <div className="relative flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h2 className="font-heading text-lg font-semibold tracking-tight">
+                            {app.name}
+                          </h2>
+                          <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                            {brand.tagline}
+                          </p>
+                        </div>
+                        <BrandMark brand={brand} />
+                      </div>
+                      <div className="relative mt-3">
+                        <StatusPill
+                          synced={isSynced(app.id)}
+                          attention={needsAttention}
+                        />
+                      </div>
+                      <p className="relative mb-4 mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+                        {app.description}
+                      </p>
+                      <Button
+                        className="relative mt-auto h-10 w-full shrink-0 gap-2 rounded-lg"
+                        variant="secondary"
+                        onClick={() => {
+                          setMessage("");
+                          setOpenId(app.id);
+                        }}
+                      >
+                        {app.id === "youtube" ? (
+                          <RefreshCw className="size-4" />
+                        ) : isConnected(app.id) ? (
+                          <Settings2 className="size-4" />
+                        ) : (
+                          <Plug className="size-4" />
+                        )}
+                        {app.id === "maps_timeline"
+                          ? "Import"
+                          : app.id === "youtube"
+                            ? "Sync"
+                            : isConnected(app.id)
+                              ? "Configure"
+                              : ["spotify", "youtube"].includes(app.id) &&
+                                  !app.available
+                                ? "Set up"
+                                : "Connect"}
+                      </Button>
+                    </article>
+                  );
+                })}
               </div>
-            )}
-          </>
-        )}
-      </div>
+              {hasMore && (
+                <div
+                  ref={sentinel}
+                  className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground"
+                >
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading more
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </PageBody>
 
       <Sheet open={!!openApp} onOpenChange={(o) => !o && setOpenId(null)}>
         <SheetContent
@@ -1066,8 +1074,7 @@ export function ConnectedAppsView() {
                   )}
 
                   {openApp.id === "youtube" && takeoutImport(YOUTUBE_IMPORT)}
-                  {openApp.id === "maps_timeline" &&
-                    takeoutImport(MAPS_IMPORT)}
+                  {openApp.id === "maps_timeline" && takeoutImport(MAPS_IMPORT)}
 
                   {personalLoading && (
                     <p
@@ -1368,7 +1375,7 @@ export function ConnectedAppsView() {
           )}
         </SheetContent>
       </Sheet>
-    </section>
+    </PageContainer>
   );
 }
 

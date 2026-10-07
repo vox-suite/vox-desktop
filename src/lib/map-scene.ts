@@ -95,10 +95,10 @@ function square(lng: number, lat: number): number[][][] {
 function isActive(scene: MapScene) {
   return Boolean(
     scene.camera ||
-      scene.pins.length ||
-      scene.arcs.length ||
-      scene.columns.length ||
-      scene.highlights.length,
+    scene.pins.length ||
+    scene.arcs.length ||
+    scene.columns.length ||
+    scene.highlights.length,
   );
 }
 
@@ -182,6 +182,7 @@ export function createSceneLayer(
   opts: {
     onActiveChange: (active: boolean) => void;
     onCamera: () => void;
+    onHomeAnchor?: (anchor: [number, number]) => void;
   },
 ) {
   ensureLayers(map);
@@ -196,10 +197,16 @@ export function createSceneLayer(
 
   const paintHighlights = () => {
     timers.splice(0).forEach(clearTimeout);
-    const paint = () =>
-      setHighlights(map, home ? [home, ...highlights] : highlights);
+    const paint = () => {
+      const anchors = setHighlights(
+        map,
+        home ? [home, ...highlights] : highlights,
+      );
+      if (home && anchors[0]) opts.onHomeAnchor?.(anchors[0]);
+    };
     map.once("idle", paint);
-    for (const ms of HIGHLIGHT_RETRY_MS) timers.push(window.setTimeout(paint, ms));
+    for (const ms of HIGHLIGHT_RETRY_MS)
+      timers.push(window.setTimeout(paint, ms));
   };
 
   const frame = (now: number) => {
@@ -257,7 +264,10 @@ export function createSceneLayer(
           properties: {
             h: COLUMN_MIN_H + (COLUMN_MAX_H - COLUMN_MIN_H) * (c.value / max),
           },
-          geometry: { type: "Polygon" as const, coordinates: square(c.lng, c.lat) },
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: square(c.lng, c.lat),
+          },
         })),
       });
 
@@ -278,7 +288,11 @@ export function createSceneLayer(
         active = nowActive;
         opts.onActiveChange(nowActive);
       }
-      if (changed && scene.camera && valid(scene.camera.lng, scene.camera.lat)) {
+      if (
+        changed &&
+        scene.camera &&
+        valid(scene.camera.lng, scene.camera.lat)
+      ) {
         const c = scene.camera;
         opts.onCamera();
         map.flyTo({

@@ -107,8 +107,8 @@ export function HomeShell({
         data-tauri-drag-region
         className={
           activeTab === "agent"
-            ? "pointer-events-none min-w-0 bg-transparent"
-            : "min-w-0 overflow-hidden"
+            ? "relative z-10 pointer-events-none min-w-0 bg-transparent"
+            : "relative z-10 min-w-0 overflow-hidden"
         }
       >
         {body}

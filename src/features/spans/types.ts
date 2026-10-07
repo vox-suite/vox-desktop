@@ -27,3 +27,11 @@ export type SpanQuery = {
 export type Collection = Required<S["Collection"]>;
 
 export type NewCollection = S["CreateCollectionInput"];
+
+export type SpanCategoryCount = { category: string; count: number };
+export type SpanDaySummary = {
+  day: string;
+  count: number;
+  categories: SpanCategoryCount[];
+};
+export type SpanDayPage = { items: Span[]; next_cursor: string | null };

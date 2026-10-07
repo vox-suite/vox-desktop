@@ -1,3 +1,8 @@
+import {
+  PageContainer,
+  PageHeader,
+  PageBody,
+} from "@/components/ui/page-container";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
@@ -188,9 +193,9 @@ function SpaceCanvasInner({
   const canCommit = committableNodes.length > 0 && !isCommitted;
 
   return (
-    <div className="spaces-workbench flex h-full w-full overflow-hidden bg-background text-foreground">
+    <PageContainer className="spaces-workbench flex-row">
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <header className="z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 backdrop-blur-md sm:px-5 sm:py-3">
+        <PageHeader className="z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 backdrop-blur-md sm:px-5 sm:py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
@@ -262,9 +267,9 @@ function SpaceCanvasInner({
               </Button>
             )}
           </div>
-        </header>
+        </PageHeader>
 
-        <div className="relative flex-1">
+        <PageBody scroll={false}>
           {graph.nodes.length === 0 && graph.space.run_state === "running" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20 pointer-events-none">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-ring text-foreground shadow-xl">
@@ -313,7 +318,7 @@ function SpaceCanvasInner({
               maskColor="rgba(0, 0, 0, 0.65)"
             />
           </ReactFlow>
-        </div>
+        </PageBody>
       </div>
 
       <div
@@ -457,7 +462,7 @@ function SpaceCanvasInner({
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }
 

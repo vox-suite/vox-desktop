@@ -64,7 +64,7 @@ function footprintAt(
   map: maplibregl.Map,
   lng: number,
   lat: number,
-): GeoJSON.Feature | null {
+): { feature: GeoJSON.Feature; anchor: [number, number] } | null {
   // GPS is often a few metres off (lands on the road), so search a wide box
   // and take the building containing the point, else the nearest one.
   const point = map.project([lng, lat]);
@@ -100,29 +100,35 @@ function footprintAt(
   const cx = buildingRing.reduce((a, [x]) => a + x, 0) / buildingRing.length;
   const cy = buildingRing.reduce((a, [, y]) => a + y, 0) / buildingRing.length;
   return {
-    type: "Feature",
-    geometry: {
-      type: "Polygon",
-      coordinates: [
-        buildingRing.map(([x, y]) => [
-          cx + (x - cx) * 1.03,
-          cy + (y - cy) * 1.03,
-        ]),
-      ],
+    anchor: [cx, cy],
+    feature: {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          buildingRing.map(([x, y]) => [
+            cx + (x - cx) * 1.03,
+            cy + (y - cy) * 1.03,
+          ]),
+        ],
+      },
+      properties: { ...props, render_height: h, height: h },
     },
-    properties: { ...props, render_height: h, height: h },
   };
 }
 
 export function setHighlights(
   map: maplibregl.Map,
   points: [number, number][],
-): void {
-  if (!map.getLayer(BUILDINGS_LAYER)) return;
+): ([number, number] | null)[] {
+  if (!map.getLayer(BUILDINGS_LAYER)) return points.map(() => null);
   ensureHighlightLayer(map);
-  const features = points
-    .map(([lng, lat]) => footprintAt(map, lng, lat))
-    .filter((f): f is GeoJSON.Feature => f !== null);
-  (map.getSource(HIGHLIGHT_SOURCE) as maplibregl.GeoJSONSource | undefined)
-    ?.setData({ type: "FeatureCollection", features });
+  const hits = points.map(([lng, lat]) => footprintAt(map, lng, lat));
+  const features = hits
+    .map((h) => h?.feature)
+    .filter((f): f is GeoJSON.Feature => !!f);
+  (
+    map.getSource(HIGHLIGHT_SOURCE) as maplibregl.GeoJSONSource | undefined
+  )?.setData({ type: "FeatureCollection", features });
+  return hits.map((h) => h?.anchor ?? null);
 }

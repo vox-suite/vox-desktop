@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { resolveDeviceLocation } from "@/lib/location";
 import { createSceneLayer } from "@/lib/map-scene";
 import { subscribeMapScene } from "@/lib/scene-source";
@@ -49,7 +44,9 @@ export function useMissionMap(reaction: {
   const orbitPausedUntil = useRef(0);
   const orbitLastTs = useRef(0);
   const sceneActive = useRef(false);
-  const sceneLayerRef = useRef<ReturnType<typeof createSceneLayer> | null>(null);
+  const sceneLayerRef = useRef<ReturnType<typeof createSceneLayer> | null>(
+    null,
+  );
   const unsubScene = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -230,6 +227,10 @@ export function useMissionMap(reaction: {
         ensure3dBuildings(map);
         const layer = createSceneLayer(map, {
           onCamera: () => pauseOrbit(3_600_000),
+          onHomeAnchor: (anchor) => {
+            marker.setLngLat(anchor);
+            userLngLat.current = anchor;
+          },
           onActiveChange: (active) => {
             sceneActive.current = active;
             const home = userLngLat.current;

@@ -1,13 +1,19 @@
+import {
+  PageContainer,
+  PageHeader,
+  PageBody,
+} from "@/components/ui/page-container";
 import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SpanCalendar } from "@/components/span-calendar";
-import { SpanMonthView } from "@/components/span-month-view";
+import { PlanningTimeline } from "@/components/planning-timeline";
 import { daysFrom } from "@/lib/span-format";
 import { SpanPanel } from "@/components/span-panel";
 import { useSpans } from "@/hooks/use-spans";
+import { useDayCounts, useDayItems } from "@/hooks/use-span-days";
+import { SpanMonthCounts } from "@/components/span-month-counts";
 import {
   addDays,
   addMonths,
@@ -15,6 +21,7 @@ import {
   startOfDay,
   startOfMonth,
 } from "@/lib/span-layout";
+import { spanDays } from "@/features/spans/day-store";
 import type { Collection, Span } from "@/features/spans/types";
 
 export type ViewMode = "day" | "week" | "month";
@@ -78,14 +85,34 @@ export function TimelineView({
 
   const days = useMemo(() => {
     if (mode === "day") return [anchor];
-    if (mode === "month") return monthGridDays(anchor);
+    if (mode === "month") {
+      const first = startOfMonth(anchor);
+      const count = new Date(
+        first.getFullYear(),
+        first.getMonth() + 1,
+        0,
+      ).getDate();
+      return daysFrom(first, count);
+    }
     return daysFrom(anchor, 7);
   }, [anchor, mode]);
 
   const from = days[0].toISOString();
   const to = addDays(days[days.length - 1], 1).toISOString();
 
-  const scheduled = useSpans({ from, to, collectionId: collection?.id });
+  const scoped = !!collection;
+  const legacy = useSpans({ from, to, collectionId: collection?.id }, scoped);
+  const monthGrid = useMemo(() => monthGridDays(anchor), [anchor]);
+  const counts = useDayCounts(monthGrid, !scoped && mode === "month");
+  const items = useDayItems(days, !scoped && mode !== "month");
+  const scheduled = scoped
+    ? legacy
+    : {
+        spans: items.spans,
+        loading: mode === "month" ? counts.loading : items.loading,
+        error: items.error,
+        reload: async () => spanDays.invalidate(),
+      };
 
   const reload = () => {
     void scheduled.reload();
@@ -115,9 +142,9 @@ export function TimelineView({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <PageContainer>
       {/* View Header */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-background px-3 py-2.5 sm:px-6 sm:py-3">
+      <PageHeader className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-background px-3 py-2.5 sm:px-6 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-3.5">
           {onBack ? (
             <Button
@@ -155,7 +182,10 @@ export function TimelineView({
           </div>
 
           {collection ? (
-            <Badge variant="outline" className="border-border text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="border-border text-muted-foreground"
+            >
               {collection.kind}
             </Badge>
           ) : null}
@@ -215,10 +245,10 @@ export function TimelineView({
             </TabsList>
           </Tabs>
         </div>
-      </header>
+      </PageHeader>
 
       {/* Main Content Area - Full width without right To-do sidebar */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <PageBody scroll={false} className="flex">
         <div
           data-no-drag
           className="no-drag flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
@@ -232,28 +262,32 @@ export function TimelineView({
           {/* Calendar Body: Day/Week Grid or Month Grid */}
           <div
             data-no-drag
-            className="flex flex-1 min-h-0 flex-col overflow-hidden"
+            className="flex flex-1 min-h-0 flex-col overflow-hidden bg-background"
           >
-            {mode === "month" ? (
-              <SpanMonthView
+            {!scoped && mode === "month" ? (
+              <SpanMonthCounts
                 anchorDate={anchor}
-                spans={scheduled.spans}
-                onSelectSpan={setSelected}
+                counts={counts.byDay}
+                loading={counts.loading}
                 onSelectDay={(day) => {
                   setMode("day");
                   setAnchor(startOfDay(day));
                 }}
               />
             ) : (
-              <SpanCalendar
+              <PlanningTimeline
                 days={days}
                 spans={scheduled.spans}
                 onSelect={setSelected}
+                loading={scheduled.loading}
+                hasMore={!scoped && items.hasMore}
+                frontier={scoped ? null : items.frontier}
+                onLoadMore={items.loadMore}
               />
             )}
           </div>
         </div>
-      </div>
+      </PageBody>
 
       <SpanPanel
         span={selected}
@@ -261,6 +295,6 @@ export function TimelineView({
         onClose={() => setSelected(null)}
         onSaved={reload}
       />
-    </div>
+    </PageContainer>
   );
 }

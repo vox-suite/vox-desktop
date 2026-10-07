@@ -79,7 +79,10 @@ export const api = {
 
 export const windowControls = {
   minimize: () => getCurrentWindow().minimize(),
-  toggleMaximize: () => getCurrentWindow().toggleMaximize(),
+  toggleFullscreen: async () => {
+    const win = getCurrentWindow();
+    await win.setFullscreen(!(await win.isFullscreen()));
+  },
   close: () => getCurrentWindow().close(),
 };
 

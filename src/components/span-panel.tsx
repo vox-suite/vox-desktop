@@ -1,3 +1,4 @@
+import { PanelEdgeBlur } from "@/components/panel-edge-blur";
 import { useState, type ComponentType, type ReactNode } from "react";
 import {
   Activity,
@@ -68,7 +69,6 @@ import type {
   SpanPatch,
   SpanStatus,
 } from "@/features/spans/types";
-import { useOutsideGuard } from "@/hooks/use-outside-guard";
 import { errorMessage } from "@/lib/errors";
 import {
   displayTitle,
@@ -131,7 +131,12 @@ const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
 ];
 
 // The server rejects title/time/status edits for these sources.
-const PROVIDER_OWNED = new Set(["google_calendar", "spotify", "youtube", "google_maps"]);
+const PROVIDER_OWNED = new Set([
+  "google_calendar",
+  "spotify",
+  "youtube",
+  "google_maps",
+]);
 
 const SOURCE_LABELS: Record<string, string> = {
   spotify: "Spotify",
@@ -422,9 +427,9 @@ function PanelBody({
             src={cover}
             alt=""
             referrerPolicy="no-referrer"
-            className="absolute inset-0 size-full scale-110 object-cover opacity-30 blur-xl saturate-125"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-xl"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/50 via-[#0c0d10]/70 to-[#0c0d10]/90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/75 via-[#0c0d10]/85 to-[#0c0d10]/95" />
         </div>
       ) : span.source !== "spotify" ? (
         <div
@@ -440,7 +445,7 @@ function PanelBody({
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${style.dot}88 0%, ${style.dot}3d 40%, ${style.dot}14 62%, transparent 85%)`,
+              background: `radial-gradient(ellipse 75% 70% at 34px 38px, ${style.dot}40 0%, ${style.dot}1f 35%, ${style.dot}0a 60%, transparent 85%)`,
             }}
           />
         </div>
@@ -725,25 +730,32 @@ export function SpanPanel({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const outsideGuard = useOutsideGuard();
   return (
-    <Sheet open={!!span} onOpenChange={(open) => !open && onClose()}>
+    <Sheet
+      modal={false}
+      open={!!span}
+      onOpenChange={(open) => !open && onClose()}
+    >
       <SheetContent
         side="right"
         overlay={false}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={outsideGuard}
-        className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg [&_[data-slot=sheet-close]]:top-6"
+        onInteractOutside={(event) => event.preventDefault()}
+        data-span-panel="true"
+        className="z-30 isolate w-full gap-0 overflow-visible border-[#292929] bg-[#0c0d10] sm:max-w-lg [&_[data-slot=sheet-close]]:top-6"
       >
-        {span ? (
-          <PanelBody
-            key={span.id}
-            initial={span}
-            collections={collections}
-            onClose={onClose}
-            onSaved={onSaved}
-          />
-        ) : null}
+        <PanelEdgeBlur selector="[data-span-panel]" edge="left" />
+        <div className="vox-scroll flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {span ? (
+            <PanelBody
+              key={span.id}
+              initial={span}
+              collections={collections}
+              onClose={onClose}
+              onSaved={onSaved}
+            />
+          ) : null}
+        </div>
       </SheetContent>
     </Sheet>
   );

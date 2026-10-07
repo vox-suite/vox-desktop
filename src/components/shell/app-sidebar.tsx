@@ -1,3 +1,4 @@
+import { PanelEdgeBlur } from "@/components/panel-edge-blur";
 import { useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
@@ -42,7 +43,7 @@ const CONTROLS = [
   {
     title: "Fullscreen",
     color: "bg-muted",
-    action: windowControls.toggleMaximize,
+    action: windowControls.toggleFullscreen,
   },
 ] as const;
 
@@ -169,8 +170,13 @@ export function AppSidebar({
     <Sidebar
       collapsible="icon"
       onMouseDown={startWindowDrag}
-      className="group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-sidebar-border [&_[data-sidebar=sidebar]]:bg-black/25 [&_[data-sidebar=sidebar]]:backdrop-blur-[30px] [&_[data-sidebar=sidebar]]:backdrop-saturate-150"
+      className="z-30 group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-[#292929] [&_[data-sidebar=sidebar]]:relative [&_[data-sidebar=sidebar]]:isolate [&_[data-sidebar=sidebar]]:bg-black/25 [&_[data-sidebar=sidebar]]:backdrop-blur-[30px] [&_[data-sidebar=sidebar]]:backdrop-saturate-150"
     >
+      <PanelEdgeBlur
+        selector="[data-slot=sidebar-container]"
+        edge="right"
+        width={24}
+      />
       <SidebarHeader data-tauri-drag-region>
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center group-data-[collapsible=icon]:hidden">

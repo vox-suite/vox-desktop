@@ -1,3 +1,8 @@
+import {
+  PageContainer,
+  PageHeader,
+  PageBody,
+} from "@/components/ui/page-container";
 import type { ReactNode } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import "./pulse.css";
@@ -17,7 +22,7 @@ export function PulseShell({
   children: ReactNode;
 }) {
   return (
-    <section
+    <PageContainer
       aria-label={label}
       className="pulse-surface relative flex h-full w-full flex-col overflow-hidden"
     >
@@ -31,16 +36,18 @@ export function PulseShell({
           }}
         />
       )}
-      <header className="relative z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-3">
+      <PageHeader className="relative z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-3">
         {header}
-      </header>
-      {scroll ? (
-        <ScrollArea className="pulse-scroll relative min-h-0 flex-1">
-          {children}
-        </ScrollArea>
-      ) : (
-        <div className="relative min-h-0 flex-1">{children}</div>
-      )}
-    </section>
+      </PageHeader>
+      <PageBody scroll={false} className="flex flex-col">
+        {scroll ? (
+          <ScrollArea className="pulse-scroll relative min-h-0 flex-1">
+            {children}
+          </ScrollArea>
+        ) : (
+          <div className="relative min-h-0 flex-1">{children}</div>
+        )}
+      </PageBody>
+    </PageContainer>
   );
 }

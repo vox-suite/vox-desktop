@@ -1,3 +1,5 @@
+import { PageContainer, PageBody } from "@/components/ui/page-container";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { VoxLogo, type VoxOrbVisualState } from "@/components/vox-logo";
 
@@ -30,16 +32,22 @@ export function AgentPane({
         : "Talk to Vox";
 
   return (
-    <div className="flex h-full w-full items-end justify-center pb-4">
-      <Button
-        size="lg"
-        variant={isActive || callError ? "destructive" : "secondary"}
-        className="pointer-events-auto rounded-full"
-        onClick={onToggleCall}
-      >
-        <VoxLogo animated size={20} state={orbState} className="shrink-0" />
-        {text}
-      </Button>
-    </div>
+    <PageContainer className="bg-transparent">
+      <PageBody scroll={false} className="flex items-end justify-center pb-4">
+        <Button
+          size="lg"
+          variant={isActive || callError ? "destructive" : "ghost"}
+          className={cn(
+            "pointer-events-auto rounded-full",
+            !(isActive || callError) &&
+              "border border-sidebar-border bg-black/25 text-foreground backdrop-blur-[30px] backdrop-saturate-150 hover:bg-black/35",
+          )}
+          onClick={onToggleCall}
+        >
+          <VoxLogo animated size={20} state={orbState} className="shrink-0" />
+          {text}
+        </Button>
+      </PageBody>
+    </PageContainer>
   );
 }
