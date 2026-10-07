@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { RefreshCw, Wallet } from "lucide-react";
+import { Banknote, RefreshCw } from "lucide-react";
 import playstationLogo from "@/assets/brands/playstation.svg";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import youtubeLogo from "@/assets/brands/youtube.svg";
@@ -35,7 +35,7 @@ export function CategoryIndicator({
   }
   const money = moneyKind(span);
   if (money) {
-    return createElement(money === "subscription" ? RefreshCw : Wallet, {
+    return createElement(money === "subscription" ? RefreshCw : Banknote, {
       className: "size-3.5 shrink-0",
       style: { color },
     });

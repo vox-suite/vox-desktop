@@ -103,20 +103,20 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     subtext: "rgba(253, 164, 175, 0.75)",
   },
 
-  // Expenses & Shopping (Warm Amber / Ochre)
+  // Expenses & payments (Emerald); deliveries stay Warm Amber / Ochre
   expense: {
-    bg: "rgba(58, 32, 10, 0.88)",
-    border: "rgba(245, 158, 11, 0.35)",
-    dot: "#fbbf24",
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
     text: "#ffffff",
-    subtext: "rgba(253, 230, 138, 0.75)",
+    subtext: "rgba(110, 231, 183, 0.75)",
   },
   payment: {
-    bg: "rgba(58, 32, 10, 0.88)",
-    border: "rgba(245, 158, 11, 0.35)",
-    dot: "#fbbf24",
+    bg: "rgba(13, 48, 30, 0.88)",
+    border: "rgba(16, 185, 129, 0.35)",
+    dot: "#34d399",
     text: "#ffffff",
-    subtext: "rgba(253, 230, 138, 0.75)",
+    subtext: "rgba(110, 231, 183, 0.75)",
   },
   delivery: {
     bg: "rgba(58, 32, 10, 0.88)",
@@ -239,6 +239,15 @@ const YOUTUBE_STYLE: CategoryStyle = {
 };
 
 const MONEY_STYLE: CategoryStyle = {
+  bg: "rgba(13, 48, 30, 0.88)",
+  border: "rgba(16, 185, 129, 0.4)",
+  dot: "#34d399",
+  text: "#ffffff",
+  subtext: "rgba(110, 231, 183, 0.75)",
+};
+
+// Subscriptions are tracked on their own, so they keep their warm amber.
+const SUBSCRIPTION_STYLE: CategoryStyle = {
   bg: "rgba(58, 32, 10, 0.88)",
   border: "rgba(245, 158, 11, 0.4)",
   dot: "#fbbf24",
@@ -259,8 +268,9 @@ export function moneyKind(span: Span): "subscription" | "financial" | null {
 
 export function spanStyle(span: Span): CategoryStyle {
   if (span.source === "google_maps") return MAPS_STYLE;
-  if (moneyKind(span) && !["spotify", "youtube", "playstation"].includes(span.source))
-    return MONEY_STYLE;
+  const money = moneyKind(span);
+  if (money && !["spotify", "youtube", "playstation"].includes(span.source))
+    return money === "subscription" ? SUBSCRIPTION_STYLE : MONEY_STYLE;
   if (span.source === "spotify") return SPOTIFY_STYLE;
   if (span.source === "youtube") return YOUTUBE_STYLE;
   if (span.source === "playstation") return PLAYSTATION_STYLE;
