@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   Activity,
   Bot,
@@ -29,8 +29,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { VoxLogo } from "@/components/vox-logo";
 import { windowControls } from "@/lib/tauri";
@@ -52,6 +52,85 @@ const NAV_ITEMS = [
   { id: "spaces", label: "Spaces", icon: Workflow },
   { id: "pulse", label: "Pulse", icon: Activity },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
+
+const WIDTH_KEY = "vox.sidebar.width";
+const DEFAULT_WIDTH = 256;
+const MIN_WIDTH = 176;
+const MAX_WIDTH = 420;
+const COLLAPSE_BELOW = 120;
+
+function storedWidth() {
+  try {
+    const value = Number(localStorage.getItem(WIDTH_KEY));
+    if (value >= MIN_WIDTH && value <= MAX_WIDTH) return value;
+  } catch {
+    return DEFAULT_WIDTH;
+  }
+  return DEFAULT_WIDTH;
+}
+
+function ResizeHandle() {
+  const { open, setOpen, toggleSidebar } = useSidebar();
+  const ref = useRef<HTMLDivElement>(null);
+  const width = useRef(storedWidth());
+
+  const wrapper = () =>
+    ref.current?.closest<HTMLElement>("[data-slot=sidebar-wrapper]");
+  const apply = (px: number) => {
+    width.current = px;
+    wrapper()?.style.setProperty("--sidebar-width", `${px}px`);
+  };
+
+  useLayoutEffect(() => {
+    wrapper()?.style.setProperty("--sidebar-width", `${width.current}px`);
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    let moved = false;
+    let isOpen = open;
+    const root = wrapper();
+    root?.classList.add("sidebar-resizing");
+
+    const move = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - startX) > 3) moved = true;
+      if (!moved) return;
+      if (ev.clientX < COLLAPSE_BELOW) {
+        if (isOpen) setOpen((isOpen = false));
+        return;
+      }
+      if (!isOpen) setOpen((isOpen = true));
+      apply(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, ev.clientX)));
+    };
+    const up = () => {
+      root?.classList.remove("sidebar-resizing");
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (!moved) return toggleSidebar();
+      try {
+        localStorage.setItem(WIDTH_KEY, String(width.current));
+      } catch {
+        return;
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      onPointerDown={onPointerDown}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 hover:after:bg-[#5a1a1e] active:after:bg-[#5a1a1e]"
+    />
+  );
+}
 
 const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";
 
@@ -87,7 +166,11 @@ export function AppSidebar({
       .toUpperCase() || "U";
 
   return (
-    <Sidebar collapsible="icon" onMouseDown={startWindowDrag}>
+    <Sidebar
+      collapsible="icon"
+      onMouseDown={startWindowDrag}
+      className="group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-sidebar-border [&_[data-sidebar=sidebar]]:bg-black/25 [&_[data-sidebar=sidebar]]:backdrop-blur-[30px] [&_[data-sidebar=sidebar]]:backdrop-saturate-150"
+    >
       <SidebarHeader data-tauri-drag-region>
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center group-data-[collapsible=icon]:hidden">
@@ -104,9 +187,11 @@ export function AppSidebar({
               </Button>
             ))}
           </div>
-          <span className="flex items-center gap-2 font-heading text-sm font-semibold">
+          <span className="flex min-w-0 items-center gap-2 font-heading text-sm font-semibold">
             <VoxLogo animated size={20} state="idle" />
-            <span className="group-data-[collapsible=icon]:hidden">Vox</span>
+            <span className="truncate group-data-[collapsible=icon]:hidden">
+              Vox
+            </span>
           </span>
         </div>
       </SidebarHeader>
@@ -195,7 +280,7 @@ export function AppSidebar({
           <SidebarTrigger title="Toggle sidebar (⌘B)" className="shrink-0" />
         </div>
       </SidebarFooter>
-      <SidebarRail />
+      <ResizeHandle />
     </Sidebar>
   );
 }

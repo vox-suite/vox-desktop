@@ -9,6 +9,10 @@ import maplibreSharedUrl from "maplibre-gl/dist/maplibre-gl-shared.mjs?url";
 // ("./maplibre-gl-shared.mjs"), which can't resolve against an opaque
 // blob: URL — rewrite it to the chunk's real, Vite-emitted URL first.
 async function setWorkerBlob() {
+  if (import.meta.env.DEV) {
+    maplibregl.setWorkerUrl(maplibreWorkerUrl);
+    return;
+  }
   try {
     const res = await fetch(maplibreWorkerUrl);
     const text = await res.text();

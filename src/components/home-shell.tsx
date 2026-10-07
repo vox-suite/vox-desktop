@@ -112,18 +112,20 @@ export function HomeShell({
         }
       >
         {body}
+        {activeTab === "agent" && mapError ? (
+          <Alert
+            variant="destructive"
+            className="absolute bottom-20 left-1/2 z-40 w-auto max-w-md -translate-x-1/2"
+          >
+            <AlertDescription>{mapError}</AlertDescription>
+          </Alert>
+        ) : null}
+        {activeTab === "agent" && !mapReady && !mapError ? (
+          <p className="pointer-events-none absolute bottom-20 left-1/2 z-40 -translate-x-1/2 text-xs text-muted-foreground">
+            Loading map…
+          </p>
+        ) : null}
       </SidebarInset>
-
-      {activeTab === "agent" && mapError ? (
-        <Alert variant="destructive" className="absolute bottom-20 left-1/2 z-40 w-auto max-w-md -translate-x-1/2">
-          <AlertDescription>{mapError}</AlertDescription>
-        </Alert>
-      ) : null}
-      {activeTab === "agent" && !mapReady && !mapError ? (
-        <p className="pointer-events-none absolute bottom-20 left-1/2 z-40 -translate-x-1/2 text-xs text-muted-foreground">
-          Loading map…
-        </p>
-      ) : null}
     </SidebarProvider>
   );
 }

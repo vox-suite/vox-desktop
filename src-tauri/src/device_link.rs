@@ -78,31 +78,7 @@ pub fn emit_local_event(app: &AppHandle, kind: &str, text: &str) {
 
 #[tauri::command]
 pub fn get_local_events(state: State<'_, EventLog>) -> Vec<LocalEvent> {
-    let mut events = state.0.lock().map(|g| g.clone()).unwrap_or_default();
-    if events.is_empty() {
-        let log_path = vox_config_dir().join("remote-commands.log");
-        if let Ok(content) = std::fs::read_to_string(&log_path) {
-            for line in content
-                .lines()
-                .rev()
-                .take(20)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-            {
-                let trimmed = line.trim();
-                if !trimmed.is_empty() {
-                    events.push(LocalEvent {
-                        id: uuid::Uuid::new_v4().to_string(),
-                        timestamp: chrono::Local::now().format("%H:%M:%S").to_string(),
-                        kind: "command".to_string(),
-                        text: trimmed.to_string(),
-                    });
-                }
-            }
-        }
-    }
-    events
+    state.0.lock().map(|g| g.clone()).unwrap_or_default()
 }
 
 /// Lets the local UI exercise a GUI action without waiting on a Core-sent

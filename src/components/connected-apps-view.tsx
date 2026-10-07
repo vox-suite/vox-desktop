@@ -897,11 +897,12 @@ export function ConnectedAppsView() {
                 return (
                   <article
                     key={app.id}
-                    className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0e0f12] p-5"
+                    style={{ "--brand": brand.color } as React.CSSProperties}
+                    className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0e0f12] p-5 transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--brand)_55%,black)]"
                   >
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute -right-20 -top-20 size-72 rounded-full opacity-30"
+                      className="pointer-events-none absolute -right-[101px] -top-[101px] size-72 rounded-full opacity-20"
                       style={{
                         background: `radial-gradient(circle, ${brand.color} 0%, ${brand.color}55 35%, transparent 70%)`,
                       }}

@@ -268,3 +268,12 @@ a,
   background: rgba(255, 255, 255, 0.18);
   background-clip: padding-box;
 }
+
+.sidebar-resizing [data-slot="sidebar-gap"],
+.sidebar-resizing [data-slot="sidebar-container"] {
+  transition: none;
+}
+.sidebar-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
