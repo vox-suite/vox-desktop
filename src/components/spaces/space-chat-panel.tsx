@@ -10,6 +10,14 @@ import {
   Undo2,
   XCircle,
 } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -32,7 +40,7 @@ export function SpaceChatPanel({
   onSendMessage: (msg: string) => Promise<void>;
   onUpdateNode: (
     nodeId: string,
-    patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>
+    patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>,
   ) => Promise<unknown>;
 }) {
   const [text, setText] = useState("");
@@ -92,7 +100,7 @@ export function SpaceChatPanel({
   const handleDigDeeper = async () => {
     if (!selectedNode || sending || isCommitted) return;
     await onSendMessage(
-      `Dig deeper on "${selectedNode.title}". Research more details, pros, cons, and budget implications.`
+      `Dig deeper on "${selectedNode.title}". Research more details, pros, cons, and budget implications.`,
     );
   };
 
@@ -100,7 +108,7 @@ export function SpaceChatPanel({
     if (staleNodes.length === 0 || sending || isCommitted) return;
     const titles = staleNodes.map((n) => `"${n.title}"`).join(", ");
     await onSendMessage(
-      `Please refresh and re-evaluate the following stale nodes: ${titles}`
+      `Please refresh and re-evaluate the following stale nodes: ${titles}`,
     );
   };
 
@@ -115,16 +123,18 @@ export function SpaceChatPanel({
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-card backdrop-blur-xl md:w-96 md:border-l md:border-border">
-      <div className="border-b border-border p-4 shrink-0">
+    <Card className="h-full w-full gap-0 rounded-none border-0 py-0 ring-0 backdrop-blur-xl md:w-80">
+      <CardHeader className="block border-b border-border p-4 shrink-0">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-foreground" />
-          <span>Space Intelligence</span>
+          <span>Space chat</span>
         </div>
-        <h2 className="mt-1 text-base font-bold text-foreground">{space.title}</h2>
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        <CardTitle className="mt-1 text-base font-bold text-foreground">
+          {space.title}
+        </CardTitle>
+        <CardDescription className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
           {space.intent}
-        </p>
+        </CardDescription>
 
         {spec.mission && (
           <div className="mt-3 rounded-lg border border-ring bg-primary/20 p-2.5 text-xs text-muted-foreground">
@@ -170,16 +180,21 @@ export function SpaceChatPanel({
               disabled={sending || isCommitted}
               className="w-full border-border bg-muted hover:bg-muted text-muted-foreground text-xs gap-1.5"
             >
-              <RotateCw className={`h-3 w-3 ${sending ? "animate-spin" : ""}`} />
+              <RotateCw
+                className={`h-3 w-3 ${sending ? "animate-spin" : ""}`}
+              />
               <span>Re-run stale ({staleNodes.length})</span>
             </Button>
           </div>
         )}
-      </div>
+      </CardHeader>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto p-4 space-y-4">
         {selectedNode ? (
-          <div className="rounded-xl border border-border bg-card p-4">
+          <Card
+            size="sm"
+            className="gap-0 border border-border bg-card p-4 ring-0"
+          >
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
               <span className="uppercase tracking-wider font-mono text-[10px] text-muted-foreground">
                 Selected Node
@@ -265,12 +280,13 @@ export function SpaceChatPanel({
                 <span>Dig deeper</span>
               </Button>
             </div>
-          </div>
+          </Card>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground border border-dashed border-border rounded-xl p-4">
             <Info className="h-6 w-6 stroke-1 text-muted-foreground mb-1.5" />
             <p className="text-xs">
-              Click any node in the canvas to view or edit details, reject/restore, or dig deeper.
+              Click any node in the canvas to view or edit details,
+              reject/restore, or dig deeper.
             </p>
           </div>
         )}
@@ -280,20 +296,23 @@ export function SpaceChatPanel({
             Conversation History
           </span>
           {messages.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No messages yet.</p>
+            <p className="text-xs text-muted-foreground italic">
+              No messages yet.
+            </p>
           ) : (
             messages.map((m) => (
-              <div
+              <Card
+                size="sm"
                 key={m.id}
-                className={`rounded-xl p-3 text-xs leading-relaxed ${
+                className={`gap-0 rounded-xl p-3 ring-0 text-xs leading-relaxed ${
                   m.role === "user"
                     ? "bg-primary/20 border border-ring text-foreground ml-4"
                     : m.role === "system"
-                    ? "bg-destructive/20 border border-destructive/40 text-destructive font-mono text-[11px]"
-                    : "bg-card border border-border text-muted-foreground mr-4"
+                      ? "bg-destructive/20 border border-destructive/40 text-destructive font-mono text-[11px]"
+                      : "bg-card border border-border text-muted-foreground mr-4"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 mb-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                <CardHeader className="flex items-center justify-between gap-2 px-0 mb-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                   <span>{m.role}</span>
                   <span>
                     {new Date(m.created_at).toLocaleTimeString([], {
@@ -301,9 +320,11 @@ export function SpaceChatPanel({
                       minute: "2-digit",
                     })}
                   </span>
-                </div>
-                <p className="whitespace-pre-wrap">{m.text}</p>
-              </div>
+                </CardHeader>
+                <CardContent className="px-0 whitespace-pre-wrap">
+                  {m.text}
+                </CardContent>
+              </Card>
             ))
           )}
 
@@ -316,10 +337,13 @@ export function SpaceChatPanel({
 
           <div ref={messagesEndRef} />
         </div>
-      </div>
+      </CardContent>
 
-      <div className="border-t border-border p-3 bg-card shrink-0">
-        <form onSubmit={(e) => void handleSend(e)} className="flex items-center gap-2">
+      <CardFooter className="border-t border-border p-3 bg-card shrink-0">
+        <form
+          onSubmit={(e) => void handleSend(e)}
+          className="flex w-full items-center gap-2"
+        >
           <Input
             type="text"
             value={text}
@@ -336,6 +360,7 @@ export function SpaceChatPanel({
             type="submit"
             size="sm"
             disabled={sending || !text.trim() || isCommitted}
+            aria-label="Send message"
             className="bg-primary hover:bg-primary text-foreground px-3"
           >
             {sending ? (
@@ -345,7 +370,7 @@ export function SpaceChatPanel({
             )}
           </Button>
         </form>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }

@@ -4,6 +4,7 @@ import {
   Bot,
   ChevronsUpDown,
   GanttChart,
+  Workflow,
   LogOut,
   Plug,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const CONTROLS = [
 const NAV_ITEMS = [
   { id: "agent", label: "Agent", icon: Bot },
   { id: "timeline", label: "Span", icon: GanttChart },
+  { id: "spaces", label: "Spaces", icon: Workflow },
   { id: "connections", label: "Connected Apps", icon: Plug },
   { id: "pulse", label: "Pulse", icon: Activity },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];

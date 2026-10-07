@@ -1,15 +1,20 @@
+import "./spaces.css";
 import { useState } from "react";
 import {
-  Compass,
   Plus,
   RotateCw,
   Sparkles,
   ArrowRight,
   Trash2,
   Calendar,
-  Boxes,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +24,7 @@ import { Card } from "@/components/ui/card";
 import { useSpaces } from "@/hooks/use-spaces";
 import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
+import { SpacesOrbit } from "./spaces-orbit";
 
 export function SpacesView() {
   const { spaces, loading, error, reload, create, drop } = useSpaces();
@@ -78,93 +84,90 @@ export function SpacesView() {
     );
   }
 
+  const openCreate = () => {
+    setCreateError("");
+    setShowCreateDialog(true);
+  };
+  const stateDot = (state: string, running: boolean) =>
+    running ? "#ff5a67" : state === "committed" ? "#cfe3f1" : "#f5b83d";
+
   return (
-    <div className="flex flex-col h-full w-full overflow-y-auto bg-background p-4 text-foreground sm:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+    <div className="spaces-workbench spaces-library relative flex h-full w-full flex-col overflow-x-hidden overflow-y-auto bg-black p-6 text-foreground">
+      <SpacesOrbit />
+      <header className="relative z-10 mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <Compass className="h-5 w-5 text-foreground" />
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              Spaces
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Visual ideation and decision boards connected to your timeline, spend, and goals
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            Vox / Spaces
+          </p>
+          <h1 className="mt-2 text-2xl font-medium tracking-tight">Spaces</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Explore an idea. Compare options. Build a plan.
           </p>
         </div>
-
         <Button
-          onClick={() => {
-            setCreateError("");
-            setShowCreateDialog(true);
-          }}
-          className="bg-primary hover:bg-primary text-foreground gap-1.5 shadow-sm text-xs"
+          onClick={openCreate}
+          className="gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          <span>New Space</span>
+          <span>New space</span>
         </Button>
-      </div>
+      </header>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+        <div className="relative z-10 mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
           {error}
         </div>
       )}
 
       {loading && spaces.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-20 text-muted-foreground">
-          <RotateCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="relative z-10 flex flex-1 items-center justify-center py-20">
+          <RotateCw className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : spaces.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="rounded-2xl border border-border bg-card p-4 mb-4">
-            <Boxes className="h-10 w-10 text-foreground" />
+        <div className="relative z-10 flex flex-1 flex-col justify-center py-16">
+          <div className="max-w-sm">
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+              00 spaces
+            </p>
+            <h2 className="mt-3 text-3xl font-medium tracking-tight">
+              Map out a decision.
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Start a space to explore trips, fitness routines or big decisions.
+              Vox reads your past data and lays the options out around your
+              goal.
+            </p>
+            <Button
+              onClick={openCreate}
+              className="mt-6 gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground hover:bg-primary/90"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Create first space</span>
+            </Button>
           </div>
-          <h3 className="text-base font-semibold text-muted-foreground">
-            No spaces created yet
-          </h3>
-          <p className="mt-1 max-w-sm text-xs text-muted-foreground leading-relaxed">
-            Start a space to explore trips, fitness routines, or major decisions. Vox will query your past data and research options visually.
-          </p>
-          <Button
-            onClick={() => {
-              setCreateError("");
-              setShowCreateDialog(true);
-            }}
-            className="mt-5 bg-primary hover:bg-primary text-foreground text-xs gap-1.5"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Create First Space</span>
-          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {spaces.map((sp) => (
             <Card
               key={sp.id}
               onClick={() => setSelectedSpaceId(sp.id)}
-              className="group relative flex flex-col justify-between border-border bg-card hover:bg-accent hover:border-ring p-5 transition-all duration-200 cursor-pointer rounded-xl backdrop-blur-sm"
+              className="group relative flex cursor-pointer flex-col justify-between rounded-lg border-border bg-black/70 p-5 backdrop-blur transition-colors duration-200 hover:border-ring"
             >
               <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide ${
-                        sp.state === "committed"
-                          ? "border-border bg-muted text-muted-foreground"
-                          : "border-ring bg-primary/10 text-foreground"
-                      }`}
-                    >
-                      {sp.state}
-                    </span>
-                    {sp.run_state === "running" && (
-                      <span className="flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                        <RotateCw className="h-2.5 w-2.5 animate-spin" />
-                        running
-                      </span>
-                    )}
-                  </div>
-
+                      className={`h-1.5 w-1.5 rounded-full ${sp.run_state === "running" ? "animate-pulse" : ""}`}
+                      style={{
+                        background: stateDot(
+                          sp.state,
+                          sp.run_state === "running",
+                        ),
+                      }}
+                    />
+                    {sp.run_state === "running" ? "running" : sp.state}
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon-xs"
@@ -178,22 +181,20 @@ export function SpacesView() {
                     <Trash2 />
                   </Button>
                 </div>
-
-                <h3 className="text-sm font-bold text-foreground group-hover:text-foreground transition-colors">
+                <h3 className="text-sm font-medium text-foreground">
                   {sp.title}
                 </h3>
-                <p className="mt-1.5 text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
                   {sp.intent}
                 </p>
               </div>
-
-              <div className="mt-5 flex items-center justify-between border-t border-border pt-3 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
+              <div className="mt-5 flex items-center justify-between border-t border-border pt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
                   <Calendar className="h-3 w-3" />
                   {new Date(sp.created_at).toLocaleDateString()}
                 </span>
-                <span className="flex items-center gap-1 font-medium text-foreground group-hover:translate-x-0.5 transition-transform">
-                  <span>Open Space</span>
+                <span className="flex items-center gap-1 text-foreground transition-transform group-hover:translate-x-0.5">
+                  Open
                   <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
@@ -210,7 +211,8 @@ export function SpacesView() {
               Create a Space
             </DialogTitle>
             <DialogDescription>
-              Describe what you are thinking of doing. Vox will architect a dedicated agent, inspect your spending and calendar, and build a visual flow.
+              Describe what you are thinking of doing. Vox will research options
+              using your available data and build a visual plan.
             </DialogDescription>
           </DialogHeader>
 
@@ -224,62 +226,62 @@ export function SpacesView() {
             <Alert>
               <RotateCw className="animate-spin" />
               <AlertDescription>
-                Architecting space with AI… querying schemas and building spec
+                Preparing your research workspace…
               </AlertDescription>
             </Alert>
           )}
 
-            <form onSubmit={(e) => void handleCreate(e)} className="space-y-4">
-              <div>
-                <Label htmlFor="space-title">Title</Label>
-                <Input
-                  id="space-title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Weekend getaway near Bangalore"
-                  disabled={creating}
-                  required
-                />
-              </div>
+          <form onSubmit={(e) => void handleCreate(e)} className="space-y-4">
+            <div>
+              <Label htmlFor="space-title">Title</Label>
+              <Input
+                id="space-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Weekend getaway near Bangalore"
+                disabled={creating}
+                required
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="space-intent">Vision &amp; Intent</Label>
-                <Textarea
-                  id="space-intent"
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  placeholder="e.g. Planning a short trip with a friend this weekend. Avoid crowded places, check my recent expenditure to estimate a realistic budget, and give me a few options with pros, cons, and driving time."
-                  rows={4}
-                  disabled={creating}
-                  required
-                />
-              </div>
+            <div>
+              <Label htmlFor="space-intent">Vision &amp; Intent</Label>
+              <Textarea
+                id="space-intent"
+                value={intent}
+                onChange={(e) => setIntent(e.target.value)}
+                placeholder="e.g. Planning a short trip with a friend this weekend. Avoid crowded places, check my recent expenditure to estimate a realistic budget, and give me a few options with pros, cons, and driving time."
+                rows={4}
+                disabled={creating}
+                required
+              />
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={creating}
-                  onClick={() => setShowCreateDialog(false)}
-                                  >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={creating || !title.trim() || !intent.trim()}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  {creating ? (
-                    <RotateCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  <span>Architect Space</span>
-                </Button>
-              </div>
-            </form>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={creating}
+                onClick={() => setShowCreateDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={creating || !title.trim() || !intent.trim()}
+                size="sm"
+                className="gap-1.5"
+              >
+                {creating ? (
+                  <RotateCw className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                <span>Create Space</span>
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

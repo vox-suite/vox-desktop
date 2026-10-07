@@ -110,6 +110,7 @@ function getKindConfig(kind: string) {
 
 export const SpaceNodeCard = memo(function SpaceNodeCard({
   data,
+  selected,
 }: NodeProps) {
   const nodeData = data as unknown as SpaceNodeData;
   const node = nodeData.node;
@@ -122,33 +123,30 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
 
   return (
     <div
-      className={`group relative min-w-[260px] max-w-[340px] rounded-xl border bg-card p-4 shadow-xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
-        cfg.border
+      className={`space-node group relative w-[280px] rounded-xl border bg-card p-4 shadow-xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
+        selected ? "space-node-selected" : "border-border"
       } ${
         isRejected
           ? "opacity-35 grayscale border-dashed border-destructive/60 bg-destructive/10 hover:opacity-50"
           : ""
-      } ${
-        isStale ? "border-dashed border-border" : ""
-      }`}
+      } ${isStale ? "border-dashed border-border" : ""}`}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-zinc-400"
+        style={{ visibility: "hidden" }}
+        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-[#cfe3f1]"
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left"
-        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-zinc-400"
+        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-[#cfe3f1]"
       />
 
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium tracking-wide ${cfg.badgeBg}`}
-        >
-          <Icon className="h-3 w-3" />
+        <span className="inline-flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+          <Icon className="h-5 w-5 text-foreground" />
           {cfg.badge}
         </span>
 
@@ -169,7 +167,7 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
           </span>
         )}
         {node.state === "done" && (
-          <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-muted-foreground transition-colors" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-[#cfe3f1]" />
         )}
       </div>
 
@@ -183,8 +181,10 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
 
       {node.body && (
         <p
-          className={`mt-1.5 text-xs leading-relaxed line-clamp-4 ${
-            isRejected ? "text-muted-foreground line-through" : "text-muted-foreground"
+          className={`mt-1.5 text-xs leading-relaxed line-clamp-2 ${
+            isRejected
+              ? "text-muted-foreground line-through"
+              : "text-muted-foreground"
           }`}
         >
           {node.body}
@@ -209,13 +209,14 @@ export const SpaceNodeCard = memo(function SpaceNodeCard({
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-zinc-400"
+        style={{ visibility: "hidden" }}
+        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-[#cfe3f1]"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-zinc-400"
+        className="!h-2.5 !w-2.5 !border-2 !border-border !bg-[#cfe3f1]"
       />
     </div>
   );
