@@ -68,7 +68,7 @@ class SpanDayStore {
   }
 
   async revalidate() {
-    if (this.revision === null) return;
+    if (!this.revision) return;
     const today = dayKey(new Date());
     try {
       const result = await spansApi.getDays(today, today, timezone(), {

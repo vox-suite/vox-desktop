@@ -10,6 +10,47 @@ import type {
   SpanQuery,
 } from "@/features/spans/types";
 
+const NOT_DEPLOYED = /failed: (400|404|405)\b/;
+
+function localDayRange(fromDay: string, toDay: string) {
+  const from = new Date(`${fromDay}T00:00:00`);
+  const to = new Date(`${toDay}T00:00:00`);
+  to.setDate(to.getDate() + 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function legacyDays(
+  fromDay: string,
+  toDay: string,
+  collectionId?: string,
+): Promise<SpanDays> {
+  return spansApi
+    .getSpans({ ...localDayRange(fromDay, toDay), collectionId })
+    .then((spans) => {
+      const byDay = new Map<string, Map<string, number>>();
+      for (const span of spans) {
+        if (!span.start_at) continue;
+        const d = new Date(span.start_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const cats = byDay.get(key) ?? new Map<string, number>();
+        cats.set(span.category, (cats.get(span.category) ?? 0) + 1);
+        byDay.set(key, cats);
+      }
+      return {
+        revision: 0,
+        unchanged: false,
+        days: [...byDay].map(([day, cats]) => ({
+          day,
+          count: [...cats.values()].reduce((a, b) => a + b, 0),
+          categories: [...cats].map(([category, count]) => ({
+            category,
+            count,
+          })),
+        })),
+      };
+    });
+}
+
 export const spansApi = {
   getSpans: (q: SpanQuery) => {
     const body: Record<string, unknown> = {};
@@ -29,36 +70,50 @@ export const spansApi = {
     toDay: string,
     timezone: string,
     opts: { collectionId?: string; ifRevision?: number } = {},
-  ) =>
-    platform().http.request<SpanDays>({
-      method: "POST",
-      path: "/v1/spans/days",
-      body: {
-        from_day: fromDay,
-        to_day: toDay,
-        timezone,
-        collection_id: opts.collectionId ?? null,
-        if_revision: opts.ifRevision ?? null,
-      },
-    }),
+  ): Promise<SpanDays> =>
+    platform()
+      .http.request<SpanDays>({
+        method: "POST",
+        path: "/v1/spans/days",
+        body: {
+          from_day: fromDay,
+          to_day: toDay,
+          timezone,
+          collection_id: opts.collectionId ?? null,
+          if_revision: opts.ifRevision ?? null,
+        },
+      })
+      .catch((err: unknown) =>
+        NOT_DEPLOYED.test(String(err))
+          ? legacyDays(fromDay, toDay, opts.collectionId)
+          : Promise.reject(err),
+      ),
   getDayPage: (
     day: string,
     timezone: string,
     cursor: string | null,
     collectionId?: string,
     limit = 40,
-  ) =>
-    platform().http.request<SpanDayPage>({
-      method: "POST",
-      path: "/v1/spans/day",
-      body: {
-        day,
-        timezone,
-        cursor,
-        limit,
-        collection_id: collectionId ?? null,
-      },
-    }),
+  ): Promise<SpanDayPage> =>
+    platform()
+      .http.request<SpanDayPage>({
+        method: "POST",
+        path: "/v1/spans/day",
+        body: {
+          day,
+          timezone,
+          cursor,
+          limit,
+          collection_id: collectionId ?? null,
+        },
+      })
+      .catch((err: unknown) =>
+        NOT_DEPLOYED.test(String(err))
+          ? spansApi
+              .getSpans({ ...localDayRange(day, day), collectionId })
+              .then((items) => ({ revision: 0, items, next_cursor: null }))
+          : Promise.reject(err),
+      ),
   createSpan: (payload: NewSpan) =>
     platform().http.request<Span>({
       method: "POST",
