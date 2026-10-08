@@ -32,6 +32,7 @@ import type {
 } from "@/features/spaces/types";
 
 const nodeTypes = { spaceNode: SpaceWorkflowNode };
+const FIT_OPTIONS = { padding: 0.15, minZoom: 0.9, maxZoom: 1.1 };
 
 function SpaceCanvasInner({
   graph,
@@ -61,7 +62,9 @@ function SpaceCanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
-  const [commitResult, setCommitResult] = useState<CommitSpaceResult | null>(null);
+  const [commitResult, setCommitResult] = useState<CommitSpaceResult | null>(
+    null,
+  );
   const [chatOpen, setChatOpen] = useState(true);
   const [actionError, setActionError] = useState("");
 
@@ -94,28 +97,28 @@ function SpaceCanvasInner({
       graph.edges.map((e) => {
         const sourceState = nodeStateMap.get(e.from_node);
         const isRunning = sourceState === "running";
+        const related =
+          e.from_node === selectedNodeId || e.to_node === selectedNodeId;
+        const color = related
+          ? "#ffffff"
+          : selectedNodeId
+            ? "#2e2e33"
+            : "#5c5c63";
         return {
           id: e.id,
           source: e.from_node,
           sourceHandle: "right",
           targetHandle: "left",
           target: e.to_node,
-          type: "straight",
-          markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-          animated: isRunning,
-          style: {
-            stroke:
-              selectedNodeId &&
-              (e.from_node === selectedNodeId || e.to_node === selectedNodeId)
-                ? "#cfe3f1"
-                : "#777777",
-            strokeWidth: 1,
-            opacity: selectedNodeId
-              ? e.from_node === selectedNodeId || e.to_node === selectedNodeId
-                ? 0.9
-                : 0.12
-              : 0.3,
+          type: "default",
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 14,
+            height: 14,
+            color,
           },
+          animated: isRunning,
+          style: { stroke: color, strokeWidth: 1.5 },
         };
       }),
     );
@@ -124,7 +127,7 @@ function SpaceCanvasInner({
   useEffect(() => {
     if (nodes.length > 0 && prevCountRef.current === 0) {
       window.requestAnimationFrame(() => {
-        void fitView({ duration: 300, padding: 0.2 });
+        void fitView({ duration: 300, ...FIT_OPTIONS });
       });
     }
     prevCountRef.current = nodes.length;
@@ -183,10 +186,14 @@ function SpaceCanvasInner({
           selectedNode={selectedNode}
           chatOpen={chatOpen}
           onBack={onBack}
-          onStop={() => void runAction(() => spacesApi.stopSpace(graph.space.id))}
+          onStop={() =>
+            void runAction(() => spacesApi.stopSpace(graph.space.id))
+          }
           onRetryNode={() =>
             selectedNode &&
-            void runAction(() => spacesApi.retryNode(graph.space.id, selectedNode.id))
+            void runAction(() =>
+              spacesApi.retryNode(graph.space.id, selectedNode.id),
+            )
           }
           onToggleChat={() => setChatOpen((open) => !open)}
           onOpenCommitDialog={() => setShowCommitDialog(true)}
@@ -227,13 +234,14 @@ function SpaceCanvasInner({
             nodesDraggable={false}
             nodeTypes={nodeTypes}
             fitView
+            fitViewOptions={FIT_OPTIONS}
             className={cn("bg-background", chatOpen && "spaces-flow-with-chat")}
           >
             <Background
               variant={BackgroundVariant.Dots}
               gap={24}
               size={1}
-              color="#303033"
+              color="#3a3a40"
             />
             <Controls className="!bg-card !border-border !text-muted-foreground" />
             <MiniMap

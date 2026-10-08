@@ -23,6 +23,7 @@ export function PulseView() {
   const [boardId, setBoardId] = useState<string | null>(null);
   const [goals, setGoals] = useState<GoalView[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
+  const [actionError, setActionError] = useState("");
   useEffect(() => {
     if (adding) return;
     let active = true;
@@ -147,9 +148,9 @@ export function PulseView() {
                 </Button>
               </div>
             ) : null}
-            {error && (
+            {(error || actionError) && (
               <p role="alert" className="mb-4 text-xs text-destructive">
-                {error}
+                {actionError || error}
               </p>
             )}
             {goals.length > 0 && (
@@ -188,9 +189,15 @@ export function PulseView() {
                   <SavedChart
                     key={chart.id}
                     onRemove={() => {
+                      setActionError("");
                       void discoveryApi
                         .deleteChart(chart.id)
-                        .then(() => setRemoved((ids) => [...ids, chart.id]));
+                        .then(() => setRemoved((ids) => [...ids, chart.id]))
+                        .catch((err: unknown) =>
+                          setActionError(
+                            `Could not delete chart: ${err instanceof Error ? err.message : String(err)}`,
+                          ),
+                        );
                     }}
                     title={chart.title}
                     definition={chart.definition}

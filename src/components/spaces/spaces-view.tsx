@@ -26,7 +26,7 @@ import { Card } from "@/components/ui/card";
 import { useSpaces } from "@/hooks/use-spaces";
 import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
-import { SpacesOrbit } from "./spaces-orbit";
+import { SpacesIntroduction } from "./spaces-introduction";
 
 export function SpacesView() {
   const { spaces, loading, error, reload, create, drop } = useSpaces();
@@ -92,8 +92,7 @@ export function SpacesView() {
     running ? "#ff5a67" : state === "committed" ? "#cfe3f1" : "#f5b83d";
 
   return (
-    <PageContainer className="spaces-workbench spaces-library bg-[#111]">
-      <SpacesOrbit />
+    <PageContainer>
       <PageHeader>
         <h1 className="text-sm font-medium">Spaces</h1>
         <Button
@@ -105,7 +104,7 @@ export function SpacesView() {
           <Plus className="h-4 w-4" />
         </Button>
       </PageHeader>
-      <PageBody className="p-6">
+      <PageBody className="flex flex-col p-6">
         {error && (
           <div className="relative z-10 mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
             {error}
@@ -117,35 +116,14 @@ export function SpacesView() {
             <RotateCw className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : spaces.length === 0 ? (
-          <div className="relative z-10 flex flex-1 flex-col justify-center py-16">
-            <div className="max-w-sm">
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                00 spaces
-              </p>
-              <h2 className="mt-3 text-3xl font-medium tracking-tight">
-                Map out a decision.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Start a space to explore trips, fitness routines or big
-                decisions. Vox reads your past data and lays the options out
-                around your goal.
-              </p>
-              <Button
-                onClick={openCreate}
-                className="mt-6 gap-1.5 rounded-full bg-primary px-4 text-xs text-primary-foreground hover:bg-primary/90"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Create first space</span>
-              </Button>
-            </div>
-          </div>
+          <SpacesIntroduction onCreate={openCreate} />
         ) : (
-          <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="relative z-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {spaces.map((sp) => (
               <Card
                 key={sp.id}
                 onClick={() => setSelectedSpaceId(sp.id)}
-                className="group relative flex cursor-pointer flex-col justify-between rounded-lg border-border bg-black/70 p-5 backdrop-blur transition-colors duration-200 hover:border-ring"
+                className="group relative flex cursor-pointer flex-col justify-between rounded-xl border-border bg-card p-5 shadow-none transition-colors duration-200 hover:border-ring"
               >
                 <div>
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -168,7 +146,8 @@ export function SpacesView() {
                         e.stopPropagation();
                         void drop(sp.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100"
+                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                      aria-label={`Drop ${sp.title}`}
                       title="Drop Space"
                     >
                       <Trash2 />

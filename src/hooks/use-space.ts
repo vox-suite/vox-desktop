@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { spacesApi } from "@/features/spaces/api";
 import { platform } from "@/platform";
 import {
@@ -15,6 +15,23 @@ export function useSpace(spaceId: string | null) {
   const [sending, setSending] = useState(false);
   const [committing, setCommitting] = useState(false);
 
+  const streamed = useRef(new Map<string, string>());
+  const withStreams = useCallback((data: SpaceGraph): SpaceGraph => {
+    if (streamed.current.size === 0) return data;
+    return {
+      ...data,
+      nodes: data.nodes.map((node) => {
+        const text = streamed.current.get(node.id);
+        if (text === undefined) return node;
+        if (node.state === "done" || node.state === "rejected") {
+          streamed.current.delete(node.id);
+          return node;
+        }
+        return { ...node, body: text };
+      }),
+    };
+  }, []);
+
   const [prevSpaceId, setPrevSpaceId] = useState(spaceId);
   if (spaceId !== prevSpaceId) {
     setPrevSpaceId(spaceId);
@@ -27,12 +44,12 @@ export function useSpace(spaceId: string | null) {
     if (!spaceId) return;
     try {
       const data = await spacesApi.getSpace(spaceId);
-      setGraph(data);
+      setGraph(withStreams(data));
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [spaceId]);
+  }, [spaceId, withStreams]);
 
   const loadMessages = useCallback(async () => {
     if (!spaceId) return;
@@ -81,6 +98,22 @@ export function useSpace(spaceId: string | null) {
         return;
       }
       if (!payload.type.startsWith("space_") || payload.space_id !== spaceId) {
+        return;
+      }
+      if (payload.type === "space_node_stream") {
+        const nodeId = String(payload.node_id);
+        const text = String(payload.text ?? "");
+        streamed.current.set(nodeId, text);
+        setGraph((curr) =>
+          curr
+            ? {
+                ...curr,
+                nodes: curr.nodes.map((n) =>
+                  n.id === nodeId ? { ...n, body: text } : n,
+                ),
+              }
+            : curr,
+        );
         return;
       }
       clearTimeout(debounceTimer);

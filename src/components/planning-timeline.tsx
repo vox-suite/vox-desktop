@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarX, LoaderCircle } from "lucide-react";
 import { SpanInfoTooltip } from "@/components/span-info-tooltip";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
@@ -104,158 +105,173 @@ export function PlanningTimeline({
   );
 
   return (
-    <div
-      ref={scrollRef}
-      className="h-full min-h-0 overflow-auto bg-background pt-3 text-foreground"
-    >
+    <div className="relative h-full min-h-0">
       <div
-        className="relative h-full"
-        style={{ width: width + leadingSpace + 16, minHeight: height }}
+        ref={scrollRef}
+        className="h-full min-h-0 overflow-auto bg-background pt-3 text-foreground"
       >
-        {frontiers.map((f) => (
-          <FrontierSentinel
-            key={f.day}
-            root={scrollRef}
-            left={leadingSpace + Math.max(0, f.ms - start) * scale}
-            disabled={loading}
-            onReach={() => onLoadMore?.(f.day)}
-          />
-        ))}
-        <div className="relative h-8 border-b border-border text-xs text-muted-foreground">
-          {ticks.map((date) => (
-            <span
-              key={date.getTime()}
-              className="absolute -translate-x-1/2 whitespace-nowrap"
-              style={{ left: leadingSpace + (date.getTime() - start) * scale }}
-            >
-              {days.length === 1
-                ? date.toLocaleTimeString(undefined, { hour: "numeric" })
-                : date.toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-            </span>
+        <div
+          className="relative h-full"
+          style={{ width: width + leadingSpace + 16, minHeight: height }}
+        >
+          {frontiers.map((f) => (
+            <FrontierSentinel
+              key={f.day}
+              root={scrollRef}
+              left={leadingSpace + Math.max(0, f.ms - start) * scale}
+              disabled={loading}
+              onReach={() => onLoadMore?.(f.day)}
+            />
           ))}
-        </div>
-        {(days.length > 7 ? days : ticks).map((date) => (
-          <div
-            key={`separator-${date.getTime()}`}
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 top-8 w-px text-muted-foreground/12"
-            style={{
-              left: leadingSpace + (date.getTime() - start) * scale,
-              backgroundImage:
-                "repeating-linear-gradient(to bottom, currentColor 0, currentColor 4px, transparent 4px, transparent 10px)",
-              backgroundSize: "1px 10px",
-              backgroundRepeat: "repeat-y",
-            }}
-          />
-        ))}
-        {days.length === 7 &&
-          days.flatMap((day) =>
-            Array.from({ length: 7 }, (_, index) => {
-              const time = new Date(day);
-              time.setHours((index + 1) * 3);
+          <div className="relative h-8 border-b border-border text-xs text-muted-foreground">
+            {ticks.map((date) => (
+              <span
+                key={date.getTime()}
+                className="absolute -translate-x-1/2 whitespace-nowrap"
+                style={{
+                  left: leadingSpace + (date.getTime() - start) * scale,
+                }}
+              >
+                {days.length === 1
+                  ? date.toLocaleTimeString(undefined, { hour: "numeric" })
+                  : date.toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+              </span>
+            ))}
+          </div>
+          {(days.length > 7 ? days : ticks).map((date) => (
+            <div
+              key={`separator-${date.getTime()}`}
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 top-8 w-px text-muted-foreground/12"
+              style={{
+                left: leadingSpace + (date.getTime() - start) * scale,
+                backgroundImage:
+                  "repeating-linear-gradient(to bottom, currentColor 0, currentColor 4px, transparent 4px, transparent 10px)",
+                backgroundSize: "1px 10px",
+                backgroundRepeat: "repeat-y",
+              }}
+            />
+          ))}
+          {days.length === 7 &&
+            days.flatMap((day) =>
+              Array.from({ length: 7 }, (_, index) => {
+                const time = new Date(day);
+                time.setHours((index + 1) * 3);
+                return (
+                  <div
+                    key={`sub-hour-${time.getTime()}`}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-0 top-8 w-px text-muted-foreground/12"
+                    style={{
+                      left: leadingSpace + (time.getTime() - start) * scale,
+                      backgroundImage:
+                        "repeating-linear-gradient(to bottom, currentColor 0, currentColor 4px, transparent 4px, transparent 10px)",
+                    }}
+                  />
+                );
+              }),
+            )}
+          {days.length === 7 &&
+            days.map((day) => (
+              <div
+                key={`day-${day.getTime()}`}
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
+                style={{ left: leadingSpace + (day.getTime() - start) * scale }}
+              />
+            ))}
+          {days.length > 7 &&
+            [7, 14, 21, 28].map((dayIndex) => {
+              const boundary = days[dayIndex]?.getTime() ?? end;
               return (
                 <div
-                  key={`sub-hour-${time.getTime()}`}
+                  key={`week-${dayIndex}`}
                   aria-hidden="true"
-                  className="pointer-events-none absolute bottom-0 top-8 w-px text-muted-foreground/12"
+                  className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
                   style={{
-                    left: leadingSpace + (time.getTime() - start) * scale,
-                    backgroundImage:
-                      "repeating-linear-gradient(to bottom, currentColor 0, currentColor 4px, transparent 4px, transparent 10px)",
+                    left: leadingSpace + (boundary - start) * scale,
                   }}
                 />
               );
-            }),
-          )}
-        {days.length === 7 &&
-          days.map((day) => (
+            })}
+          {showNow && (
             <div
-              key={`day-${day.getTime()}`}
-              aria-hidden="true"
-              className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
-              style={{ left: leadingSpace + (day.getTime() - start) * scale }}
-            />
-          ))}
-        {days.length > 7 &&
-          [7, 14, 21, 28].map((dayIndex) => {
-            const boundary = days[dayIndex]?.getTime() ?? end;
+              className="pointer-events-none absolute bottom-0 top-0 z-10"
+              style={{ left: leadingSpace + nowLeft }}
+            >
+              <span className="absolute top-0 -translate-x-1/2 rounded-md bg-[#7f1d1d] px-2 py-1 text-xs text-white">
+                Now
+              </span>
+              <div className="absolute bottom-0 top-9 w-px bg-[#7f1d1d]" />
+            </div>
+          )}
+          {items.map(({ span, from, to, left, barWidth, lane }) => {
+            const style = spanStyle(span);
+            const amount = formatAmount(span);
+            const badge =
+              amount ||
+              (to > from ? durationLabel(from, to) : formatTime(span.start_at));
             return (
-              <div
-                key={`week-${dayIndex}`}
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
-                style={{
-                  left: leadingSpace + (boundary - start) * scale,
-                }}
-              />
+              <SpanInfoTooltip key={span.id} span={span}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(span)}
+                  aria-label={`${displayTitle(span)}, ${formatTime(span.start_at)}${span.end_at ? ` to ${formatTime(span.end_at)}` : ""}`}
+                  className={cn(
+                    "absolute z-20 flex h-8 items-center gap-2 overflow-hidden rounded-lg border px-2.5 text-left shadow-sm transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    span.status === "active" && "ring-1 ring-border",
+                    span.status === "cancelled" && "opacity-45 line-through",
+                    span.status === "failed" && "ring-1 ring-destructive",
+                  )}
+                  style={{
+                    left: leadingSpace + left,
+                    width: barWidth,
+                    top: 42 + lane * 42,
+                    backgroundColor: style.bg,
+                    borderColor: style.border,
+                    color: style.text,
+                    borderStyle: isEstimated(span) ? "dashed" : "solid",
+                  }}
+                >
+                  <CategoryIndicator
+                    span={span}
+                    color={style.dot}
+                    dotSizeClass="size-1.5"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {displayTitle(span)}
+                  </span>
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
+                    {isEstimated(span) ? "≈ " : ""}
+                    {badge}
+                  </span>
+                </button>
+              </SpanInfoTooltip>
             );
           })}
-        {showNow && (
-          <div
-            className="pointer-events-none absolute bottom-0 top-0 z-10"
-            style={{ left: leadingSpace + nowLeft }}
-          >
-            <span className="absolute top-0 -translate-x-1/2 rounded-md bg-[#7f1d1d] px-2 py-1 text-xs text-white">
-              Now
-            </span>
-            <div className="absolute bottom-0 top-9 w-px bg-[#7f1d1d]" />
-          </div>
-        )}
-        {items.map(({ span, from, to, left, barWidth, lane }) => {
-          const style = spanStyle(span);
-          const amount = formatAmount(span);
-          const badge =
-            amount ||
-            (to > from ? durationLabel(from, to) : formatTime(span.start_at));
-          return (
-            <SpanInfoTooltip key={span.id} span={span}>
-              <button
-                type="button"
-                onClick={() => onSelect(span)}
-                aria-label={`${displayTitle(span)}, ${formatTime(span.start_at)}${span.end_at ? ` to ${formatTime(span.end_at)}` : ""}`}
-                className={cn(
-                  "absolute z-20 flex h-8 items-center gap-2 overflow-hidden rounded-lg border px-2.5 text-left shadow-sm transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                  span.status === "active" && "ring-1 ring-border",
-                  span.status === "cancelled" && "opacity-45 line-through",
-                  span.status === "failed" && "ring-1 ring-destructive",
-                )}
-                style={{
-                  left: leadingSpace + left,
-                  width: barWidth,
-                  top: 42 + lane * 42,
-                  backgroundColor: style.bg,
-                  borderColor: style.border,
-                  color: style.text,
-                  borderStyle: isEstimated(span) ? "dashed" : "solid",
-                }}
-              >
-                <CategoryIndicator
-                  span={span}
-                  color={style.dot}
-                  dotSizeClass="size-1.5"
-                />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  {displayTitle(span)}
-                </span>
-                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
-                  {isEstimated(span) ? "≈ " : ""}
-                  {badge}
-                </span>
-              </button>
-            </SpanInfoTooltip>
-          );
-        })}
-        {items.length === 0 && (
-          <p className="pt-8 text-sm text-muted-foreground">
-            {loading
-              ? "Loading your plan…"
-              : "No events in this date range. Choose another date to explore your plan."}
-          </p>
-        )}
+        </div>
       </div>
+      {items.length === 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex flex-col items-center justify-center gap-2 px-6 text-center">
+          {loading ? (
+            <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+          ) : (
+            <CalendarX className="size-6 text-muted-foreground/60" />
+          )}
+          <p className="text-sm font-medium text-foreground">
+            {loading ? "Loading your plan…" : "Nothing scheduled"}
+          </p>
+          {!loading && (
+            <p className="max-w-xs text-xs text-muted-foreground">
+              No events in this date range. Pick another date to explore your
+              plan.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
