@@ -65,6 +65,7 @@ export function usePulseCanvas() {
     };
     const unsubscribe = platform().live.subscribe((event) => {
       if (
+        event.type === "timeline_updated" ||
         event.type.startsWith("span_") ||
         event.type.includes("connection") ||
         event.type === "live_reconnected"

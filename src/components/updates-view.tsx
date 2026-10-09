@@ -1,3 +1,4 @@
+import { platform } from "@/platform";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RotateCw } from "lucide-react";
 import { PageBody, PageContainer, PageHeader } from "@/components/ui/page-container";
@@ -23,6 +24,16 @@ export function UpdatesView() {
     try { const result = await updatesApi.list(kind || undefined); if (ticket === requestId.current) { setItems(result); setHasMore(result.length === 100); } } catch (e) { if (ticket === requestId.current) setError(String(e)); }
     finally { if (ticket === requestId.current) setLoading(false); }
   }, [kind]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = platform().live.subscribe(event => {
+      if (event.type === "updates_updated" || event.type === "live_reconnected") {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { void load(); }, 350);
+      }
+    });
+    return () => { unsubscribe(); if (timer) clearTimeout(timer); };
+  }, [load]);
   useEffect(() => { void load(); }, [load]);
   async function more() {
     const ticket = ++requestId.current;

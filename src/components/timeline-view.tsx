@@ -1,3 +1,4 @@
+import { platform } from "@/platform";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageContainer, PageBody } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,16 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const days = useMemo(() => mode === "day" ? [anchor] : mode === "month" ? monthGridDays(anchor) : daysFrom(anchor, 7), [anchor, mode]);
   const start = days[0].toISOString();
   const end = addDays(days[days.length - 1], 1).toISOString();
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = platform().live.subscribe(event => {
+      if (event.type === "timeline_updated" || event.type === "live_reconnected") {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { setRevision(r => r + 1); }, 350);
+      }
+    });
+    return () => { unsubscribe(); if (timer) clearTimeout(timer); };
+  }, []);
   useEffect(() => {
     let active = true;
     Promise.all([timelineApi.groups(), timelineApi.types()]).then(([g, t]) => { if (active) { setGroups(g); setTypes(t); } }).catch((e: unknown) => { if (active) setError(String(e)); });
