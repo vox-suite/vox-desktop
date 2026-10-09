@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AskView } from "./ask-view";
-import { GoalComposer } from "./goal-composer";
+import { MeasurementsView } from "./measurements-view";
 import { PulseShell } from "./pulse-shell";
 import { SuggestionsView } from "./suggestions-view";
 
@@ -13,7 +12,7 @@ export function CreatePulsePage({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [mode, setMode] = useState<"ask" | "goal" | "suggestions">(
+  const [mode, setMode] = useState<"measurements" | "suggestions">(
     "suggestions",
   );
   return (
@@ -42,16 +41,10 @@ export function CreatePulsePage({
               Suggestions
             </button>
             <button
-              aria-pressed={mode === "ask"}
-              onClick={() => setMode("ask")}
+              aria-pressed={mode === "measurements"}
+              onClick={() => setMode("measurements")}
             >
-              Ask Pulse
-            </button>
-            <button
-              aria-pressed={mode === "goal"}
-              onClick={() => setMode("goal")}
-            >
-              Goal
+              Measurements
             </button>
           </div>
         </>
@@ -75,13 +68,7 @@ export function CreatePulsePage({
               : "pulse-create-content"
           }
         >
-          {mode === "ask" ? (
-            <AskView onSaved={onSaved} />
-          ) : mode === "goal" ? (
-            <GoalComposer onSaved={onSaved} />
-          ) : (
-            <SuggestionsView onSaved={onSaved} />
-          )}
+          {mode === "measurements" ? <MeasurementsView onSaved={onSaved} /> : <SuggestionsView onSaved={onSaved} />}
         </div>
       </div>
     </PulseShell>

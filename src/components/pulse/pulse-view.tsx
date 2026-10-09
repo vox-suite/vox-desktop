@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  ArrowRight,
   Music2,
   Gamepad2,
   Plus,
@@ -9,34 +8,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
-import { BoardView } from "./board-view";
 import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
 import { PulseShell } from "./pulse-shell";
 import { PulseChartSkeleton } from "./chart-card";
 import { SavedChart } from "./saved-chart";
-import { GoalCard } from "./goal-card";
 import { discoveryApi } from "@/features/pulse/api";
-import { goalsApi, type GoalView } from "@/features/pulse/goals";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const [adding, setAdding] = useState(false);
-  const [boardId, setBoardId] = useState<string | null>(null);
-  const [goals, setGoals] = useState<GoalView[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   const [actionError, setActionError] = useState("");
-  useEffect(() => {
-    if (adding) return;
-    let active = true;
-    void goalsApi
-      .list()
-      .then((list) => {
-        if (active) setGoals(list);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [adding]);
   if (adding)
     return (
       <CreatePulsePage
@@ -47,20 +28,7 @@ export function PulseView() {
         }}
       />
     );
-  if (boardId)
-    return (
-      <BoardView
-        boardId={boardId}
-        onBack={() => {
-          setBoardId(null);
-          void reload();
-        }}
-      />
-    );
-  const empty =
-    canvas?.charts.length === 0 &&
-    canvas.legacy_boards.length === 0 &&
-    goals.length === 0;
+  const empty = canvas?.charts.filter((chart) => !removed.includes(chart.id)).length === 0;
   return (
     <PulseShell
       header={
@@ -131,7 +99,7 @@ export function PulseView() {
                 <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
                   {[
                     [Music2, "Top artists this month"],
-                    [Gamepad2, "Hours played per week"],
+                    [Gamepad2, "Recorded gaming activity"],
                     [Wallet, "Spend by category"],
                   ].map(([Icon, label]) => (
                     <span
@@ -152,35 +120,6 @@ export function PulseView() {
               <p role="alert" className="mb-4 text-xs text-destructive">
                 {actionError || error}
               </p>
-            )}
-            {goals.length > 0 && (
-              <div className="mb-8">
-                <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Goals
-                </h2>
-                <div className="pulse-chart-grid">
-                  {goals.map((goal) => (
-                    <GoalCard
-                      key={goal.id}
-                      goal={goal}
-                      onChange={(next) =>
-                        setGoals((all) =>
-                          all.map((g) => (g.id === next.id ? next : g)),
-                        )
-                      }
-                      onRemove={() => {
-                        void goalsApi
-                          .remove(goal.id)
-                          .then(() =>
-                            setGoals((all) =>
-                              all.filter((g) => g.id !== goal.id),
-                            ),
-                          );
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
             )}
             <div className="pulse-chart-grid">
               {canvas?.charts
@@ -216,32 +155,6 @@ export function PulseView() {
               >
                 Load more
               </Button>
-            )}
-            {!!canvas?.legacy_boards.length && (
-              <div className="mt-6">
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Your boards
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {canvas.legacy_boards.map((board) => (
-                    <button
-                      key={board.id}
-                      onClick={() => setBoardId(board.id)}
-                      className="flex items-center justify-between rounded-lg border border-border p-4 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      <span>
-                        <span className="block text-sm font-medium">
-                          {board.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {board.chart_count} charts
-                        </span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
-              </div>
             )}
           </>
         )}

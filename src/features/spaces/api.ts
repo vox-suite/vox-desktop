@@ -1,6 +1,4 @@
 import { platform } from "@/platform";
-import { pulseTimezone } from "@/features/pulse/api";
-import type { GoalView } from "@/features/pulse/goals";
 import type {
   CommitSpaceResult,
   Space,
@@ -61,13 +59,6 @@ export const spacesApi = {
       method: "PATCH",
       path: `/v1/me/spaces/${spaceId}/nodes/${nodeId}`,
       body: patch,
-    }),
-  approveNodeGoal: (spaceId: string, nodeId: string) =>
-    platform().http.request<{ goal: GoalView; node: SpaceNode }>({
-      method: "POST",
-      path: `/v1/me/spaces/${spaceId}/nodes/${nodeId}/goal`,
-      body: { timezone: pulseTimezone() },
-      timeoutMs: 60000,
     }),
   listMessages: (spaceId: string) =>
     platform().http.request<SpaceMessage[]>({

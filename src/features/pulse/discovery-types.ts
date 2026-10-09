@@ -1,5 +1,4 @@
 import type { components } from "@/features/api.gen";
-import type { ChartBoard } from "./types";
 type S = components["schemas"];
 export type Bucket = S["Bucket"];
 export type PulseDefinition = Omit<
@@ -27,15 +26,4 @@ export type DiscoveryResponse = Omit<
   Required<S["DiscoveryResponse"]>,
   "suggestions"
 > & { suggestions: PulseSuggestion[] };
-export type CanvasResponse = Omit<
-  Required<S["CanvasResponse"]>,
-  "charts" | "legacy_boards"
-> & { charts: SavedPulseChart[]; legacy_boards: ChartBoard[] };
-export type ComposeMessage = { role: "user" | "assistant"; content: string };
-export type ComposeResponse = {
-  reply: string;
-  title: string | null;
-  definition: PulseDefinition | null;
-  measurement: Measurement | null;
-  preview: PulseResult | null;
-};
+export type CanvasResponse = Omit<Required<S["CanvasResponse"]>, "charts"> & { charts: SavedPulseChart[] };

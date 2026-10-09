@@ -1,6 +1,5 @@
 export * from "./use-auth";
 export * from "./use-call-session";
-export * from "./use-chart-board-data";
 export * from "./use-mission-map";
 export * from "./use-mobile";
 export * from "./use-outside-guard";

@@ -65,18 +65,27 @@ export function TakeoutSection({
       <input
         ref={historyInput}
         type="file"
-        accept=".json,.html,application/json,text/html"
+        accept=".zip,.json,.html,application/zip,application/json,text/html"
         aria-label={cfg.title}
         className="sr-only"
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
           if (!file || !historyConsent) return;
-          if (file.size > cfg.maxMb * 1024 * 1024) {
+          if (file.size > (file.name.toLowerCase().endsWith(".zip") ? 100 : cfg.maxMb) * 1024 * 1024) {
             setMessage(`Choose a file smaller than ${cfg.maxMb} MB.`);
             return;
           }
           void run(async () => {
+            if (file.name.toLowerCase().endsWith(".zip")) {
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              const chunks: string[] = [];
+              for (let i = 0; i < bytes.length; i += 32768) chunks.push(String.fromCharCode(...bytes.subarray(i, i + 32768)));
+              setMessage("Importing Takeout archive…");
+              const result = await platform().http.request<{ youtube_records_imported: number; maps_records_imported: number; total_events_created: number }>({ method: "POST", path: "/v1/connectors/google/takeout/upload", rawBodyBase64: btoa(chunks.join("")), timeoutMs: 200000 });
+              setMessage(`Imported ${result.total_events_created.toLocaleString()} new entries from ${result.youtube_records_imported.toLocaleString()} YouTube watches and ${result.maps_records_imported.toLocaleString()} Maps records. Export gaps remain unknown.`);
+              return;
+            }
             const parsed = await cfg.parse(file);
             if (typeof parsed === "string") {
               setMessage(parsed);

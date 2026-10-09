@@ -2,9 +2,9 @@ import type { PulseDefinition } from "./discovery-types";
 
 const fmt = (d: Date) =>
   d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-export const ALL_TIME_DAYS = 3650;
+export const ALL_TIME_DAYS = 366;
 export function windowLabel(d: PulseDefinition) {
-  if (d.period_days >= ALL_TIME_DAYS) return "All time";
+  if (d.period_days >= ALL_TIME_DAYS) return "Last year";
   const end = new Date();
   end.setDate(end.getDate() - (d.offset_days ?? 0));
   const start = new Date(end);

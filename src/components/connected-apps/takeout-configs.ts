@@ -8,8 +8,8 @@ export const YOUTUBE_IMPORT: TakeoutConfig = {
   id: "youtube",
   title: "Personal watch history",
   blurb:
-    "Import your Google Takeout watch-history file (HTML or JSON). Vox uses its recorded watch times. This is an imported snapshot; upload another export to add newer watches.",
-  help: "Select YouTube and YouTube Music, include history, and either HTML or JSON works for the history format. Use an English-language export, extract it, and select watch-history below. The selected history is sent to Vox’s server for validation and import.",
+    "Import a Google Takeout ZIP archive or watch-history file (HTML or JSON). Vox uses its recorded watch times. This is an imported snapshot; upload another export to add newer watches.",
+  help: "Select YouTube and YouTube Music, include history, and either HTML or JSON works for the history format. Use an English-language export, select the ZIP archive (up to 100 MiB), or extract it and select watch-history below. The selected history is sent to Vox’s server for validation and import.",
   consent:
     "I allow Vox to store this watch history in my timeline and use it to answer my questions.",
   button: "Import watch history",

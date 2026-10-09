@@ -43,18 +43,6 @@ export type {
   Collection,
   NewCollection,
 } from "@/features/spans/types";
-export type {
-  Schema,
-  ChartType,
-  Aggregation,
-  QuerySpec,
-  ChartDataPoint,
-  Chart,
-  ChartSuggestion,
-  ChartBoard,
-  ChartBoardDetails,
-  ChartDataResult,
-} from "@/features/pulse/types";
 
 export const api = {
   getAuthState: () => invoke<AuthState>("get_auth_state"),

@@ -7,7 +7,7 @@ const ranges = [
   { label: "7 days", days: 7 },
   { label: "30 days", days: 30 },
   { label: "90 days", days: 90 },
-  { label: "All", days: ALL_TIME_DAYS },
+  { label: "Year", days: ALL_TIME_DAYS },
 ];
 export function RangeControls({
   definition,
@@ -48,13 +48,14 @@ export function RangeControls({
         ))}
       </div>
       {allTime ? (
-        <span className="text-xs text-muted-foreground">All time</span>
+        <span className="text-xs text-muted-foreground">Last year</span>
       ) : (
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Button
             variant="ghost"
             size="icon"
             aria-label="Earlier"
+            disabled={offset + 2 * definition.period_days > 366}
             onClick={() =>
               onChange({ offset_days: offset + definition.period_days })
             }

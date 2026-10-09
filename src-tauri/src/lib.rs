@@ -7,12 +7,14 @@ mod deep_link;
 mod device_link;
 mod filelog;
 mod live_link;
+mod local_voice;
 #[cfg(target_os = "macos")]
 mod macos_location;
 mod pkce;
 mod session;
 mod session_store;
 mod sync_client;
+mod gmail_history;
 mod system_stats;
 mod terminal;
 mod types;
@@ -128,6 +130,9 @@ pub fn run() {
             session::call_status,
             set_window_size,
             sync_client::core_http,
+            gmail_history::gmail_local_models,
+            gmail_history::gmail_history_page,
+            gmail_history::gmail_history_attachments,
             device_link::get_device_link_status,
             device_link::get_remote_control,
             device_link::set_remote_control,

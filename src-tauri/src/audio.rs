@@ -369,6 +369,16 @@ impl AudioEngine {
         }
         drop(decoder);
 
+        self.enqueue_pcm(&pcm_samples, src_rate, epoch);
+    }
+
+    pub fn playback_epoch(&self) -> u64 {
+        self.playback_epoch.load(Ordering::SeqCst)
+    }
+
+    /// Queues mono f32 PCM for playback; dropped if `epoch` is stale (the
+    /// playback was cleared after the audio was requested).
+    pub fn enqueue_pcm(&self, pcm_samples: &[f32], src_rate: u32, epoch: u64) {
         if pcm_samples.is_empty() {
             return;
         }
@@ -377,7 +387,7 @@ impl AudioEngine {
             .resampler
             .lock()
             .unwrap()
-            .push(&pcm_samples, src_rate, self.out_rate);
+            .push(pcm_samples, src_rate, self.out_rate);
         let mut output_samples =
             Vec::with_capacity(resampled.len() * self.out_channels.max(1) as usize);
         for &s in &resampled {

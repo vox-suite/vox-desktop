@@ -18,6 +18,7 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::audio::AudioEngine;
+use crate::local_voice::{LocalTurn, LocalVoice, SentenceChunker};
 use crate::session_store::StoredSession;
 use crate::voxlog;
 
@@ -29,6 +30,10 @@ pub enum VoiceClientMessage {
     Turn {
         #[serde(default)]
         conversation_id: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        text: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        tool_results: Vec<serde_json::Value>,
     },
     Interrupt,
     Ping,
@@ -84,7 +89,18 @@ pub async fn run_session_loop(
         format!("ws://{clean_api}")
     };
 
-    let ws_url = format!("{ws_base}/v1/me/voice/socket");
+    let local = match LocalVoice::start(&app, clean_api, &session.vox_token).await {
+        Ok(local) => Some(Arc::new(local)),
+        Err(err) => {
+            voxlog!("on-device voice unavailable, using server voice: {err}");
+            None
+        }
+    };
+    let ws_url = if local.is_some() {
+        format!("{ws_base}/v1/me/voice/socket?audio=local")
+    } else {
+        format!("{ws_base}/v1/me/voice/socket")
+    };
     let mut request = match ws_url.into_client_request() {
         Ok(req) => req,
         Err(e) => {
@@ -168,6 +184,9 @@ pub async fn run_session_loop(
     const ECHO_THRESHOLD: f32 = 0.03;
     const ECHO_TAIL: Duration = Duration::from_millis(300);
     let mut last_playing_at = Instant::now() - ECHO_TAIL;
+
+    let (local_tx, mut local_rx) = mpsc::unbounded_channel::<Result<Option<LocalTurn>, String>>();
+    let mut chunker = SentenceChunker::new();
 
     let mut ping_interval = tokio::time::interval(Duration::from_secs(15));
     ping_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -256,6 +275,7 @@ pub async fn run_session_loop(
                         barge_ins += 1;
                         voxlog!("barge-in: user spoke over playback (rms={rms:.4}), interrupting");
                         audio_engine.clear_playback();
+                        chunker = SentenceChunker::new();
                         last_audio_frame_at = None;
                         let interrupt_msg = serde_json::to_string(&VoiceClientMessage::Interrupt).unwrap_or_default();
                         let _ = ws_sender.send(Message::text(interrupt_msg)).await;
@@ -277,14 +297,11 @@ pub async fn run_session_loop(
                         if buffer_len >= 5600 {
                             utterances += 1;
                             let utterance = std::mem::take(&mut speech_buffer);
-                            let pcm_bytes = pcm_f32_to_i16_bytes(&utterance);
                             voxlog!(
-                                "sending utterance: {} samples ({} ms), {} bytes",
+                                "utterance: {} samples ({} ms)",
                                 utterance.len(),
-                                utterance.len() * 1000 / 16000,
-                                pcm_bytes.len()
+                                utterance.len() * 1000 / 16000
                             );
-                            let _ = ws_sender.send(Message::Binary(pcm_bytes.into())).await;
                             turn_sent_at = Some(Instant::now());
                             awaiting_first_audio = true;
                             awaiting_first_delta = true;
@@ -292,9 +309,22 @@ pub async fn run_session_loop(
                             turn_bytes = 0;
                             max_frame_gap_ms = 0;
 
-                            let turn_msg = VoiceClientMessage::Turn { conversation_id: None };
-                            if let Ok(json) = serde_json::to_string(&turn_msg) {
-                                let _ = ws_sender.send(Message::text(json)).await;
+                            if let Some(local) = local.clone() {
+                                let tx = local_tx.clone();
+                                tokio::spawn(async move {
+                                    let _ = tx.send(local.turn(utterance).await);
+                                });
+                            } else {
+                                let pcm_bytes = pcm_f32_to_i16_bytes(&utterance);
+                                let _ = ws_sender.send(Message::Binary(pcm_bytes.into())).await;
+                                let turn_msg = VoiceClientMessage::Turn {
+                                    conversation_id: None,
+                                    text: None,
+                                    tool_results: Vec::new(),
+                                };
+                                if let Ok(json) = serde_json::to_string(&turn_msg) {
+                                    let _ = ws_sender.send(Message::text(json)).await;
+                                }
                             }
                         } else {
                             dropped_short += 1;
@@ -303,6 +333,29 @@ pub async fn run_session_loop(
                         }
                     }
                     }
+                }
+            }
+            Some(local_turn) = local_rx.recv() => {
+                match local_turn {
+                    Ok(Some(turn)) => {
+                        voxlog!(
+                            "LATENCY local_route_ms={:?} tools={} text={:?}",
+                            turn_sent_at.map(|t| t.elapsed().as_millis()),
+                            turn.tool_results.len(),
+                            turn.text
+                        );
+                        let _ = app.emit("vox-voice-user-transcript", &turn.text);
+                        let turn_msg = VoiceClientMessage::Turn {
+                            conversation_id: None,
+                            text: Some(turn.text),
+                            tool_results: turn.tool_results,
+                        };
+                        if let Ok(json) = serde_json::to_string(&turn_msg) {
+                            let _ = ws_sender.send(Message::text(json)).await;
+                        }
+                    }
+                    Ok(None) => voxlog!("local transcript empty, dropped"),
+                    Err(err) => voxlog!("local turn failed: {err}"),
                 }
             }
             inbound = ws_receiver.next() => {
@@ -355,6 +408,11 @@ pub async fn run_session_loop(
                                                 voxlog!("LATENCY first_text_delta_ms={} (utterance sent -> first text)", t.elapsed().as_millis());
                                             }
                                         }
+                                        if let Some(local) = &local {
+                                            for sentence in chunker.push(&delta) {
+                                                local.speak(sentence, &audio_engine);
+                                            }
+                                        }
                                         let _ = app.emit("vox-voice-delta", delta);
                                     }
                                 }
@@ -363,6 +421,11 @@ pub async fn run_session_loop(
                                     let _ = app.emit("vox-voice-thinking", ());
                                 }
                                 VoiceServerMessage::Done { turn_id } => {
+                                    if let Some(local) = &local {
+                                        if let Some(rest) = chunker.flush() {
+                                            local.speak(rest, &audio_engine);
+                                        }
+                                    }
                                     voxlog!(
                                         "turn done: {turn_id} frames={turn_frames} bytes={turn_bytes} max_frame_gap_ms={max_frame_gap_ms} total_ms={:?} underrun_samples_pending={}",
                                         turn_sent_at.map(|t| t.elapsed().as_millis()),
@@ -372,6 +435,7 @@ pub async fn run_session_loop(
                                 }
                                 VoiceServerMessage::Interrupted => {
                                     current_turn_id = None;
+                                    chunker = SentenceChunker::new();
                                     audio_engine.clear_playback();
                                     last_audio_frame_at = None;
                                     voxlog!("playback interrupted");

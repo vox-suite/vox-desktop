@@ -39,6 +39,7 @@ export const tauriPlatform: Platform = {
         path: req.path,
         query: req.query ? Object.entries(req.query) : null,
         body: req.body ?? null,
+        rawBodyBase64: req.rawBodyBase64 ?? null,
         timeoutMs: req.timeoutMs ?? null,
       }),
   },

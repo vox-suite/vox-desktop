@@ -2,6 +2,7 @@ import { PanelEdgeBlur } from "@/components/panel-edge-blur";
 import { useState } from "react";
 import {
   Activity,
+  Bell,
   Bot,
   ChevronsUpDown,
   GanttChart,
@@ -49,9 +50,10 @@ const CONTROLS = [
 
 const NAV_ITEMS = [
   { id: "agent", label: "Agent", icon: Bot },
-  { id: "timeline", label: "Span", icon: GanttChart },
+  { id: "timeline", label: "Timeline", icon: GanttChart },
   { id: "spaces", label: "Spaces", icon: Workflow },
   { id: "pulse", label: "Pulse", icon: Activity },
+  { id: "updates", label: "Updates", icon: Bell },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
 
 const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";

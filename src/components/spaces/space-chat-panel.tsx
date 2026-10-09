@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { Space, SpaceMessage, SpaceNode } from "@/features/spaces/types";
-import { NodeGoal } from "./node-goal";
 export function SpaceChatPanel({
   space,
   messages,
@@ -94,7 +93,6 @@ export function SpaceChatPanel({
                 }}
                 className="text-xs"
               />
-              <NodeGoal spaceId={space.id} node={selectedNode} />
             </div>
           )}
           {messages.length === 0 ? (

@@ -18,7 +18,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
     setLoading(true);
     setError("");
     try {
-      const data = await discoveryApi.discover({ more });
+      const data = await discoveryApi.discover({ refresh: more });
       if (active.current) setResponse(data);
     } catch (e) {
       if (active.current) setError(String(e));

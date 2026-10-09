@@ -23,6 +23,7 @@ import { WizConnectionPanel } from "@/components/wiz-connection-panel";
 import { BrandMark } from "./brand-mark";
 import { StatusPill } from "./status-pill";
 import { StatusMessage } from "./status-message";
+import { GmailHistorySection } from "./gmail-history-section";
 import { TakeoutSection } from "./takeout-section";
 import { PlaystationNpsso } from "./playstation-npsso";
 import { MAPS_IMPORT, YOUTUBE_IMPORT } from "./takeout-configs";
@@ -240,6 +241,7 @@ export function AppDetailSheet({
                     setMessage={setMessage}
                   />
                 )}
+                {openApp.id === "gmail" && openAccount && <GmailHistorySection />}
                 {openApp.id === "maps_timeline" && (
                   <TakeoutSection
                     cfg={MAPS_IMPORT}

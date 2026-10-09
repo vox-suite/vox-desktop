@@ -6,6 +6,7 @@ import { ActivityLogs } from "@/components/activity-logs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { type ShellTab } from "@/components/shell/shell-tabs";
+import { UpdatesView } from "@/components/updates-view";
 import { TimelineView } from "@/components/timeline-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
@@ -76,6 +77,8 @@ export function HomeShell({
         <PulseView />
       </Suspense>
     );
+  } else if (activeTab === "updates") {
+    body = <UpdatesView />;
   } else if (activeTab === "connections") {
     body = <ConnectedAppsView />;
   } else {

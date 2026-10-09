@@ -5,6 +5,7 @@ export type HttpRequest = {
   path: string;
   query?: Record<string, string>;
   body?: unknown;
+  rawBodyBase64?: string;
   timeoutMs?: number;
 };
 

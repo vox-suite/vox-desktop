@@ -13,5 +13,13 @@ fn main() {
         }
         println!("cargo:rerun-if-env-changed={key}");
     }
+    let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    if os == "macos" && arch == "aarch64" {
+        let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
+        println!("cargo:rustc-link-search=native={dir}/vendor/needle/macos-arm64");
+        println!("cargo:rustc-link-lib=static=needle");
+        println!("cargo:rustc-link-lib=c++");
+    }
     tauri_build::build()
 }

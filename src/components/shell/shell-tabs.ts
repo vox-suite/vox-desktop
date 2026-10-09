@@ -1,2 +1,2 @@
 export type ShellTab =
-  "agent" | "timeline" | "pulse" | "spaces" | "connections";
+  "agent" | "timeline" | "pulse" | "spaces" | "connections" | "updates";
