@@ -1,3 +1,5 @@
+import { DesktopActionOverlay } from "@/components/shell/desktop-action-overlay";
+import { DesktopTaskbar } from "@/components/shell/desktop-taskbar";
 import { ConnectedAppsView } from "@/components/connected-apps-view";
 import { lazy, Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/shell/app-sidebar";
@@ -73,7 +75,14 @@ export function HomeShell({
     );
   } else if (activeTab === "pulse") {
     body = (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div
+            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
+            aria-label="Loading page"
+          />
+        }
+      >
         <PulseView />
       </Suspense>
     );
@@ -83,52 +92,69 @@ export function HomeShell({
     body = <ConnectedAppsView />;
   } else {
     body = (
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div
+            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
+            aria-label="Loading page"
+          />
+        }
+      >
         <SpacesView />
       </Suspense>
     );
   }
 
   return (
-    <SidebarProvider className="relative h-full min-h-0 overflow-hidden">
-      <div className="absolute inset-0">
-        <div ref={mapNode} className="vox-map-host size-full" />
-      </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <SidebarProvider className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="absolute inset-0">
+          <div ref={mapNode} className="vox-map-host size-full" />
+        </div>
 
-      {activeTab === "agent" ? <ActivityLogs /> : null}
+        {activeTab === "agent" ? <ActivityLogs /> : null}
 
-      <AppSidebar
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        accountLabel={accountLabel}
-        userName={userName}
-        avatarUrl={avatarUrl}
-        onSignOut={onSignOut}
+        <AppSidebar
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          accountLabel={accountLabel}
+          userName={userName}
+          avatarUrl={avatarUrl}
+          onSignOut={onSignOut}
+        />
+
+        <SidebarInset
+          data-tauri-drag-region
+          className={
+            activeTab === "agent"
+              ? "relative z-10 pointer-events-none min-w-0 bg-transparent"
+              : "relative z-10 min-w-0 overflow-hidden"
+          }
+        >
+          {body}
+        <DesktopActionOverlay />
+          {activeTab === "agent" && mapError ? (
+            <Alert
+              variant="destructive"
+              className="absolute bottom-20 left-1/2 z-40 w-auto max-w-md -translate-x-1/2"
+            >
+              <AlertDescription>{mapError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {activeTab === "agent" && !mapReady && !mapError ? (
+            <p className="pointer-events-none absolute bottom-20 left-1/2 z-40 -translate-x-1/2 text-xs text-muted-foreground">
+              Loading map…
+            </p>
+          ) : null}
+        </SidebarInset>
+      </SidebarProvider>
+      <DesktopTaskbar
+        isActive={isActive}
+        speaking={voxSpeaking}
+        callState={callState}
+        error={callError}
+        onToggleCall={onToggleCall}
       />
-
-      <SidebarInset
-        data-tauri-drag-region
-        className={
-          activeTab === "agent"
-            ? "relative z-10 pointer-events-none min-w-0 bg-transparent"
-            : "relative z-10 min-w-0 overflow-hidden"
-        }
-      >
-        {body}
-        {activeTab === "agent" && mapError ? (
-          <Alert
-            variant="destructive"
-            className="absolute bottom-20 left-1/2 z-40 w-auto max-w-md -translate-x-1/2"
-          >
-            <AlertDescription>{mapError}</AlertDescription>
-          </Alert>
-        ) : null}
-        {activeTab === "agent" && !mapReady && !mapError ? (
-          <p className="pointer-events-none absolute bottom-20 left-1/2 z-40 -translate-x-1/2 text-xs text-muted-foreground">
-            Loading map…
-          </p>
-        ) : null}
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 }

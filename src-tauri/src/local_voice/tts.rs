@@ -19,6 +19,7 @@ const SPEAKER: &str = "emily";
 const EMOTION: &str = "NEUTRAL";
 
 struct Job {
+    queued_at: std::time::Instant,
     text: String,
     epoch: u64,
     engine: Arc<AudioEngine>,
@@ -49,8 +50,13 @@ impl Tts {
                         if job.engine.playback_epoch() != job.epoch {
                             continue;
                         }
+                        let queue_ms = job.queued_at.elapsed().as_millis();
+                        let synthesis_started = std::time::Instant::now();
                         match engine.synthesize(&speaker, &job.text) {
-                            Ok(pcm) => job.engine.enqueue_pcm(&pcm, SAMPLE_RATE, job.epoch),
+                            Ok(pcm) => {
+                                crate::voxlog!("VOICE_LOCAL_TTS {}", serde_json::json!({"playback_epoch": job.epoch, "queue_ms": queue_ms, "synthesis_ms": synthesis_started.elapsed().as_millis(), "audio_ms": pcm.len() * 1000 / SAMPLE_RATE as usize, "text_chars": job.text.chars().count(), "cancelled": job.engine.playback_epoch() != job.epoch}));
+                                job.engine.enqueue_pcm(&pcm, SAMPLE_RATE, job.epoch);
+                            },
                             Err(err) => eprintln!("NeuTTS synthesis failed: {err}"),
                         }
                     }
@@ -66,6 +72,7 @@ impl Tts {
 
     pub fn speak(&self, text: String, epoch: u64, engine: Arc<AudioEngine>) {
         let _ = self.tx.send(Job {
+            queued_at: std::time::Instant::now(),
             text,
             epoch,
             engine,
@@ -74,14 +81,16 @@ impl Tts {
 }
 
 fn load_speaker(dir: &Path, name: &str) -> Result<Speaker, String> {
-    let raw = std::fs::read(dir.join(format!("{name}.codes"))).map_err(|e| format!("{name}.codes: {e}"))?;
+    let raw = std::fs::read(dir.join(format!("{name}.codes")))
+        .map_err(|e| format!("{name}.codes: {e}"))?;
     let codes = raw
         .as_chunks::<4>()
         .0
         .iter()
         .map(|b| format!("<|speech_{}|>", i32::from_le_bytes(*b)))
         .collect::<String>();
-    let text = std::fs::read_to_string(dir.join(format!("{name}.txt"))).map_err(|e| format!("{name}.txt: {e}"))?;
+    let text = std::fs::read_to_string(dir.join(format!("{name}.txt")))
+        .map_err(|e| format!("{name}.txt: {e}"))?;
     Ok(Speaker {
         codes,
         text: normalize(text.trim()),
@@ -203,7 +212,9 @@ impl Engine {
                 ids.push(n);
             }
             batch.clear();
-            batch.add(token, pos as i32, &[0], true).map_err(|e| e.to_string())?;
+            batch
+                .add(token, pos as i32, &[0], true)
+                .map_err(|e| e.to_string())?;
             ctx.decode(&mut batch).map_err(|e| e.to_string())?;
             pos += 1;
         }

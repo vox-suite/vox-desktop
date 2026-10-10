@@ -1,11 +1,8 @@
-import { useState } from "react";
-import {
-  Music2,
-  Gamepad2,
-  Plus,
-  RotateCw,
-  Wallet,
-} from "lucide-react";
+import { useDesktopContext } from "@/hooks/use-desktop-control";
+import { desktopStore } from "@/features/desktop-control/store";
+import { desktopActions } from "@/features/desktop-control/action-state";
+import { useEffect, useState } from "react";
+import { Music2, Gamepad2, Plus, RotateCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
@@ -15,6 +12,21 @@ import { SavedChart } from "./saved-chart";
 import { discoveryApi } from "@/features/pulse/api";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
+  const context = useDesktopContext();
+  useEffect(
+    () =>
+      desktopActions.subscribe(() => {
+        const values = Object.values(desktopActions.snapshot());
+        if (
+          values.some(
+            (action) =>
+              action.phase === "completed" && action.action.endsWith("pulse"),
+          )
+        )
+          void reload(true);
+      }),
+    [reload],
+  );
   const [adding, setAdding] = useState(false);
   const [removed, setRemoved] = useState<string[]>([]);
   const [actionError, setActionError] = useState("");
@@ -28,7 +40,8 @@ export function PulseView() {
         }}
       />
     );
-  const empty = canvas?.charts.filter((chart) => !removed.includes(chart.id)).length === 0;
+  const empty =
+    canvas?.charts.filter((chart) => !removed.includes(chart.id)).length === 0;
   return (
     <PulseShell
       header={
@@ -125,23 +138,33 @@ export function PulseView() {
               {canvas?.charts
                 .filter((chart) => !removed.includes(chart.id))
                 .map((chart) => (
-                  <SavedChart
+                  <div
                     key={chart.id}
-                    onRemove={() => {
-                      setActionError("");
-                      void discoveryApi
-                        .deleteChart(chart.id)
-                        .then(() => setRemoved((ids) => [...ids, chart.id]))
-                        .catch((err: unknown) =>
-                          setActionError(
-                            `Could not delete chart: ${err instanceof Error ? err.message : String(err)}`,
-                          ),
-                        );
-                    }}
-                    title={chart.title}
-                    definition={chart.definition}
-                    result={chart.result}
-                  />
+                    onClick={() => desktopStore.patch({ pulseId: chart.id })}
+                    className={
+                      context.pulseId === chart.id
+                        ? "rounded-lg ring-1 ring-foreground/50"
+                        : ""
+                    }
+                  >
+                    <SavedChart
+                      key={chart.id}
+                      onRemove={() => {
+                        setActionError("");
+                        void discoveryApi
+                          .deleteChart(chart.id)
+                          .then(() => setRemoved((ids) => [...ids, chart.id]))
+                          .catch((err: unknown) =>
+                            setActionError(
+                              `Could not delete chart: ${err instanceof Error ? err.message : String(err)}`,
+                            ),
+                          );
+                      }}
+                      title={chart.title}
+                      definition={chart.definition}
+                      result={chart.result}
+                    />
+                  </div>
                 ))}
             </div>
             {canvas?.next_cursor && (

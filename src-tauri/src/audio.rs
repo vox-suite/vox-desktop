@@ -1,78 +1,103 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, StreamConfig};
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, oneshot};
 
-#[cfg(not(windows))]
-use webrtc_audio_processing::config::EchoCanceller;
-#[cfg(not(windows))]
-use webrtc_audio_processing::{Config, Processor};
+use sonora::config::{EchoCanceller, HighPassFilter, NoiseSuppression};
+use sonora::{AudioProcessing, Config, StreamConfig as AudioStreamConfig};
 
 use crate::codec::{resample_to_16k_mono, StreamResampler};
 
-#[cfg_attr(windows, allow(dead_code))]
 const AEC_FRAME: usize = 160;
 
-#[cfg(not(windows))]
-struct Aec {
-    apm: Processor,
-    render_acc: Mutex<Vec<f32>>,
-    capture_acc: Mutex<Vec<f32>>,
+struct ProcessingState {
+    apm: AudioProcessing,
+    render_resampler: StreamResampler,
+    render_acc: VecDeque<f32>,
+    capture_acc: VecDeque<f32>,
+    errors: u64,
 }
 
-#[cfg(not(windows))]
+struct Aec {
+    state: Mutex<ProcessingState>,
+}
+
 impl Aec {
     fn new() -> Result<Self, String> {
-        let apm =
-            Processor::new(16000).map_err(|e| format!("Failed to init echo canceller: {e}"))?;
-        apm.set_config(Config {
-            echo_canceller: Some(EchoCanceller::default()),
-            ..Default::default()
-        });
+        let stream = AudioStreamConfig::new(16000, 1);
+        let apm = AudioProcessing::builder()
+            .config(Config {
+                echo_canceller: Some(EchoCanceller::default()),
+                high_pass_filter: Some(HighPassFilter::default()),
+                noise_suppression: Some(NoiseSuppression::default()),
+                ..Default::default()
+            })
+            .capture_config(stream)
+            .render_config(stream)
+            .build();
+        eprintln!("VOICE_AUDIO_PROCESSING_READY engine=sonora sample_rate=16000 echo_cancellation=true noise_suppression=moderate high_pass=true");
         Ok(Self {
-            apm,
-            render_acc: Mutex::new(Vec::new()),
-            capture_acc: Mutex::new(Vec::new()),
+            state: Mutex::new(ProcessingState {
+                apm,
+                render_resampler: StreamResampler::new(),
+                render_acc: VecDeque::new(),
+                capture_acc: VecDeque::new(),
+                errors: 0,
+            }),
         })
     }
 
     fn render(&self, played: &[f32], rate: u32, channels: u16) {
-        let mut acc = self.render_acc.lock().unwrap();
-        acc.extend(resample_to_16k_mono(played, rate, channels));
-        while acc.len() >= AEC_FRAME {
-            let frame: Vec<f32> = acc.drain(..AEC_FRAME).collect();
-            let _ = self.apm.analyze_render_frame([&frame]);
+        let mut state = self.state.lock().unwrap();
+        let mono: Vec<f32> = played
+            .chunks_exact(channels as usize)
+            .map(|frame| frame.iter().sum::<f32>() / channels as f32)
+            .collect();
+        let samples = state.render_resampler.push(&mono, rate, 16000);
+        state.render_acc.extend(samples);
+        while state.render_acc.len() >= AEC_FRAME {
+            let mut frame = [0.0; AEC_FRAME];
+            for sample in &mut frame {
+                *sample = state.render_acc.pop_front().unwrap();
+            }
+            let mut output = [0.0; AEC_FRAME];
+            if let Err(error) = state.apm.process_render_f32(&[&frame], &mut [&mut output]) {
+                state.record_error("render", error);
+            }
         }
     }
 
     fn capture(&self, mic_16k: Vec<f32>) -> Vec<f32> {
-        let mut acc = self.capture_acc.lock().unwrap();
-        acc.extend(mic_16k);
-        let mut out = Vec::with_capacity(acc.len());
-        while acc.len() >= AEC_FRAME {
-            let mut frame: Vec<f32> = acc.drain(..AEC_FRAME).collect();
-            let _ = self.apm.process_capture_frame([&mut frame[..]]);
-            out.extend(frame);
+        let mut state = self.state.lock().unwrap();
+        state.capture_acc.extend(mic_16k);
+        let mut out = Vec::with_capacity(state.capture_acc.len());
+        while state.capture_acc.len() >= AEC_FRAME {
+            let mut frame = [0.0; AEC_FRAME];
+            for sample in &mut frame {
+                *sample = state.capture_acc.pop_front().unwrap();
+            }
+            let mut output = [0.0; AEC_FRAME];
+            if let Err(error) = state.apm.process_capture_f32(&[&frame], &mut [&mut output]) {
+                state.record_error("capture", error);
+                output.fill(0.0);
+            }
+            out.extend_from_slice(&output);
         }
         out
     }
 }
 
-// On Windows, the bundled WebRTC APM C++ build is unavailable.
-// Use a no-op pass-through that skips echo cancellation.
-#[cfg(windows)]
-struct Aec;
-
-#[cfg(windows)]
-impl Aec {
-    fn new() -> Result<Self, String> {
-        Ok(Self)
-    }
-    fn render(&self, _played: &[f32], _rate: u32, _channels: u16) {}
-    fn capture(&self, mic_16k: Vec<f32>) -> Vec<f32> {
-        mic_16k
+impl ProcessingState {
+    fn record_error(&mut self, stage: &str, error: sonora::Error) {
+        self.errors += 1;
+        if self.errors.is_power_of_two() {
+            eprintln!(
+                "VOICE_AUDIO_PROCESSING_FAILED stage={stage} count={} error={error:?}",
+                self.errors
+            );
+        }
     }
 }
 
@@ -103,10 +128,34 @@ fn new_mp3_decoder(queue: &Arc<Mutex<VecDeque<u8>>>) -> minimp3::Decoder<QueueRe
     })
 }
 
+struct RenderProbe {
+    origin: std::time::Instant,
+    remaining: AtomicU64,
+    first_us: AtomicU64,
+}
+
+impl RenderProbe {
+    fn record(&self, samples: u64) {
+        let remaining = self.remaining.load(Ordering::Relaxed);
+        if remaining == u64::MAX || samples == 0 {
+            return;
+        }
+        if samples >= remaining {
+            self.first_us
+                .store(self.origin.elapsed().as_micros() as u64, Ordering::Release);
+            self.remaining.store(u64::MAX, Ordering::Relaxed);
+        } else {
+            self.remaining.store(remaining - samples, Ordering::Relaxed);
+        }
+    }
+}
+
 pub struct AudioEngine {
     output_queue: Arc<Mutex<VecDeque<f32>>>,
     playback_epoch: Arc<AtomicU64>,
     stop_tx: Mutex<Option<oneshot::Sender<()>>>,
+    render_probe: Arc<RenderProbe>,
+    probe_armed: std::sync::atomic::AtomicBool,
     out_rate: u32,
     out_channels: u16,
     mp3_queue: Arc<Mutex<VecDeque<u8>>>,
@@ -119,15 +168,43 @@ pub struct AudioEngine {
     underrun_samples: Arc<AtomicU64>,
 }
 
+pub enum MicSender {
+    Legacy(mpsc::UnboundedSender<Vec<f32>>),
+    Bounded(mpsc::Sender<Vec<f32>>, Arc<AtomicBool>),
+}
+impl From<mpsc::UnboundedSender<Vec<f32>>> for MicSender {
+    fn from(sender: mpsc::UnboundedSender<Vec<f32>>) -> Self {
+        Self::Legacy(sender)
+    }
+}
+impl MicSender {
+    fn send(&self, samples: Vec<f32>) {
+        match self {
+            Self::Legacy(sender) => {
+                let _ = sender.send(samples);
+            }
+            Self::Bounded(sender, overflow) => {
+                if let Err(mpsc::error::TrySendError::Full(_)) = sender.try_send(samples) {
+                    overflow.store(true, Ordering::Relaxed);
+                }
+            }
+        }
+    }
+}
+
 impl AudioEngine {
-    pub fn start(
-        mic_tx: mpsc::UnboundedSender<Vec<f32>>,
-        mic_level: Arc<AtomicU32>,
-    ) -> Result<Self, String> {
+    pub fn start(mic_tx: impl Into<MicSender>, mic_level: Arc<AtomicU32>) -> Result<Self, String> {
+        let mic_tx = mic_tx.into();
         let output_queue = Arc::new(Mutex::new(VecDeque::<f32>::new()));
         let playback_epoch = Arc::new(AtomicU64::new(0));
         let underrun_samples = Arc::new(AtomicU64::new(0));
 
+        let render_probe = Arc::new(RenderProbe {
+            origin: std::time::Instant::now(),
+            remaining: AtomicU64::new(u64::MAX),
+            first_us: AtomicU64::new(u64::MAX),
+        });
+        let render_clone = Arc::clone(&render_probe);
         let aec = Arc::new(Aec::new()?);
         let queue_clone = Arc::clone(&output_queue);
         let underrun_clone = Arc::clone(&underrun_samples);
@@ -247,13 +324,14 @@ impl AudioEngine {
 
             let output_stream = match out_default_config.sample_format() {
                 SampleFormat::F32 => {
+                    let probe = Arc::clone(&render_clone);
                     let queue = Arc::clone(&queue_clone);
                     let underrun = Arc::clone(&underrun_clone);
                     let aec_out = Arc::clone(&aec);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [f32], _| {
-                            drain_output_f32(data, &queue, &underrun);
+                            drain_output_f32(data, &queue, &underrun, &probe);
                             aec_out.render(data, out_rate, out_channels);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
@@ -261,13 +339,14 @@ impl AudioEngine {
                     )
                 }
                 SampleFormat::I16 => {
+                    let probe = Arc::clone(&render_clone);
                     let queue = Arc::clone(&queue_clone);
                     let underrun = Arc::clone(&underrun_clone);
                     let aec_out = Arc::clone(&aec);
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [i16], _| {
-                            drain_output_i16(data, &queue, &underrun);
+                            drain_output_i16(data, &queue, &underrun, &probe);
                             let played: Vec<f32> =
                                 data.iter().map(|&s| s as f32 / 32768.0).collect();
                             aec_out.render(&played, out_rate, out_channels);
@@ -315,6 +394,8 @@ impl AudioEngine {
         let mp3_decoder = Mutex::new(new_mp3_decoder(&mp3_queue));
 
         Ok(Self {
+            render_probe,
+            probe_armed: std::sync::atomic::AtomicBool::new(false),
             output_queue,
             playback_epoch,
             stop_tx: Mutex::new(Some(thread_stop_tx)),
@@ -400,7 +481,29 @@ impl AudioEngine {
         if self.playback_epoch.load(Ordering::SeqCst) != epoch {
             return;
         }
+        if !output_samples.is_empty() && self.probe_armed.swap(false, Ordering::Relaxed) {
+            self.render_probe
+                .remaining
+                .store(queue.len() as u64 + 1, Ordering::Relaxed);
+        }
         queue.extend(output_samples);
+    }
+
+    pub fn arm_render_probe(&self) {
+        let _queue = self.output_queue.lock().unwrap();
+        self.render_probe
+            .remaining
+            .store(u64::MAX, Ordering::Relaxed);
+        self.render_probe
+            .first_us
+            .store(u64::MAX, Ordering::Release);
+        self.probe_armed.store(true, Ordering::Relaxed);
+    }
+
+    pub fn take_first_rendered_at(&self) -> Option<std::time::Instant> {
+        let micros = self.render_probe.first_us.swap(u64::MAX, Ordering::AcqRel);
+        (micros != u64::MAX)
+            .then(|| self.render_probe.origin + std::time::Duration::from_micros(micros))
     }
 
     pub fn is_playing(&self) -> bool {
@@ -429,6 +532,13 @@ impl AudioEngine {
         self.playback_epoch.fetch_add(1, Ordering::SeqCst);
         let mut queue = self.output_queue.lock().unwrap();
         queue.clear();
+        self.probe_armed.store(false, Ordering::Relaxed);
+        self.render_probe
+            .remaining
+            .store(u64::MAX, Ordering::Relaxed);
+        self.render_probe
+            .first_us
+            .store(u64::MAX, Ordering::Release);
         drop(queue);
         self.mp3_queue.lock().unwrap().clear();
         *self.mp3_decoder.lock().unwrap() = new_mp3_decoder(&self.mp3_queue);
@@ -446,7 +556,12 @@ impl Drop for AudioEngine {
     }
 }
 
-fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
+fn drain_output_f32(
+    data: &mut [f32],
+    queue: &Mutex<VecDeque<f32>>,
+    underrun_samples: &AtomicU64,
+    probe: &RenderProbe,
+) {
     let mut queue = queue.lock().unwrap();
     let had_audio = !queue.is_empty();
     let mut missed = 0u64;
@@ -461,12 +576,18 @@ fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, underrun_sam
     }
     // Only a dry-out that follows real audio is an underrun; padding silence
     // while idle is normal and must not be counted.
+    probe.record(data.len() as u64 - missed);
     if missed > 0 && had_audio {
         underrun_samples.fetch_add(missed, Ordering::Relaxed);
     }
 }
 
-fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, underrun_samples: &AtomicU64) {
+fn drain_output_i16(
+    data: &mut [i16],
+    queue: &Mutex<VecDeque<f32>>,
+    underrun_samples: &AtomicU64,
+    probe: &RenderProbe,
+) {
     let mut queue = queue.lock().unwrap();
     let had_audio = !queue.is_empty();
     let mut missed = 0u64;
@@ -481,7 +602,24 @@ fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, underrun_sam
     }
     // Only a dry-out that follows real audio is an underrun; padding silence
     // while idle is normal and must not be counted.
+    probe.record(data.len() as u64 - missed);
     if missed > 0 && had_audio {
         underrun_samples.fetch_add(missed, Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod bounded_capture_tests {
+    use super::*;
+    #[test]
+    fn full_capture_queue_marks_overflow_without_growing() {
+        let (tx, mut rx) = mpsc::channel(1);
+        let overflow = Arc::new(AtomicBool::new(false));
+        let sender = MicSender::Bounded(tx, overflow.clone());
+        sender.send(vec![0.1; 160]);
+        sender.send(vec![0.2; 160]);
+        assert!(overflow.load(Ordering::Relaxed));
+        assert_eq!(rx.try_recv().unwrap(), vec![0.1; 160]);
+        assert!(rx.try_recv().is_err());
     }
 }

@@ -7,6 +7,9 @@ const node = (id: string, derived_from: string[] = []) =>
     kind: id === "v" ? "goal" : "research",
     derived_from,
     created_at: id,
+    data: {},
+    title: id,
+    body: "",
   }) as Parameters<typeof dependencyLayout>[0][number];
 const edge = (from_node: string, to_node: string) =>
   ({ from_node, to_node }) as Parameters<typeof dependencyLayout>[1][number];

@@ -79,7 +79,10 @@ async fn fetch(
             .map_err(|e| e.to_string())?;
     }
     let part = target.with_extension("part");
-    let mut resume = tokio::fs::metadata(&part).await.map(|m| m.len()).unwrap_or(0);
+    let mut resume = tokio::fs::metadata(&part)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
     if resume > file.size {
         resume = 0;
     }

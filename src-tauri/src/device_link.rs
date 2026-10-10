@@ -207,7 +207,7 @@ async fn register_device(
         "device_identifier": device_identifier,
         "platform": format!("macos-{}", std::env::consts::ARCH),
         "label": device_label(),
-        "capabilities": { "wiz": true },
+        "capabilities": { "wiz": true, "vox_app_control": true, "app_control_version": 1 },
         "execution_consent": execution_consent,
     });
     let resp = client
@@ -265,6 +265,9 @@ impl std::str::FromStr for FrameType {
 }
 
 async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value) -> Value {
+    if matches!(frame["type"].as_str(), Some("app_command" | "app_context")) {
+        return crate::app_control::handle(app, frame).await;
+    }
     let id = frame.get("id").cloned().unwrap_or(Value::Null);
     let kind = frame.get("type").and_then(Value::as_str).unwrap_or("");
 
@@ -287,7 +290,11 @@ async fn handle_frame(app: &AppHandle, terminal: &TerminalManager, frame: Value)
                     json!({ "id": id, "ok": false, "error": err })
                 }
             };
-            let outcome = if response["ok"] == true { "ran" } else { "failed" };
+            let outcome = if response["ok"] == true {
+                "ran"
+            } else {
+                "failed"
+            };
             log_remote_command(&format!("wiz: {action}"), outcome);
             response
         }
@@ -425,13 +432,30 @@ async fn connect_and_serve(
         "Device bridge connected — remote control ready",
     );
     let (mut sender, mut receiver) = ws_stream.split();
-
+    app.state::<crate::app_control::AppControlState>()
+        .set_device(Some(device_id.to_owned()));
+    let (response_tx, mut response_rx) = tokio::sync::mpsc::channel::<Value>(32);
+    let mut auth_check = tokio::time::interval(Duration::from_secs(2));
+    let original_user = app
+        .state::<AuthManager>()
+        .current_session()
+        .map(|s| s.user_id);
     loop {
         let message = tokio::select! {
             message = receiver.next() => message,
+            response = response_rx.recv() => {
+                if let Some(response) = response { if sender.send(Message::Text(response.to_string().into())).await.is_err() { break; } }
+                continue;
+            },
+            _ = auth_check.tick() => {
+                let current = app.state::<AuthManager>().current_session().map(|s| s.user_id);
+                if current != original_user { break; }
+                continue;
+            },
             // Turning remote control off closes the link immediately.
             _ = async { consent.wait_for(|enabled| !enabled).await.map(drop) } => {
                 let _ = sender.close().await;
+                app.state::<crate::app_control::AppControlState>().set_device(None);
                 emit_local_event(app, "status", "Remote control disabled by user");
                 return Ok(());
             }
@@ -444,6 +468,15 @@ async fn connect_and_serve(
         let Ok(frame) = serde_json::from_str::<Value>(&text) else {
             continue;
         };
+        if matches!(frame["type"].as_str(), Some("app_command" | "app_context")) {
+            let app = app.clone();
+            let response_tx = response_tx.clone();
+            tokio::spawn(async move {
+                let response = crate::app_control::handle(&app, frame).await;
+                let _ = response_tx.send(response).await;
+            });
+            continue;
+        }
         let response = handle_frame(app, terminal, frame).await;
         if sender
             .send(Message::Text(response.to_string().into()))
@@ -454,6 +487,8 @@ async fn connect_and_serve(
         }
     }
 
+    app.state::<crate::app_control::AppControlState>()
+        .set_device(None);
     emit_local_event(app, "status", "Device bridge socket disconnected");
     Ok(())
 }
@@ -465,7 +500,7 @@ async fn connect_and_serve(
 // ponytail: fixed retry delay, no exponential backoff — add if reconnect
 // storms against a struggling Core ever become a real problem.
 pub async fn run_supervisor(app: AppHandle) {
-    let terminal = TerminalManager::default();
+    let terminal = app.state::<TerminalManager>().inner().clone();
     let device_identifier = local_device_identifier();
     let mut remote_control = app.state::<RemoteControl>().0.subscribe();
 

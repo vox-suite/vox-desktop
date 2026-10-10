@@ -65,7 +65,10 @@ impl LocalVoice {
     pub async fn start(app: &AppHandle, api_url: &str, token: &str) -> Result<Self, String> {
         let models = models(app).await?;
         let tools = tools::ToolClient::new(api_url, token);
-        let manifest = tools.direct_manifest().await.unwrap_or_else(|_| "[]".into());
+        let manifest = tools
+            .direct_manifest()
+            .await
+            .unwrap_or_else(|_| "[]".into());
         models.needle.init_tools(manifest).await?;
         Ok(Self { models, tools })
     }

@@ -1,3 +1,5 @@
+import { useDesktopContext } from "@/hooks/use-desktop-control";
+import { desktopStore } from "@/features/desktop-control/store";
 import {
   PageContainer,
   PageHeader,
@@ -30,7 +32,9 @@ import { SpacesIntroduction } from "./spaces-introduction";
 
 export function SpacesView() {
   const { spaces, loading, error, reload, create, drop } = useSpaces();
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const selectedSpaceId = useDesktopContext().spaceId;
+  const setSelectedSpaceId = (spaceId: string | null) =>
+    desktopStore.patch({ spaceId, selectedItemId: null });
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);

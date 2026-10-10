@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { HomeShell } from "@/components/home-shell";
 import { PhoneEntryScreen } from "@/components/phone-entry-screen";
 import { PhoneVerifyScreen } from "@/components/phone-verify-screen";
-import type { ShellTab } from "@/components/shell/shell-tabs";
+import { useDesktopControl } from "@/hooks/use-desktop-control";
+import { desktopStore } from "@/features/desktop-control/store";
 import { SignInScreen } from "@/components/sign-in-screen";
 import { useAuth } from "@/hooks/use-auth";
 import { useCallSession } from "@/hooks/use-call-session";
@@ -11,7 +12,9 @@ export default function App() {
   const auth = useAuth();
   const callSession = useCallSession(auth.auth.signed_in);
 
-  const [activeTab, setActiveTab] = useState<ShellTab>("agent");
+  const context = useDesktopControl(auth.auth.signed_in);
+  const activeTab = context.page;
+  const setActiveTab = desktopStore.navigate.bind(desktopStore);
   const [verifySkipped, setVerifySkipped] = useState(false);
 
   const {
@@ -40,6 +43,10 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (
         e.key === "Enter" &&
+        !(
+          e.target instanceof HTMLElement &&
+          e.target.closest("input,textarea,[contenteditable=true]")
+        ) &&
         authState.signed_in &&
         activeTab === "agent" &&
         !isActive &&

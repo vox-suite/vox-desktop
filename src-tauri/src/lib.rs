@@ -1,6 +1,7 @@
+mod app_control;
 mod audio;
 mod auth;
-mod client;
+mod bridge_voice;
 mod codec;
 mod config;
 mod deep_link;
@@ -14,7 +15,6 @@ mod pkce;
 mod session;
 mod session_store;
 mod sync_client;
-mod gmail_history;
 mod system_stats;
 mod terminal;
 mod types;
@@ -84,6 +84,9 @@ pub fn run() {
         .manage(SystemStatsState::new())
         .manage(wiz::WizState::default())
         .manage(local_voice::download::ModelsState::default())
+        .manage(app_control::AppControlState::default())
+        .manage(bridge_voice::BridgeVoiceState::default())
+        .manage(terminal::TerminalManager::default())
         .on_window_event(|window, event| {
             #[cfg(target_os = "macos")]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -114,12 +117,14 @@ pub fn run() {
                 handle_oauth_callback_urls(&handle, &event.urls());
             });
 
-            local_voice::download::auto_start(app.handle());
             tauri::async_runtime::spawn(device_link::run_supervisor(app.handle().clone()));
             tauri::async_runtime::spawn(live_link::run_supervisor(app.handle().clone()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            terminal::terminal_open,
+            terminal::terminal_output,
+            terminal::terminal_input,
             auth::get_auth_state,
             auth::sign_in_with_google,
             auth::sign_out,
@@ -128,13 +133,14 @@ pub fn run() {
             auth::confirm_phone_verification,
             center_window,
             session::start_call,
+            bridge_voice::set_call_muted,
+            bridge_voice::send_desktop_text,
+            app_control::set_app_context,
+            app_control::complete_app_command,
             session::end_call,
             session::call_status,
             set_window_size,
             sync_client::core_http,
-            gmail_history::gmail_local_models,
-            gmail_history::gmail_history_page,
-            gmail_history::gmail_history_attachments,
             device_link::get_device_link_status,
             device_link::get_remote_control,
             device_link::set_remote_control,

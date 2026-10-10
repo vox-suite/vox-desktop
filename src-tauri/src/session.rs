@@ -1,5 +1,5 @@
 use crate::auth::AuthManager;
-use crate::client;
+use crate::bridge_voice as client;
 use crate::types::CallStatus;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};

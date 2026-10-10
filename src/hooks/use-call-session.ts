@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import { api, invokeErrorMessage } from "@/lib/tauri";
 
@@ -28,6 +29,26 @@ export function useCallSession(signedIn: boolean) {
     }, delay);
     return () => window.clearInterval(id);
   }, [signedIn, isActive]);
+
+  useEffect(() => {
+    if (!signedIn) {
+      resetCallState();
+      return;
+    }
+    if (!("__TAURI_INTERNALS__" in window)) return;
+    let active = true;
+    let unlisten: (() => void) | undefined;
+    void listen<string>("vox-voice-error", (event) => {
+      if (active) setCallError(event.payload);
+    }).then((fn) => {
+      if (active) unlisten = fn;
+      else fn();
+    });
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, [signedIn]);
 
   async function endCall() {
     await api.endCall();

@@ -6,6 +6,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+
         get: {
             parameters: {
                 query?: never;
@@ -15,6 +16,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -40,6 +42,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+
         get: {
             parameters: {
                 query?: never;
@@ -49,6 +52,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -76,6 +80,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -85,6 +90,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -108,6 +114,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -117,6 +124,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -140,6 +148,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -165,6 +174,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -174,6 +184,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -316,7 +327,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/connectors/gmail/device-access": {
+    "/v1/connectors/gmail/history/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -325,14 +336,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["device_access"];
+        post: operations["historical_import"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/v1/connectors/gmail/device-historical-import": {
+    "/v1/connectors/gmail/history/page": {
         parameters: {
             query?: never;
             header?: never;
@@ -341,7 +352,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["gmail_device_historical_import"];
+        post: operations["historical_page"];
         delete?: never;
         options?: never;
         head?: never;
@@ -357,6 +368,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: operations["gmail_pubsub_webhook"];
         delete?: never;
         options?: never;
@@ -389,6 +401,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -398,6 +411,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -421,6 +435,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -430,6 +445,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -453,6 +469,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -462,6 +479,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -485,6 +503,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -500,12 +519,14 @@ export interface paths {
                             organization_external_key?: string | null;
                         };
                         permission: {
+
                             parent_run_id?: string | null;
                             preference_keys?: string[];
                             requester_agent_key: string;
                             scope: {
                                 capabilities: {
                                     capability_external_key: string;
+
                                     connection_id: string;
                                 }[];
                             };
@@ -515,24 +536,28 @@ export interface paths {
                 };
             };
             responses: {
+
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -556,6 +581,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -574,24 +600,28 @@ export interface paths {
                 };
             };
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -615,6 +645,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -635,24 +666,28 @@ export interface paths {
                 };
             };
             responses: {
+
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -676,6 +711,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -696,24 +732,28 @@ export interface paths {
                 };
             };
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -737,6 +777,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -746,6 +787,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -769,6 +811,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -787,24 +830,28 @@ export interface paths {
                 };
             };
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 404: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -828,6 +875,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -837,6 +885,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 202: {
                     headers: {
                         [name: string]: unknown;
@@ -860,6 +909,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -879,12 +929,14 @@ export interface paths {
                 };
             };
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
+
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -908,6 +960,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -917,6 +970,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1388,6 +1442,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+
         post: {
             parameters: {
                 query?: never;
@@ -1397,6 +1452,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
+
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -1751,30 +1807,44 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+
         Bucket: "day" | "week" | "month";
         CanvasResponse: {
             charts: components["schemas"]["SavedPulseChart"][];
+
             next_cursor?: string | null;
         };
+
         ChartType: "line" | "bar" | "pie" | "area" | "stat";
         Collection: {
+
             created_at: string;
             description: string;
+
             ends_at?: string | null;
+
             id: string;
             kind: components["schemas"]["CollectionKind"];
             metadata: unknown;
             name: string;
+
             span_count: number;
+
             starts_at?: string | null;
             status: components["schemas"]["CollectionStatus"];
+
             updated_at: string;
+
             user_id: string;
+
             version: number;
         };
+
         CollectionKind: "trip" | "event" | "course" | "area" | "custom";
+
         CollectionStatus: "active" | "paused" | "completed" | "archived";
         CommitSpaceResult: {
+
             collection_id: string;
             committed_spans_count: number;
         };
@@ -1783,9 +1853,12 @@ export interface components {
             assistant_read: boolean;
             authorization_state: string;
             connector_id: string;
+
             created_at: string;
             failure_code?: string | null;
+
             id: string;
+
             last_synced_at?: string | null;
             sync_timeline: boolean;
         };
@@ -1799,10 +1872,12 @@ export interface components {
         };
         CreateCollectionInput: {
             description?: string | null;
+
             ends_at?: string | null;
             kind?: null | components["schemas"]["CollectionKind"];
             metadata?: unknown;
             name: string;
+
             starts_at?: string | null;
         };
         CreateSchemaVersionInput: {
@@ -1810,6 +1885,7 @@ export interface components {
             json_schema: unknown;
             name: string;
             namespace: string;
+
             version: number;
         };
         CreateSpaceInput: {
@@ -1817,59 +1893,38 @@ export interface components {
             title?: string | null;
         };
         DataSchema: {
+
             color_token: number;
+
             created_at: string;
             description: string;
+
             icon_token: number;
+
             id: string;
             json_schema: unknown;
             name: string;
             namespace: string;
             owner_scope: string;
             state: components["schemas"]["SchemaState"];
+
             updated_at: string;
+
             user_id?: string | null;
+
             version: number;
-        };
-        DeviceAccessResponse: {
-            access_token: string;
-            expires_in: number;
-        };
-        DeviceHistoricalAttachmentItem: {
-            content_base64: string;
-            filename: string;
-            mime_type: string;
-        };
-        DeviceHistoricalImportItem: {
-            attachments?: components["schemas"]["DeviceHistoricalAttachmentItem"][] | null;
-            body_text?: string | null;
-            date?: string | null;
-            from?: string | null;
-            internal_date?: number | null;
-            message_id: string;
-            proposed_event?: null | components["schemas"]["ProposedEventItem"];
-            snippet?: string | null;
-            subject?: string | null;
-            uncertainty: boolean;
-            user_reviewed: boolean;
-        };
-        DeviceHistoricalImportRequest: {
-            messages: components["schemas"]["DeviceHistoricalImportItem"][];
-        };
-        DeviceHistoricalImportResponse: {
-            attachments_queued: number;
-            events_created: number;
-            imported_records: number;
-            uncertain_count: number;
         };
         DiscoveryInput: {
             refresh?: boolean;
             timezone: string;
         };
         DiscoveryResponse: {
+
             computed_at: string;
             connections: components["schemas"]["PulseConnection"][];
+
             profiled_days: number;
+
             record_count: number;
             source_count: number;
             suggestions: components["schemas"]["PulseSuggestion"][];
@@ -1880,21 +1935,65 @@ export interface components {
             message: string;
             request_id?: string;
         };
+
         ExecutionType: "autonomous" | "interactive" | "manual_human";
+        ExtractedEvent: {
+            amount_text?: string | null;
+            content: unknown;
+            event_type_value: string;
+            evidence_text: string;
+            group_value: string;
+
+            occurred_at: string;
+            source_date: string;
+            summary?: string | null;
+            title: string;
+        };
         HealthStatus: {
+
             status?: string;
+
             timestamp?: string;
         };
+        HistoricalCandidate: {
+            events: components["schemas"]["ExtractedEvent"][];
+            from?: string | null;
+            message_id: string;
+            reason: string;
+            subject?: string | null;
+            uncertainty: boolean;
+        };
+        HistoricalImportRequest: {
+            message_ids: string[];
+        };
+        HistoricalImportResponse: {
+            imported_records: number;
+        };
+        HistoricalPageRequest: {
+            end_date: string;
+            page_token?: string | null;
+            start_date: string;
+        };
+        HistoricalPageResponse: {
+            candidates: components["schemas"]["HistoricalCandidate"][];
+            excluded: number;
+            next_page_token?: string | null;
+        };
         IngestTimelineEventInput: {
+
             confidence?: number;
             content: unknown;
             dedupe_key?: string | null;
+
             ended_at?: string | null;
+
             event_type_id?: string | null;
             event_type_value?: string | null;
             evidence?: components["schemas"]["NewEvidenceItem"][];
+
             group_id?: string | null;
             group_value?: string | null;
+
             occurred_at: string;
             source_timezone?: string | null;
             summary?: string | null;
@@ -1902,6 +2001,7 @@ export interface components {
             title: string;
         };
         JobActionResponse: {
+
             job_id: string;
             message: string;
             status: string;
@@ -1914,6 +2014,7 @@ export interface components {
             idempotency_key?: string | null;
         };
         ListCollectionsQuery: {
+
             limit?: number | null;
         };
         Measurement: {
@@ -1926,15 +2027,18 @@ export interface components {
             kind: components["schemas"]["MeasurementKind"];
             profile: components["schemas"]["SourceProfile"];
             quality: string;
+
             scale: number;
             title: string;
             unit: string;
         };
+
         MeasurementKind: "event_count" | "numeric_sum" | "numeric_average" | "numeric_median" | "numeric_p95" | "known_interval_duration" | "recurring_cost_projection";
         NewEventType: {
             analytics_definition?: unknown;
             content_schema: unknown;
             description?: string;
+
             group_id: string;
             label: string;
             ui_hint?: unknown;
@@ -1943,8 +2047,10 @@ export interface components {
         NewEvidenceItem: {
             observation_metadata?: unknown;
             raw_reference?: string | null;
+
             source_attachment_id?: string | null;
             source_id?: string | null;
+
             source_record_id?: string | null;
             source_type: string;
         };
@@ -1952,32 +2058,32 @@ export interface components {
             category?: string | null;
             collection_ids?: string[];
             data?: unknown;
+
             due_at?: string | null;
+
             end_at?: string | null;
             execution_type?: null | components["schemas"]["ExecutionType"];
             notes?: string;
+
             parent_id?: string | null;
+
             priority?: number | null;
+
             schema_id?: string | null;
             source?: string | null;
+
             source_event_id?: string | null;
             source_ref?: string | null;
+
             start_at?: string | null;
             status?: null | components["schemas"]["SpanStatus"];
             title: string;
         };
+
         NodeState: "running" | "done" | "stale" | "rejected";
         PreferencesRequest: {
             assistant_read?: boolean | null;
             sync_timeline?: boolean | null;
-        };
-        ProposedEventItem: {
-            content: unknown;
-            event_type_value: string;
-            group_value: string;
-            occurred_at: string;
-            summary?: string | null;
-            title: string;
         };
         PubSubPushMessage: {
             message: {
@@ -1991,6 +2097,7 @@ export interface components {
             assistant_read: boolean;
             authorization_state: string;
             connector_id: string;
+
             last_synced_at?: string | null;
             sync_timeline: boolean;
         };
@@ -1999,27 +2106,37 @@ export interface components {
             chart_type: components["schemas"]["ChartType"];
             dimension?: string | null;
             measurement_id: string;
+
             offset_days?: number;
+
             period_days: number;
             timezone: string;
+
             top_n?: number | null;
+
             version: number;
         };
         PulsePoint: {
             label: string;
+
             value?: number | null;
         };
         PulseResult: {
+
             computed_at: string;
             coverage?: unknown;
+
             data_as_of?: string | null;
             description: string;
             error?: string | null;
             points: components["schemas"]["PulsePoint"][];
             quality: string;
+
             record_count: number;
             source: string;
+
             total?: number | null;
+
             undated_count: number;
             unit: string;
         };
@@ -2034,9 +2151,13 @@ export interface components {
             data?: Record<string, never>;
             domain?: string;
             entity_type?: string;
+
             id?: string;
+
             kind?: "fact" | "goal" | "insight";
+
             occurred_at?: string;
+
             schema_id?: string;
             title?: string;
         };
@@ -2044,25 +2165,32 @@ export interface components {
             refreshed: boolean;
             spans_created: number;
         };
+
         RunState: "idle" | "running" | "failed";
         SavePulseInput: {
             definition: components["schemas"]["PulseDefinition"];
+
             idempotency_key: string;
             title: string;
         };
         SavedPulseChart: {
+
             created_at: string;
             definition: components["schemas"]["PulseDefinition"];
+
             id: string;
             result?: null | components["schemas"]["PulseResult"];
             title: string;
         };
+
         SchemaState: "active" | "deprecated";
         SendSpaceChatInput: {
             message: string;
+
             node_id?: string | null;
         };
         SetupStatusResponse: {
+
             connection_id?: string | null;
             error?: string | null;
             status: string;
@@ -2070,40 +2198,57 @@ export interface components {
         SourceProfile: {
             action: string;
             category: string;
+
             connection_id?: string | null;
+
             count: number;
             currency: string;
+
             dated_count: number;
             fields: {
                 [key: string]: string;
             };
+
             first_at?: string | null;
             key: string;
+
             known_intervals: number;
+
             last_at?: string | null;
             samples: unknown[];
+
             schema_id?: string | null;
             source: string;
             timing: string;
         };
         Space: {
             agent_spec: unknown;
+
             committed_collection_id?: string | null;
+
             created_at: string;
+
             id: string;
             intent: string;
             run_error?: string | null;
             run_state: components["schemas"]["RunState"];
             state: components["schemas"]["SpaceState"];
             title: string;
+
             updated_at: string;
+
             user_id: string;
         };
         SpaceEdge: {
+
             created_at: string;
+
             from_node: string;
+
             id: string;
+
             space_id: string;
+
             to_node: string;
         };
         SpaceGraph: {
@@ -2112,110 +2257,157 @@ export interface components {
             space: components["schemas"]["Space"];
         };
         SpaceMessage: {
+
             created_at: string;
+
             id: string;
             role: string;
+
             space_id: string;
             text: string;
         };
         SpaceNode: {
             body: string;
+
             created_at: string;
             data: unknown;
             derived_from: string[];
+
             id: string;
             kind: string;
             position: unknown;
             provenance: unknown;
+
             space_id: string;
             state: components["schemas"]["NodeState"];
             title: string;
+
             updated_at: string;
+
             version: number;
         };
+
         SpaceState: "ideating" | "planned" | "committed" | "dropped";
         Span: {
             category: string;
             collection_ids: string[];
+
             completed_at?: string | null;
+
             created_at: string;
             data: unknown;
+
             due_at?: string | null;
+
             end_at?: string | null;
             execution_result: unknown;
             execution_type?: null | components["schemas"]["ExecutionType"];
+
             id: string;
             notes: string;
+
             parent_id?: string | null;
+
             priority: number;
+
             schema_color_token?: number | null;
+
             schema_icon_token?: number | null;
+
             schema_id?: string | null;
             source: string;
+
             source_event_id?: string | null;
             source_ref?: string | null;
+
             start_at?: string | null;
             status: components["schemas"]["SpanStatus"];
             title: string;
+
             updated_at: string;
+
             user_id: string;
+
             version: number;
         };
         SpanCategoryCount: {
             category: string;
+
             count: number;
         };
         SpanDayPage: {
             items: components["schemas"]["Span"][];
             next_cursor?: string | null;
+
             revision: number;
         };
         SpanDayQuery: {
+
             collection_id?: string | null;
             cursor?: string | null;
+
             day: string;
+
             limit?: number | null;
             timezone: string;
         };
         SpanDaySummary: {
             categories: components["schemas"]["SpanCategoryCount"][];
+
             count: number;
+
             day: string;
         };
         SpanDays: {
             days: components["schemas"]["SpanDaySummary"][];
+
             revision: number;
             unchanged: boolean;
         };
         SpanDaysQuery: {
+
             collection_id?: string | null;
+
             from_day: string;
+
             if_revision?: number | null;
             timezone: string;
+
             to_day: string;
         };
         SpanPatch: {
             category?: string | null;
             data?: unknown;
+
             due_at?: string | null;
+
             end_at?: string | null;
             execution_result?: unknown;
+
             expected_version?: number | null;
             notes?: string | null;
+
             priority?: number | null;
+
             start_at?: string | null;
             status?: null | components["schemas"]["SpanStatus"];
             title?: string | null;
         };
         SpanQuery: {
+
             collection_id?: string | null;
+
             from?: string | null;
+
             limit?: number | null;
+
             schema_id?: string | null;
             status?: null | components["schemas"]["SpanStatus"];
+
             to?: string | null;
             unscheduled?: boolean;
         };
+
         SpanStatus: "planned" | "active" | "waiting_user" | "done" | "failed" | "cancelled";
         StartConnectionRequest: {
             connector_id: string;
@@ -2224,7 +2416,9 @@ export interface components {
         };
         StartConnectionResponse: {
             authorization_url?: string | null;
+
             connection_id?: string | null;
+
             setup_id?: string | null;
             status: string;
         };
@@ -2236,47 +2430,65 @@ export interface components {
             youtube_records_imported: number;
         };
         TimelineCountsQuery: {
+
             end_at: string;
             group_value?: string | null;
+
             start_at: string;
             timezone: string;
         };
         TimelineDayCount: {
             category: string;
+
             count: number;
             day: string;
         };
         TimelineEvent: {
+
             confidence: number;
             content: unknown;
+
             created_at: string;
             dedupe_key?: string | null;
+
             ended_at?: string | null;
+
             event_type_id: string;
+
             group_id: string;
+
             id: string;
+
             occurred_at: string;
             record_state: string;
+
             revision: number;
             source_timezone?: string | null;
             summary?: string | null;
             time_precision: string;
             title: string;
+
             updated_at: string;
+
             user_id: string;
         };
         TimelineEventType: {
             analytics_definition: unknown;
             content_schema: unknown;
+
             created_at: string;
             description: string;
+
             group_id: string;
+
             id: string;
             label: string;
+
             owner_user_id?: string | null;
             state: string;
             ui_hint: unknown;
             value: string;
+
             version: number;
         };
         TimelineEventWithEvidence: {
@@ -2284,20 +2496,28 @@ export interface components {
             evidence: components["schemas"]["TimelineEvidence"][];
         };
         TimelineEvidence: {
+
             created_at: string;
+
             id: string;
             observation_metadata: unknown;
             raw_reference?: string | null;
+
             source_attachment_id?: string | null;
             source_id?: string | null;
+
             source_record_id?: string | null;
             source_type: string;
+
             timeline_event_id: string;
+
             user_id: string;
         };
         TimelineGroup: {
+
             id: string;
             label: string;
+
             sort_order: number;
             ui_hint: unknown;
             value: string;
@@ -2308,19 +2528,26 @@ export interface components {
         };
         TimelineQuery: {
             cursor?: string | null;
+
             end_at?: string | null;
+
             event_type_id?: string | null;
             event_type_value?: string | null;
+
             group_id?: string | null;
             group_value?: string | null;
+
             limit?: number | null;
             record_state?: string | null;
+
             start_at?: string | null;
         };
         UpdateCollectionInput: {
             description?: string | null;
+
             ends_at?: string | null;
             name?: string | null;
+
             starts_at?: string | null;
             status?: null | components["schemas"]["CollectionStatus"];
         };
@@ -2328,27 +2555,38 @@ export interface components {
             available_actions: string[];
             category: string;
             content: unknown;
+
             content_version: number;
+
             created_at: string;
             dedupe_key?: string | null;
+
             expires_at?: string | null;
+
             id: string;
             kind: string;
             priority: string;
+
             published_at: string;
+
             read_at?: string | null;
+
             resolved_at?: string | null;
+
             source_job_id?: string | null;
             status: string;
             summary?: string | null;
             title: string;
             ui_hint: unknown;
+
             updated_at: string;
+
             user_id: string;
         };
         UpdatePulseChartInput: {
             definition?: null | components["schemas"]["PulseDefinition"];
             is_pinned?: boolean | null;
+
             sort_order?: number | null;
             title?: string | null;
         };
@@ -2359,14 +2597,18 @@ export interface components {
             title?: string | null;
         };
         UpdatesQuery: {
+
             before?: string | null;
+
             before_id?: string | null;
             category?: string | null;
             kind?: string | null;
+
             limit?: number | null;
             status?: string | null;
         };
         WebTokenResponse: {
+
             expires_at: string;
             token: string;
         };
@@ -2553,32 +2795,7 @@ export interface operations {
             };
         };
     };
-    device_access: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceAccessResponse"];
-                };
-            };
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    gmail_device_historical_import: {
+    historical_import: {
         parameters: {
             query?: never;
             header?: never;
@@ -2587,7 +2804,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DeviceHistoricalImportRequest"];
+                "application/json": components["schemas"]["HistoricalImportRequest"];
             };
         };
         responses: {
@@ -2596,22 +2813,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeviceHistoricalImportResponse"];
+                    "application/json": components["schemas"]["HistoricalImportResponse"];
                 };
             };
+
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            422: {
+
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    historical_page: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HistoricalPageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoricalPageResponse"];
+                };
+            };
+
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2632,6 +2896,7 @@ export interface operations {
             };
         };
         responses: {
+
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2661,6 +2926,7 @@ export interface operations {
                     "application/json": components["schemas"]["TakeoutUploadResponse"];
                 };
             };
+
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3623,7 +3889,9 @@ export interface operations {
     list_event_types: {
         parameters: {
             query?: {
+
                 group_id?: string;
+
                 group?: string;
             };
             header?: never;
@@ -3758,6 +4026,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;
@@ -3783,6 +4052,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;
@@ -3831,6 +4101,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;
@@ -3852,6 +4123,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;
@@ -3873,6 +4145,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;
@@ -3894,6 +4167,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+
                 id: string;
             };
             cookie?: never;

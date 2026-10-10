@@ -34,9 +34,15 @@ async fn core_request(
         if path != "/v1/connectors/google/takeout/upload" || encoded.len() > 140_000_000 {
             return Err("invalid binary upload".into());
         }
-        let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).map_err(|_| "invalid upload encoding")?;
-        if bytes.len() > 100 * 1024 * 1024 { return Err("upload exceeds 100 MiB".into()); }
-        req = req.header("content-type","application/octet-stream").body(bytes);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|_| "invalid upload encoding")?;
+        if bytes.len() > 100 * 1024 * 1024 {
+            return Err("upload exceeds 100 MiB".into());
+        }
+        req = req
+            .header("content-type", "application/octet-stream")
+            .body(bytes);
     } else if let Some(body) = body {
         req = req.json(&body);
     }

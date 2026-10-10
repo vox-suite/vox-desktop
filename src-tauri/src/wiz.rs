@@ -269,7 +269,8 @@ struct HomeLight {
 }
 
 async fn fetch_home(link: &str) -> Result<HashMap<String, HomeLight>, String> {
-    let url = reqwest::Url::parse(link.trim()).map_err(|_| "Paste the WiZ local integration link.")?;
+    let url =
+        reqwest::Url::parse(link.trim()).map_err(|_| "Paste the WiZ local integration link.")?;
     if url.scheme() != "https" || url.host_str() != Some(HOME_HOST) {
         return Err("Paste the local integration link from the WiZ app.".into());
     }
@@ -284,7 +285,9 @@ async fn fetch_home(link: &str) -> Result<HashMap<String, HomeLight>, String> {
         .await
         .map_err(|_| "Could not reach the WiZ link.")?;
     if !response.status().is_success() {
-        return Err("The WiZ link has expired. Generate a new one in the WiZ app and try again.".into());
+        return Err(
+            "The WiZ link has expired. Generate a new one in the WiZ app and try again.".into(),
+        );
     }
     if response.content_length().is_some_and(|n| n > 65536) {
         return Err("The WiZ file is too large.".into());
@@ -303,24 +306,48 @@ fn parse_home(data: &[u8]) -> Result<HashMap<String, HomeLight>, String> {
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|r| Some((r.get("room_id")?.as_u64()?, r.get("name")?.as_str()?.to_string())))
+        .filter_map(|r| {
+            Some((
+                r.get("room_id")?.as_u64()?,
+                r.get("name")?.as_str()?.to_string(),
+            ))
+        })
         .collect();
     let mut lights = HashMap::new();
-    for device in home.get("devices").and_then(Value::as_array).into_iter().flatten() {
+    for device in home
+        .get("devices")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
         if device.get("type").and_then(Value::as_str) != Some("light") {
             continue;
         }
-        let Some(mac) = device.get("mac_address").and_then(Value::as_str) else { continue };
+        let Some(mac) = device.get("mac_address").and_then(Value::as_str) else {
+            continue;
+        };
         let id = mac.replace([':', '-'], "").to_lowercase();
         let range = device.pointer("/traits/white_range").and_then(|r| {
             let r = r.as_array()?;
-            Some([u16::try_from(r.first()?.as_u64()?).ok()?, u16::try_from(r.get(1)?.as_u64()?).ok()?])
+            Some([
+                u16::try_from(r.first()?.as_u64()?).ok()?,
+                u16::try_from(r.get(1)?.as_u64()?).ok()?,
+            ])
         });
         lights.insert(
             id,
             HomeLight {
-                name: device.get("name").and_then(Value::as_str).unwrap_or("WiZ light").chars().take(64).collect(),
-                room: device.get("room_id").and_then(Value::as_u64).and_then(|r| rooms.get(&r).cloned()),
+                name: device
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("WiZ light")
+                    .chars()
+                    .take(64)
+                    .collect(),
+                room: device
+                    .get("room_id")
+                    .and_then(Value::as_u64)
+                    .and_then(|r| rooms.get(&r).cloned()),
                 temp_range: range,
             },
         );
@@ -556,7 +583,9 @@ pub async fn remote(app: &AppHandle, frame: &Value) -> Result<Value, String> {
                 .to_string();
             let on = frame.get("on").and_then(Value::as_bool);
             let brightness = match frame.get("brightness").and_then(Value::as_u64) {
-                Some(v) => Some(u8::try_from(v).map_err(|_| "Brightness must be between 0 and 100.")?),
+                Some(v) => {
+                    Some(u8::try_from(v).map_err(|_| "Brightness must be between 0 and 100.")?)
+                }
                 None => None,
             };
             let color = match frame.get("color").filter(|v| !v.is_null()) {
@@ -570,9 +599,17 @@ pub async fn remote(app: &AppHandle, frame: &Value) -> Result<Value, String> {
                 Some(v) => Some(u16::try_from(v).map_err(|_| "Invalid color temperature.")?),
                 None => None,
             };
-            let device =
-                control_wiz(app.clone(), auth, state, device_id, on, brightness, color, temp)
-                    .await?;
+            let device = control_wiz(
+                app.clone(),
+                auth,
+                state,
+                device_id,
+                on,
+                brightness,
+                color,
+                temp,
+            )
+            .await?;
             Ok(json!({ "ok": true, "device": device }))
         }
         _ => Err("action must be list or set.".into()),

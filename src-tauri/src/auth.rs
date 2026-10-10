@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 use tokio::sync::oneshot;
 use uuid::Uuid;
@@ -483,6 +483,13 @@ impl AuthManager {
         if let Ok(mut guard) = self.session.lock() {
             *guard = None;
         }
+        if let Some(app) = self.app.lock().ok().and_then(|guard| guard.clone()) {
+            let _ = crate::session::end_call(
+                app.clone(),
+                app.state::<crate::session::SessionManager>(),
+            );
+            app.state::<crate::terminal::TerminalManager>().close();
+        }
         let _ = clear_session();
         let _ = clear_pending_oauth();
         Ok(self.state())
@@ -793,7 +800,8 @@ fn oauth_redirect_for_runtime(configured: &str) -> String {
         #[cfg(debug_assertions)]
         {
             let trimmed = configured.trim();
-            if trimmed.starts_with("http://127.0.0.1:") || trimmed.starts_with("http://localhost:") {
+            if trimmed.starts_with("http://127.0.0.1:") || trimmed.starts_with("http://localhost:")
+            {
                 return trimmed.to_string();
             }
             // Ignore production vox:// while developing — Launch Services owns that scheme.

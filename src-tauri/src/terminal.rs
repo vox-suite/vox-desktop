@@ -62,6 +62,10 @@ impl TerminalManager {
                     Ok(n) => {
                         if let Ok(mut buf) = output_writer.lock() {
                             buf.extend_from_slice(&chunk[..n]);
+                            if buf.len() > 262144 {
+                                let extra = buf.len() - 262144;
+                                buf.drain(..extra);
+                            }
                         }
                     }
                 }
@@ -75,6 +79,32 @@ impl TerminalManager {
             _child: child,
         });
         Ok(())
+    }
+
+    pub fn close(&self) {
+        if let Ok(mut guard) = self.0.lock() {
+            if let Some(mut session) = guard.take() {
+                let _ = session._child.kill();
+            }
+        }
+    }
+    pub fn snapshot(&self) -> Result<String, String> {
+        let guard = self.0.lock().map_err(|e| e.to_string())?;
+        let session = guard.as_ref().ok_or("no terminal session is open")?;
+        let bytes = session.output.lock().map_err(|e| e.to_string())?;
+        Ok(strip_ansi(&String::from_utf8_lossy(&bytes)))
+    }
+    pub fn write_input(&self, input: &str) -> Result<(), String> {
+        if input.len() > 8192 {
+            return Err("terminal input too large".into());
+        }
+        let mut guard = self.0.lock().map_err(|e| e.to_string())?;
+        let session = guard.as_mut().ok_or("no terminal session is open")?;
+        session
+            .writer
+            .write_all(input.as_bytes())
+            .map_err(|e| e.to_string())?;
+        session.writer.flush().map_err(|e| e.to_string())
     }
 
     /// Blocking: call from a dedicated thread (e.g. `spawn_blocking`), never
@@ -186,4 +216,23 @@ mod tests {
         let input = "\u{1b}[32mok\u{1b}[0m: \u{1b}[1mdone\u{1b}[0m\n";
         assert_eq!(strip_ansi(input), "ok: done\n");
     }
+}
+
+#[tauri::command]
+pub async fn terminal_open(state: tauri::State<'_, TerminalManager>) -> Result<(), String> {
+    let terminal = state.inner().clone();
+    tokio::task::spawn_blocking(move || terminal.open_shell())
+        .await
+        .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+pub fn terminal_output(state: tauri::State<'_, TerminalManager>) -> Result<String, String> {
+    state.snapshot()
+}
+#[tauri::command]
+pub fn terminal_input(
+    state: tauri::State<'_, TerminalManager>,
+    input: String,
+) -> Result<(), String> {
+    state.write_input(&input)
 }

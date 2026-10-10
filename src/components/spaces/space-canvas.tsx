@@ -1,3 +1,5 @@
+import { useDesktopContext } from "@/hooks/use-desktop-control";
+import { desktopStore } from "@/features/desktop-control/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
@@ -60,7 +62,29 @@ function SpaceCanvasInner({
 }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedNodeId = useDesktopContext().selectedItemId;
+  const setSelectedNodeId = (selectedItemId: string | null) =>
+    desktopStore.patch({ selectedItemId });
+  useEffect(() => {
+    desktopStore.patch({
+      resourceDetails: {
+        space: {
+          id: graph.space.id,
+          title: graph.space.title,
+          state: graph.space.state,
+        },
+        nodes: graph.nodes
+          .slice(0, 40)
+          .map((node) => ({
+            id: node.id,
+            title: node.title,
+            kind: node.kind,
+            version: node.version,
+          })),
+      },
+    });
+    return () => desktopStore.patch({ resourceDetails: undefined });
+  }, [graph]);
   const [showCommitDialog, setShowCommitDialog] = useState(false);
   const [commitResult, setCommitResult] = useState<CommitSpaceResult | null>(
     null,
@@ -83,8 +107,16 @@ function SpaceCanvasInner({
             id: node.id,
             type: "spaceNode",
             position: {
-              x: radial.x,
-              y: radial.y,
+              x:
+                Number.isFinite(node.position?.x) &&
+                (node.position.x !== 0 || node.position.y !== 0)
+                  ? node.position.x
+                  : radial.x,
+              y:
+                Number.isFinite(node.position?.y) &&
+                (node.position.x !== 0 || node.position.y !== 0)
+                  ? node.position.y
+                  : radial.y,
             },
             data: { node, central: radial.central },
             selected: currMap.get(node.id)?.selected,
