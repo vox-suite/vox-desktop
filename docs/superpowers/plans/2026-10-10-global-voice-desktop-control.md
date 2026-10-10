@@ -70,8 +70,8 @@ async fn ticket_is_single_use(pool: sqlx::PgPool) {
 ```sql
 CREATE TABLE desktop_voice_sessions (
   id uuid PRIMARY KEY,
-  user_id uuid NOT NULL REFERENCES users(id),
-  device_id uuid REFERENCES devices(id),
+  user_id uuid NOT NULL REFERENCES public.users(id),
+  device_id uuid REFERENCES public.devices(id),
   ticket_hash text NOT NULL UNIQUE,
   expires_at timestamptz NOT NULL,
   redeemed_at timestamptz,
@@ -80,7 +80,7 @@ CREATE TABLE desktop_voice_sessions (
 );
 ```
 
-Use the actual existing user table's schema-qualified name from migrations before applying this SQL. Authoritative identity is the recorded `user_id`; construct the same native `voice` channel identity and `RespondRequest` used by `routes/voice.rs`, then invoke `ConversationService::respond_stream`. Preserve agent selection, memory, host/tenant grants, turn IDs, revision, TTS provider, and initiation context. Do not route a desktop UUID through the phone-number host-identity mapping in `CoreClient`.
+The schema names above were verified against `20261009000001_foundation.sql`. Authoritative identity is the recorded `user_id`; construct the same native `voice` channel identity and `RespondRequest` used by `routes/voice.rs`, then invoke `ConversationService::respond_stream`. Preserve agent selection, memory, host/tenant grants, turn IDs, revision, TTS provider, and initiation context. Do not route a desktop UUID through the phone-number host-identity mapping in `CoreClient`.
 - [ ] Implement `DesktopConversationClient` using the existing SSE parser and service authentication, with a session-specific endpoint and the recorded user context resolved only in Core. This changes identity transport, not the agent/model policy. Register the bootstrap and internal endpoints with the appropriate existing authentication middleware and generated API contract.
 - [ ] Run Core broker tests and Bridge contract tests. Commit the explicit Task 1 files separately in each repository.
 
