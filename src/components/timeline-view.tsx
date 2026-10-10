@@ -42,7 +42,7 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     let active = true;
     Promise.all([timelineApi.groups(), timelineApi.types()]).then(([g, t]) => { if (active) { setGroups(g); setTypes(t); } }).catch((e: unknown) => { if (active) setError(String(e)); });
     return () => { active = false; };
-  }, []);
+  }, [revision]);
   useEffect(() => {
     const current = ++ticket.current;
     setLoading(true); setError(""); setEntries([]); setCursor(null);
@@ -82,11 +82,11 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     {error && <p role="alert" className="px-6 py-2 text-xs text-destructive">{error}</p>}
     <PageBody scroll={false} className="flex flex-col">
       {mode === "month" ? <SpanMonthCounts anchorDate={anchor} counts={counts} loading={loading} onSelectDay={(date) => { setMode("day"); setAnchor(startOfDay(date)); }} />
-        : <PlanningTimeline days={days} spans={spans} loading={loading} onSelect={(span) => setSelected(entries.find((e) => e.event.id === span.id) ?? null)} />}
+        : <PlanningTimeline days={days} spans={spans} loading={loading} unavailable={!!error} onSelect={(span) => setSelected(entries.find((e) => e.event.id === span.id) ?? null)} />}
       {mode !== "month" && cursor && <Button variant="ghost" disabled={loading} onClick={() => void more()}>Load more entries</Button>}
     </PageBody>
     <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}><DialogContent className="max-h-[80vh] overflow-y-auto"><DialogHeader><DialogTitle>{selected?.event.title}</DialogTitle><DialogDescription>{selected?.event.summary || types.find((t) => t.id === selected?.event.event_type_id)?.label || "Timeline entry"}</DialogDescription></DialogHeader>
-      {selected && <><p className="text-xs text-muted-foreground">{new Date(selected.event.occurred_at).toLocaleString()} · {selected.event.time_precision} precision</p>
+      {selected && <><p className="text-xs text-muted-foreground">{["year", "month", "day"].includes(selected.event.time_precision) ? new Date(selected.event.occurred_at).toLocaleDateString() : new Date(selected.event.occurred_at).toLocaleString()} · {selected.event.time_precision} precision</p>
       <dl className="space-y-2 text-sm">{Object.entries((selected.event.content ?? {}) as Record<string, unknown>).filter(([, v]) => v != null).map(([key, value]) => <div key={key}><dt className="text-xs text-muted-foreground">{key.replaceAll("_", " ")}</dt><dd className="break-words">{typeof value === "object" ? JSON.stringify(value) : String(value)}</dd></div>)}</dl>
       <div className="border-t border-border pt-3 text-xs text-muted-foreground">{selected.evidence.map((ev) => <p key={ev.id}>{ev.source_type} · {ev.source_id ?? ev.raw_reference ?? "Recorded evidence"}</p>)}</div></>}
     </DialogContent></Dialog>

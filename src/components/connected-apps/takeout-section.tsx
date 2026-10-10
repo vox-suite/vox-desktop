@@ -72,8 +72,9 @@ export function TakeoutSection({
           const file = event.target.files?.[0];
           event.target.value = "";
           if (!file || !historyConsent) return;
-          if (file.size > (file.name.toLowerCase().endsWith(".zip") ? 100 : cfg.maxMb) * 1024 * 1024) {
-            setMessage(`Choose a file smaller than ${cfg.maxMb} MB.`);
+          const limitMb = file.name.toLowerCase().endsWith(".zip") ? 100 : cfg.maxMb;
+          if (file.size > limitMb * 1024 * 1024) {
+            setMessage(`Choose a file smaller than ${limitMb} MiB.`);
             return;
           }
           void run(async () => {

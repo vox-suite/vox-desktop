@@ -69,10 +69,7 @@ export function PulseChartCard({
 }) {
   const [active, setActive] = useState<string | null>(null);
   const allPoints = result?.points ?? [];
-  const points =
-    !definition.bucket && allPoints.length > (definition.top_n ?? 8)
-      ? allPoints.slice(0, definition.top_n ?? 8)
-      : allPoints;
+  const points = allPoints;
   const observed = points.filter(
     (p) => typeof p.value === "number" && Number.isFinite(p.value),
   );

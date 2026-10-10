@@ -9,7 +9,7 @@ export const YOUTUBE_IMPORT: TakeoutConfig = {
   title: "Personal watch history",
   blurb:
     "Import a Google Takeout ZIP archive or watch-history file (HTML or JSON). Vox uses its recorded watch times. This is an imported snapshot; upload another export to add newer watches.",
-  help: "Select YouTube and YouTube Music, include history, and either HTML or JSON works for the history format. Use an English-language export, select the ZIP archive (up to 100 MiB), or extract it and select watch-history below. The selected history is sent to Vox’s server for validation and import.",
+  help: "Select YouTube and YouTube Music and include history. Choose JSON for a ZIP import (up to 100 MiB), or extract an English-language watch-history HTML or JSON file. The selected history is sent to Vox’s server for validation and import.",
   consent:
     "I allow Vox to store this watch history in my timeline and use it to answer my questions.",
   button: "Import watch history",
@@ -39,7 +39,7 @@ export const MAPS_IMPORT: TakeoutConfig = {
   title: "Maps Timeline places",
   blurb:
     "Import your Google Maps Timeline export (JSON). Vox adds the places you visited, with arrival and departure times, to your timeline. This is an imported snapshot; upload another export to add newer visits.",
-  help: "On your phone, open Google Maps > Settings > Timeline > Export Timeline data, or use Google Takeout and select Maps (your places) > Timeline. Select the exported Timeline.json (or a Semantic Location History month file) below. Only place visits are read; the file is processed on this device and just the visits are sent to Vox’s server.",
+  help: "Export Timeline data from Google Maps on your phone, or select a Takeout ZIP containing actual Timeline history. Extracted JSON is read on this device and its visits are sent to Vox’s server. ZIP archives (up to 100 MiB) are uploaded for server parsing of recorded visits and travel. Settings and encrypted backup instructions do not contain usable location history.",
   consent:
     "I allow Vox to store these visited places in my timeline and use them to answer my questions.",
   button: "Import Timeline",

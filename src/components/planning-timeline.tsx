@@ -27,6 +27,7 @@ export function PlanningTimeline({
   spans,
   onSelect,
   loading,
+  unavailable = false,
   frontiers = [],
   onLoadMore,
 }: {
@@ -34,6 +35,7 @@ export function PlanningTimeline({
   spans: Span[];
   onSelect: (span: Span) => void;
   loading: boolean;
+  unavailable?: boolean;
   frontiers?: DayFrontier[];
   onLoadMore?: (day: string) => void;
 }) {
@@ -211,15 +213,16 @@ export function PlanningTimeline({
           {items.map(({ span, from, to, left, barWidth, lane }) => {
             const style = spanStyle(span);
             const amount = formatAmount(span);
+            const timeLabel = span.data?.time_precision === "day" ? "Date only" : formatTime(span.start_at);
             const badge =
               amount ||
-              (to > from ? durationLabel(from, to) : formatTime(span.start_at));
+              (to > from ? durationLabel(from, to) : timeLabel);
             return (
               <SpanInfoTooltip key={span.id} span={span}>
                 <button
                   type="button"
                   onClick={() => onSelect(span)}
-                  aria-label={`${displayTitle(span)}, ${formatTime(span.start_at)}${span.end_at ? ` to ${formatTime(span.end_at)}` : ""}`}
+                  aria-label={`${displayTitle(span)}, ${timeLabel}${span.end_at ? ` to ${formatTime(span.end_at)}` : ""}`}
                   className={cn(
                     "absolute z-20 flex h-8 items-center gap-2 overflow-hidden rounded-lg border px-2.5 text-left shadow-sm transition hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                     span.status === "active" && "ring-1 ring-border",
@@ -254,7 +257,7 @@ export function PlanningTimeline({
           })}
         </div>
       </div>
-      {items.length === 0 && (
+      {items.length === 0 && !unavailable && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex flex-col items-center justify-center gap-2 px-6 text-center">
           {loading ? (
             <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
@@ -262,12 +265,12 @@ export function PlanningTimeline({
             <CalendarX className="size-6 text-muted-foreground/60" />
           )}
           <p className="text-sm font-medium text-foreground">
-            {loading ? "Loading your plan…" : "Nothing scheduled"}
+            {loading ? "Loading your timeline…" : "No recorded entries"}
           </p>
           {!loading && (
             <p className="max-w-xs text-xs text-muted-foreground">
-              No events in this date range. Pick another date to explore your
-              plan.
+              No entries were recorded in this date range. Pick another date
+              or connect a source to add history.
             </p>
           )}
         </div>
