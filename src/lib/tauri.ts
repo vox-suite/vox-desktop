@@ -44,6 +44,15 @@ export type {
   NewCollection,
 } from "@/features/spans/types";
 
+export type LocalModelsStatus = {
+  ready: boolean;
+  configured: boolean;
+  downloading: boolean;
+  downloaded_bytes: number;
+  total_bytes: number;
+  error: string | null;
+};
+
 export const api = {
   getAuthState: () => invoke<AuthState>("get_auth_state"),
   signInWithGoogle: () => invoke<AuthState>("sign_in_with_google"),
@@ -63,6 +72,8 @@ export const api = {
   setRemoteControl: (enabled: boolean) =>
     invoke<boolean>("set_remote_control", { enabled }),
   getLocalEvents: () => invoke<LocalEvent[]>("get_local_events"),
+  localModelsStatus: () => invoke<LocalModelsStatus>("local_models_status"),
+  downloadLocalModels: () => invoke<void>("download_local_models"),
 };
 
 export const windowControls = {

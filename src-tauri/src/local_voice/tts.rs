@@ -76,8 +76,10 @@ impl Tts {
 fn load_speaker(dir: &Path, name: &str) -> Result<Speaker, String> {
     let raw = std::fs::read(dir.join(format!("{name}.codes"))).map_err(|e| format!("{name}.codes: {e}"))?;
     let codes = raw
-        .chunks_exact(4)
-        .map(|b| format!("<|speech_{}|>", i32::from_le_bytes([b[0], b[1], b[2], b[3]])))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| format!("<|speech_{}|>", i32::from_le_bytes(*b)))
         .collect::<String>();
     let text = std::fs::read_to_string(dir.join(format!("{name}.txt"))).map_err(|e| format!("{name}.txt: {e}"))?;
     Ok(Speaker {

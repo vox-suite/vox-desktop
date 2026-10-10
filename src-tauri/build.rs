@@ -5,6 +5,7 @@ fn main() {
         "VOX_API_URL",
         "VOX_BRIDGE_URL",
         "VOX_OAUTH_REDIRECT_URI",
+        "VOX_MODELS_BASE_URL",
     ] {
         if let Ok(value) = std::env::var(key) {
             if !value.trim().is_empty() {

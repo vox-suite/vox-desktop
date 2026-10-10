@@ -83,6 +83,7 @@ pub fn run() {
         .manage(device_link::EventLog::default())
         .manage(SystemStatsState::new())
         .manage(wiz::WizState::default())
+        .manage(local_voice::download::ModelsState::default())
         .on_window_event(|window, event| {
             #[cfg(target_os = "macos")]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -113,6 +114,7 @@ pub fn run() {
                 handle_oauth_callback_urls(&handle, &event.urls());
             });
 
+            local_voice::download::auto_start(app.handle());
             tauri::async_runtime::spawn(device_link::run_supervisor(app.handle().clone()));
             tauri::async_runtime::spawn(live_link::run_supervisor(app.handle().clone()));
             Ok(())
@@ -139,6 +141,8 @@ pub fn run() {
             device_link::get_local_events,
             device_link::run_gui_action_locally,
             system_stats::get_system_stats,
+            local_voice::download::local_models_status,
+            local_voice::download::download_local_models,
             wiz::get_wiz_status,
             wiz::connect_wiz,
             wiz::refresh_wiz,
