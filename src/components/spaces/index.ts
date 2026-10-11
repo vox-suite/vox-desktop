@@ -5,5 +5,4 @@ export * from "./commit-space-dialog";
 export * from "./space-chat-panel";
 export * from "./space-node-card";
 export * from "./space-workflow-node";
-export * from "./spaces-orbit";
 export * from "./spaces-view";

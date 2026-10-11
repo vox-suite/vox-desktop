@@ -49,7 +49,7 @@ export function SpaceChatPanel({
           <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
             {selectedNode
               ? `Chat with ${selectedNode.title}`
-              : "Space orchestrator"}
+              : "Plan orchestrator"}
           </span>
           <Button
             size="icon-xs"

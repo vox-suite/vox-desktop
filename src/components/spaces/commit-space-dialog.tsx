@@ -40,7 +40,7 @@ export function CommitSpaceDialog({
       <DialogContent className="max-w-md bg-card border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-foreground">
-            {commitResult ? "Space Committed" : "Commit to Timeline"}
+            {commitResult ? "Plan Committed" : "Commit to Timeline"}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {commitResult

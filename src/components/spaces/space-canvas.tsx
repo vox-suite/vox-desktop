@@ -329,7 +329,7 @@ function SpaceCanvasInner({
               nodeBorderRadius={6}
               pannable
               zoomable
-              ariaLabel="Space overview — drag to pan, scroll to zoom"
+              ariaLabel="Plan overview — drag to pan, scroll to zoom"
               maskColor="rgba(0, 0, 0, 0.55)"
             />
           </ReactFlow>

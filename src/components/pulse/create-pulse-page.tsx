@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MeasurementsView } from "./measurements-view";
 import { PulseShell } from "./pulse-shell";
@@ -24,7 +24,7 @@ export function CreatePulsePage({
         <>
           <div className="flex items-center gap-2 text-sm">
             <Button variant="ghost" size="sm" onClick={onClose}>
-              <ArrowLeft size={15} /> Pulse
+              <ArrowLeft size={15} /> Insights
             </Button>
             <span className="text-muted-foreground">/</span>
             <h1 className="font-medium">Add a chart</h1>
@@ -68,32 +68,13 @@ export function CreatePulsePage({
               : "pulse-create-content"
           }
         >
-          {mode === "measurements" ? <MeasurementsView onSaved={onSaved} /> : <SuggestionsView onSaved={onSaved} />}
+          {mode === "measurements" ? (
+            <MeasurementsView onSaved={onSaved} />
+          ) : (
+            <SuggestionsView onSaved={onSaved} />
+          )}
         </div>
       </div>
     </PulseShell>
-  );
-}
-
-export function PulseOrbit() {
-  return (
-    <div className="pulse-orbit" aria-hidden="true">
-      <svg viewBox="0 0 180 180">
-        {Array.from({ length: 48 }, (_, i) => (
-          <line
-            key={i}
-            x1="90"
-            y1="22"
-            x2="90"
-            y2={i % 6 === 0 ? 9 : 15}
-            transform={`rotate(${i * 7.5} 90 90)`}
-            stroke={i < 17 ? "#3ecf8e" : "#2a2a2a"}
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        ))}
-      </svg>
-      <Sparkles size={27} />
-    </div>
   );
 }

@@ -292,13 +292,13 @@ export function PulseIntroduction({ onCreate }: { onCreate: () => void }) {
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 items-center px-12 py-12">
         <div className="relative z-10 flex max-w-sm flex-col items-start text-left">
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
-            PULSE
+            INSIGHTS
           </span>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight">
             Your life, as a living chart.
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Pulse turns your connected apps into small, live charts — what you
+            Insights turn your connected apps into small, live charts — what you
             listen to, what you play, where your money goes.
           </p>
           <Button

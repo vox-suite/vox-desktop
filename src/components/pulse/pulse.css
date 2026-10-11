@@ -43,23 +43,6 @@
   font-size: 14px;
   line-height: 1.8;
 }
-.pulse-orbit {
-  position: relative;
-  width: 150px;
-  height: 150px;
-  flex-shrink: 0;
-}
-.pulse-orbit svg {
-  width: 100%;
-  height: 100%;
-}
-.pulse-orbit > svg:last-child {
-  position: absolute;
-  width: 27px;
-  height: 27px;
-  inset: calc(50% - 13.5px);
-  color: #3ecf8e;
-}
 .pulse-create-navigation {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -258,9 +241,6 @@
   }
   .pulse-create-heading h1 {
     letter-spacing: -1px;
-  }
-  .pulse-orbit {
-    display: none;
   }
   .pulse-create-navigation {
     gap: 10px;
