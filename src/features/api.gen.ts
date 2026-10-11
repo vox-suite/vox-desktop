@@ -2368,6 +2368,26 @@ export interface components {
             citation: components["schemas"]["ProjectCitation"];
             text: string;
         };
+        ProjectFlow: {
+            edges: components["schemas"]["ProjectFlowEdge"][];
+            gaps?: string[];
+            nodes: components["schemas"]["ProjectFlowNode"][];
+            title: string;
+        };
+        ProjectFlowEdge: {
+            citations?: components["schemas"]["ProjectCitation"][];
+            evidence: string;
+            from: string;
+            label: string;
+            to: string;
+        };
+        ProjectFlowNode: {
+            citations?: components["schemas"]["ProjectCitation"][];
+            detail: string;
+            id: string;
+            kind: string;
+            title: string;
+        };
         ProjectList: {
             items: components["schemas"]["Project"][];
             /** Format: uuid */
@@ -2376,6 +2396,7 @@ export interface components {
         ProjectMessage: {
             at: string;
             body: string;
+            flow?: null | components["schemas"]["ProjectFlow"];
             /** Format: uuid */
             id: string;
             proposals?: components["schemas"]["ContextNode"][];
