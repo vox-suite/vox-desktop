@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { registerCacheReset } from "@/features/cache-reset";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { platform } from "@/platform";
@@ -15,9 +16,19 @@ const LIST_EVENTS = new Set([
   "live_reconnected",
 ]);
 
+const cache: { rev: string | null; spaces: Space[] | null } = {
+  rev: null,
+  spaces: null,
+};
+
+registerCacheReset(() => {
+  cache.rev = null;
+  cache.spaces = null;
+});
+
 export function useSpaces(enabled = true) {
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [loading, setLoading] = useState(enabled);
+  const [spaces, setSpaces] = useState<Space[]>(cache.spaces ?? []);
+  const [loading, setLoading] = useState(enabled && !cache.spaces);
   const [error, setError] = useState("");
 
   const [prevEnabled, setPrevEnabled] = useState(enabled);
@@ -28,18 +39,26 @@ export function useSpaces(enabled = true) {
 
   const load = useCallback(async (countFirst = false) => {
     try {
+      let rev: string | null = null;
       if (countFirst) {
-        const total = await spacesApi
-          .countSpaces()
-          .then((r) => r.count)
-          .catch(() => null);
-        if (total === 0) {
+        const meta = await spacesApi.countSpaces().catch(() => null);
+        if (meta?.count === 0) {
+          cache.rev = meta.rev;
+          cache.spaces = [];
           setSpaces([]);
+          setError("");
+          return;
+        }
+        rev = meta?.rev ?? null;
+        if (rev && cache.spaces && cache.rev === rev) {
+          setSpaces(cache.spaces);
           setError("");
           return;
         }
       }
       const data = await spacesApi.listSpaces();
+      cache.spaces = data;
+      cache.rev = rev;
       setSpaces(data);
       setError("");
     } catch (err) {

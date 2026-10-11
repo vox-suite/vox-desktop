@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CalendarX, LoaderCircle } from "lucide-react";
 import { SpanInfoTooltip } from "@/components/span-info-tooltip";
 import { CategoryIndicator } from "@/components/category-indicator";
@@ -30,6 +30,11 @@ export function PlanningTimeline({
   unavailable = false,
   frontiers = [],
   onLoadMore,
+  dayWidth,
+  hourly = false,
+  anchorDay,
+  onReachStart,
+  onReachEnd,
 }: {
   days: Date[];
   spans: Span[];
@@ -38,6 +43,11 @@ export function PlanningTimeline({
   unavailable?: boolean;
   frontiers?: DayFrontier[];
   onLoadMore?: (day: string) => void;
+  dayWidth?: number;
+  hourly?: boolean;
+  anchorDay?: Date;
+  onReachStart?: () => void;
+  onReachEnd?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -51,8 +61,9 @@ export function PlanningTimeline({
   const endDate = new Date(days[days.length - 1]);
   endDate.setDate(endDate.getDate() + 1);
   const end = endDate.getTime();
-  const width =
-    days.length === 1
+  const width = dayWidth
+    ? days.length * dayWidth
+    : days.length === 1
       ? 2400
       : days.length > 7
         ? days.length * 100
@@ -90,14 +101,45 @@ export function PlanningTimeline({
       });
   }, [spans, start, end, scale, width]);
 
-  const ticks =
-    days.length === 1
+  const ticks = hourly
+    ? days.flatMap((day) =>
+        Array.from({ length: 24 }, (_, hour) => {
+          const date = new Date(day);
+          date.setHours(hour, 0, 0, 0);
+          return date;
+        }),
+      )
+    : days.length === 1
       ? Array.from({ length: 24 }, (_, hour) => {
           const date = new Date(start);
           date.setHours(hour);
           return date;
         })
       : days.filter((_, index) => days.length <= 7 || index % 7 === 0);
+  const anchorKey = anchorDay ? anchorDay.getTime() : null;
+  const prevStart = useRef<number | null>(null);
+  const scrolledAnchor = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && prevStart.current !== null && start < prevStart.current)
+      el.scrollLeft += (prevStart.current - start) * scale;
+    prevStart.current = start;
+  }, [start, scale]);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || anchorKey === null || scrolledAnchor.current === anchorKey)
+      return;
+    scrolledAnchor.current = anchorKey;
+    const today =
+      Date.now() >= anchorKey && Date.now() < anchorKey + 86_400_000;
+    const target = today
+      ? Math.max(anchorKey, Date.now() - 2 * 3_600_000)
+      : anchorKey;
+    el.scrollLeft = Math.max(0, leadingSpace + (target - start) * scale - 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorKey, start, scale]);
 
   const nowLeft = (now - start) * scale;
   const showNow = now >= start && now < end;
@@ -116,6 +158,22 @@ export function PlanningTimeline({
           className="relative h-full"
           style={{ width: width + leadingSpace + 16, minHeight: height }}
         >
+          {onReachStart && (
+            <FrontierSentinel
+              root={scrollRef}
+              left={leadingSpace}
+              disabled={loading}
+              onReach={onReachStart}
+            />
+          )}
+          {onReachEnd && (
+            <FrontierSentinel
+              root={scrollRef}
+              left={leadingSpace + width}
+              disabled={loading}
+              onReach={onReachEnd}
+            />
+          )}
           {frontiers.map((f) => (
             <FrontierSentinel
               key={f.day}
@@ -134,16 +192,22 @@ export function PlanningTimeline({
                   left: leadingSpace + (date.getTime() - start) * scale,
                 }}
               >
-                {days.length === 1
-                  ? date.toLocaleTimeString(undefined, { hour: "numeric" })
-                  : date.toLocaleDateString(undefined, {
+                {hourly && date.getHours() === 0
+                  ? date.toLocaleDateString(undefined, {
+                      weekday: "short",
                       month: "short",
                       day: "numeric",
-                    })}
+                    })
+                  : hourly || days.length === 1
+                    ? date.toLocaleTimeString(undefined, { hour: "numeric" })
+                    : date.toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
               </span>
             ))}
           </div>
-          {(days.length > 7 ? days : ticks).map((date) => (
+          {(hourly ? ticks : days.length > 7 ? days : ticks).map((date) => (
             <div
               key={`separator-${date.getTime()}`}
               aria-hidden="true"
@@ -157,7 +221,8 @@ export function PlanningTimeline({
               }}
             />
           ))}
-          {days.length === 7 &&
+          {!hourly &&
+            days.length === 7 &&
             days.flatMap((day) =>
               Array.from({ length: 7 }, (_, index) => {
                 const time = new Date(day);
@@ -176,7 +241,7 @@ export function PlanningTimeline({
                 );
               }),
             )}
-          {days.length === 7 &&
+          {(hourly || days.length === 7) &&
             days.map((day) => (
               <div
                 key={`day-${day.getTime()}`}
@@ -185,7 +250,8 @@ export function PlanningTimeline({
                 style={{ left: leadingSpace + (day.getTime() - start) * scale }}
               />
             ))}
-          {days.length > 7 &&
+          {!hourly &&
+            days.length > 7 &&
             [7, 14, 21, 28].map((dayIndex) => {
               const boundary = days[dayIndex]?.getTime() ?? end;
               return (

@@ -154,6 +154,7 @@ export function PulseView() {
                       title={chart.title}
                       definition={chart.definition}
                       result={chart.result}
+                      pending={!chart.result}
                     />
                   </div>
                 ))}

@@ -24,15 +24,23 @@ export function SavedChart({
   title,
   definition: initial,
   result: initialResult,
+  pending = false,
   onRemove,
 }: {
   title: string;
   definition: PulseDefinition;
   result: PulseResult | null;
+  pending?: boolean;
   onRemove: () => void;
 }) {
   const [definition, setDefinition] = useState(initial);
   const [result, setResult] = useState(initialResult);
+  const [seen, setSeen] = useState(initialResult);
+  const [edited, setEdited] = useState(false);
+  if (initialResult !== seen) {
+    setSeen(initialResult);
+    if (!edited) setResult(initialResult);
+  }
   const [loading, setLoading] = useState(false);
   const ticket = useRef(0);
 
@@ -40,6 +48,7 @@ export function SavedChart({
     const next = { ...definition, ...patch };
     const mine = ++ticket.current;
     setDefinition(next);
+    setEdited(true);
     setLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 300));
     if (mine !== ticket.current) return;
@@ -59,7 +68,7 @@ export function SavedChart({
 
   return (
     <div
-      className={`min-w-0 ${loading ? "opacity-60 transition-opacity" : ""}`}
+      className={`min-w-0 ${loading ? "opacity-60 transition-opacity" : ""} ${pending ? "animate-pulse opacity-60" : ""}`}
     >
       <PulseChartCard
         title={title}
@@ -94,35 +103,35 @@ export function SavedChart({
         footerAction={
           definition.bucket && !allTime ? (
             <div className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  aria-label="Earlier"
-                  onClick={() =>
-                    void change({ offset_days: offset + definition.period_days })
-                  }
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <span className="font-mono text-[11px] leading-6">
-                  {windowLabel(definition)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                  aria-label="Later"
-                  disabled={offset === 0}
-                  onClick={() =>
-                    void change({
-                      offset_days: Math.max(0, offset - definition.period_days),
-                    })
-                  }
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                aria-label="Earlier"
+                onClick={() =>
+                  void change({ offset_days: offset + definition.period_days })
+                }
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span className="font-mono text-[11px] leading-6">
+                {windowLabel(definition)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                aria-label="Later"
+                disabled={offset === 0}
+                onClick={() =>
+                  void change({
+                    offset_days: Math.max(0, offset - definition.period_days),
+                  })
+                }
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           ) : null
         }
       />

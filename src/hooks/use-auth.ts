@@ -1,5 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
+import { resetUserCaches } from "@/features/cache-reset";
 import {
   animateWindowSize,
   api,
@@ -123,6 +124,7 @@ export function useAuth() {
   async function signOut() {
     try {
       const next = await api.signOut();
+      resetUserCaches();
       setAuth(next);
     } catch {
       /* ignore */

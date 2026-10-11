@@ -13,10 +13,24 @@ export const pulseTimezone = () =>
 
 export const discoveryApi = {
   countCharts: () =>
-    platform().http.request<{ count: number }>({
+    platform().http.request<{ count: number; revision: string }>({
       method: "GET",
       path: "/v1/me/pulse/charts/count",
       timeoutMs: 8000,
+    }),
+  listCharts: (limit: number, offset: number) =>
+    platform().http.request<Omit<SavedPulseChart, "result">[]>({
+      method: "GET",
+      path: "/v1/me/pulse/charts",
+      query: { limit: String(limit), offset: String(offset) },
+      timeoutMs: 15000,
+    }),
+  chartResult: (id: string, refresh = false) =>
+    platform().http.request<PulseResult>({
+      method: "GET",
+      path: `/v1/me/pulse/charts/${id}/result`,
+      query: { timezone: pulseTimezone(), refresh: String(refresh) },
+      timeoutMs: 30000,
     }),
   getCanvas: (refresh = false, cursor?: string) =>
     platform().http.request<CanvasResponse>({
