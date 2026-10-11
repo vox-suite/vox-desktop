@@ -25,6 +25,12 @@ const SpacesView = lazy(() =>
   })),
 );
 
+const ProjectsView = lazy(() =>
+  import("@/components/projects/projects-view").then((m) => ({
+    default: m.ProjectsView,
+  })),
+);
+
 export function HomeShell({
   activeTab,
   onTabChange,
@@ -86,6 +92,19 @@ export function HomeShell({
         }
       >
         <PulseView />
+      </Suspense>
+    );
+  } else if (activeTab === "projects") {
+    body = (
+      <Suspense
+        fallback={
+          <div
+            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
+            aria-label="Loading projects"
+          />
+        }
+      >
+        <ProjectsView />
       </Suspense>
     );
   } else if (activeTab === "updates") {

@@ -254,7 +254,7 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
           <svg
             viewBox="0 0 560 570"
             role="img"
-            aria-label="Exploded view of a space: vision, web research, context and plan stacked as layers"
+            aria-label="Exploded view of a plan: vision, web research, context and plan stacked as layers"
             className="w-full"
             fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
           >

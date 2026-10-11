@@ -4,6 +4,7 @@ export class DesktopControlStore {
     revision: 0,
     page: "agent",
     spaceId: null,
+    projectId: null,
     pulseId: null,
     selectedItemId: null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -30,6 +31,7 @@ export class DesktopControlStore {
     this.patch({
       page: "agent",
       spaceId: null,
+      projectId: null,
       pulseId: null,
       selectedItemId: null,
       timeline: null,

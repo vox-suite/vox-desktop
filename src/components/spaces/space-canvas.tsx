@@ -5,9 +5,6 @@ import {
   ReactFlow,
   Controls,
   MiniMap,
-  Background,
-  BackgroundVariant,
-  MarkerType,
   ReactFlowProvider,
   useReactFlow,
   type Node,
@@ -17,11 +14,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./spaces.css";
-import { RotateCw } from "lucide-react";
 import { spacesApi } from "@/features/spaces/api";
 import { cn } from "@/lib/utils";
 import { PageContainer, PageBody } from "@/components/ui/page-container";
 import { SpaceWorkflowNode } from "./space-workflow-node";
+import { SpaceShader } from "./space-shader";
+import { FlowEdge } from "./space-edge";
+import { nodeAccent } from "./node-accent";
 import { dependencyLayout } from "./dependency-layout";
 import { SpaceChatPanel } from "@/components/spaces/space-chat-panel";
 import { SpaceCanvasHeader } from "./space-canvas-header";
@@ -34,10 +33,16 @@ import type {
 } from "@/features/spaces/types";
 
 const nodeTypes = { spaceNode: SpaceWorkflowNode };
-const FIT_OPTIONS = { padding: 0.15, minZoom: 0.9, maxZoom: 1.1 };
+const edgeTypes = { flow: FlowEdge };
+const STATE_ACCENT: Record<string, string> = {
+  ideating: "#2dd4bf",
+  planned: "#f472b6",
+  committed: "#4ade80",
+};
+const FIT_OPTIONS = { padding: 0.15, minZoom: 1, maxZoom: 1 };
 
 function SpaceCanvasInner({
-  graph,
+  graph: fullGraph,
   messages,
   loading,
   sending,
@@ -60,6 +65,30 @@ function SpaceCanvasInner({
     patch: Partial<Pick<SpaceNode, "title" | "body" | "state" | "position">>,
   ) => Promise<unknown>;
 }) {
+  const graph = useMemo(() => {
+    const current = fullGraph.nodes.filter((n) => n.is_current);
+    const ids = new Set(current.map((n) => n.id));
+    return {
+      ...fullGraph,
+      nodes: current,
+      edges: fullGraph.edges.filter(
+        (e) => ids.has(e.from_node) && ids.has(e.to_node),
+      ),
+    };
+  }, [fullGraph]);
+  const history = useMemo(() => {
+    const byId = new Map(fullGraph.nodes.map((n) => [n.id, n]));
+    return (node: SpaceNode | null) => {
+      const out: SpaceNode[] = [];
+      for (
+        let at = node?.replaces ? byId.get(node.replaces) : undefined;
+        at && out.length < 20;
+        at = at.replaces ? byId.get(at.replaces) : undefined
+      )
+        out.push(at);
+      return out;
+    };
+  }, [fullGraph.nodes]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const selectedNodeId = useDesktopContext().selectedItemId;
@@ -105,54 +134,57 @@ function SpaceCanvasInner({
             id: node.id,
             type: "spaceNode",
             position: {
-              x:
+              x: Math.round(
                 Number.isFinite(node.position?.x) &&
-                (node.position.x !== 0 || node.position.y !== 0)
+                  (node.position.x !== 0 || node.position.y !== 0)
                   ? node.position.x
                   : radial.x,
-              y:
+              ),
+              y: Math.round(
                 Number.isFinite(node.position?.y) &&
-                (node.position.x !== 0 || node.position.y !== 0)
+                  (node.position.x !== 0 || node.position.y !== 0)
                   ? node.position.y
                   : radial.y,
+              ),
             },
-            data: { node, central: radial.central },
+            data: {
+              node,
+              central: radial.central,
+              versions: history(node).length,
+            },
             selected: currMap.get(node.id)?.selected,
           };
         }),
       ];
     });
 
+    const byId = new Map(graph.nodes.map((n) => [n.id, n]));
     setEdges(
       graph.edges.map((e) => {
-        const sourceState = nodeStateMap.get(e.from_node);
-        const isRunning = sourceState === "running";
+        const source = byId.get(e.from_node);
+        const target = byId.get(e.to_node);
         const related =
           e.from_node === selectedNodeId || e.to_node === selectedNodeId;
-        const color = related
-          ? "#ffffff"
-          : selectedNodeId
-            ? "#2e2e33"
-            : "#5c5c63";
         return {
           id: e.id,
           source: e.from_node,
           sourceHandle: "right",
           targetHandle: "left",
           target: e.to_node,
-          type: "default",
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 14,
-            height: 14,
-            color,
+          type: "flow",
+          data: {
+            from: source ? nodeAccent(source) : "#9aa0aa",
+            to: target ? nodeAccent(target) : "#9aa0aa",
+            flowing:
+              nodeStateMap.get(e.from_node) === "running" ||
+              nodeStateMap.get(e.to_node) === "running",
+            active: related,
+            dim: !!selectedNodeId && !related,
           },
-          animated: isRunning,
-          style: { stroke: color, strokeWidth: 1.5 },
         };
       }),
     );
-  }, [graph.nodes, graph.edges, selectedNodeId, setNodes, setEdges]);
+  }, [graph.nodes, graph.edges, selectedNodeId, setNodes, setEdges, history]);
 
   useEffect(() => {
     if (nodes.length > 0 && prevCountRef.current === 0) {
@@ -184,7 +216,11 @@ function SpaceCanvasInner({
   const committableNodes = useMemo(
     () =>
       graph.nodes.filter(
-        (n) => (n.kind === "plan" || n.kind === "step") && n.state === "done",
+        (n) =>
+          (n.kind === "step" ||
+            (n.kind === "plan" &&
+              (n.is_final || !graph.nodes.some((f) => f.is_final)))) &&
+          n.state === "done",
       ),
     [graph.nodes],
   );
@@ -204,6 +240,15 @@ function SpaceCanvasInner({
   };
 
   const cyclic = dependencyLayout(graph.nodes, graph.edges).cyclic.length > 0;
+  const workNodes = graph.nodes.filter((n) => n.kind !== "goal");
+  const progress = {
+    done: workNodes.filter((n) => n.state === "done").length,
+    total: workNodes.length,
+  };
+  const running = graph.space.run_state === "running";
+  const shaderAccent = running
+    ? "#f5b83d"
+    : (STATE_ACCENT[graph.space.state] ?? "#6ea8ff");
 
   return (
     <PageContainer className="spaces-workbench flex-row">
@@ -227,6 +272,7 @@ function SpaceCanvasInner({
           }
           onToggleChat={() => setChatOpen((open) => !open)}
           onOpenCommitDialog={() => setShowCommitDialog(true)}
+          progress={progress}
         />
 
         {(actionError || cyclic || graph.space.run_error) && (
@@ -238,16 +284,15 @@ function SpaceCanvasInner({
         )}
 
         <PageBody scroll={false}>
-          {graph.nodes.length === 0 && graph.space.run_state === "running" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20 pointer-events-none">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 border border-ring text-foreground shadow-xl">
-                <RotateCw className="h-6 w-6 animate-spin" />
-              </div>
+          <SpaceShader accent={shaderAccent} energy={running ? 1 : 0.15} />
+          {graph.nodes.length === 0 && running && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-5">
+              <div className="space-orb" />
               <div className="text-center">
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  Architecting space…
+                <h3 className="text-sm font-medium tracking-tight text-foreground/90">
+                  Architecting your space…
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Researching options and synthesizing your plan
                 </p>
               </div>
@@ -263,36 +308,32 @@ function SpaceCanvasInner({
             onPaneClick={() => setSelectedNodeId(null)}
             nodesDraggable={false}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            proOptions={{ hideAttribution: true }}
             fitView
             fitViewOptions={FIT_OPTIONS}
-            className={cn("bg-background", chatOpen && "spaces-flow-with-chat")}
+            className={cn(
+              "bg-transparent",
+              chatOpen && "spaces-flow-with-chat",
+            )}
           >
-            <Background
-              variant={BackgroundVariant.Dots}
-              gap={24}
-              size={1}
-              color="#3a3a40"
-            />
-            <Controls className="!bg-card !border-border !text-muted-foreground" />
+            <Controls position="bottom-left" showInteractive={false} />
             <MiniMap
-              className="!bg-card !border !border-border max-md:!hidden"
-              nodeColor={(node) =>
-                node.type === "orbit"
-                  ? "transparent"
-                  : node.selected
-                    ? "#cfe3f1"
-                    : "#777"
-              }
-              nodeStrokeColor={(node) =>
-                node.type === "orbit" ? "transparent" : "#777"
-              }
-              nodeBorderRadius={0}
+              className="max-md:!hidden"
+              position="bottom-right"
+              nodeColor={(node) => {
+                const spaceNode = (node.data as { node?: SpaceNode })?.node;
+                return spaceNode ? nodeAccent(spaceNode) : "#777";
+              }}
+              nodeStrokeColor="transparent"
+              nodeBorderRadius={6}
               pannable
               zoomable
               ariaLabel="Space overview — drag to pan, scroll to zoom"
-              maskColor="rgba(0, 0, 0, 0.65)"
+              maskColor="rgba(0, 0, 0, 0.55)"
             />
           </ReactFlow>
+          <div className="space-vignette" />
         </PageBody>
       </div>
 
@@ -303,6 +344,7 @@ function SpaceCanvasInner({
             messages={messages}
             selectedNode={selectedNode}
             staleNodes={staleNodes}
+            history={history(selectedNode)}
             sending={sending}
             onSendMessage={onSendMessage}
             onUpdateNode={onUpdateNode}

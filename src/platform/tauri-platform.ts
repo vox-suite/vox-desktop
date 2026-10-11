@@ -8,6 +8,33 @@ import type { WizStatus } from "./ports";
 import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
+  projects: {
+    retrieve: (projectId, query, sourceId, brief) =>
+      invoke("project_retrieve", {
+        projectId,
+        query,
+        sourceId: sourceId ?? null,
+        brief: brief ?? false,
+      }),
+    engineStatus: () => invoke("project_engine_status"),
+    installEngine: () => invoke("project_install_engine"),
+    pickSources: (projectId, kind, sourceId) =>
+      invoke("project_pick_sources", {
+        projectId,
+        kind,
+        sourceId: sourceId ?? null,
+      }),
+    sources: (projectId) => invoke("project_local_sources", { projectId }),
+    index: (projectId, sourceId) =>
+      invoke("project_index_source", { projectId, sourceId }),
+    graph: (projectId, sourceId, path, search, offset) =>
+      invoke("project_graph", { projectId, sourceId, path, search, offset }),
+    read: (projectId, citation) =>
+      invoke("project_read_source", { projectId, citation }),
+    changes: (projectId) => invoke("project_check_sources", { projectId }),
+    remove: (projectId, sourceId) =>
+      invoke("project_remove_source", { projectId, sourceId }),
+  },
   cache: {
     read: (key) => invoke<string | null>("cache_read", { key }),
     write: (key, value) => invoke<void>("cache_write", { key, value }),

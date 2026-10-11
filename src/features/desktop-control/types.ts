@@ -1,5 +1,11 @@
 export type DesktopPage =
-  "agent" | "timeline" | "pulse" | "spaces" | "connections" | "updates";
+  | "agent"
+  | "timeline"
+  | "pulse"
+  | "spaces"
+  | "projects"
+  | "connections"
+  | "updates";
 export type TimelineFilter = {
   startAt: string;
   endAt: string;
@@ -12,6 +18,7 @@ export type DesktopContext = {
   revision: number;
   page: DesktopPage;
   spaceId: string | null;
+  projectId: string | null;
   pulseId: string | null;
   selectedItemId: string | null;
   timezone: string;

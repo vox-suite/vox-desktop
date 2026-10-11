@@ -92,7 +92,7 @@ export function CommitSpaceDialog({
               <span className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Spans to create ({committableNodes.length}):
               </span>
-              <div className="max-h-56 overflow-y-auto space-y-1.5 rounded-lg border border-border bg-card p-2.5">
+              <div className="max-h-56 overflow-y-auto plan-y-1.5 rounded-lg border border-border bg-card p-2.5">
                 {committableNodes.map((n) => (
                   <div
                     key={n.id}

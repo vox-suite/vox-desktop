@@ -7,6 +7,8 @@ import { desktopStore } from "@/features/desktop-control/store";
 import { SignInScreen } from "@/components/sign-in-screen";
 import { useAuth } from "@/hooks/use-auth";
 import { useCallSession } from "@/hooks/use-call-session";
+import { usePlanAnnouncer } from "@/hooks/use-plan-announcer";
+import { PlanReadyPrompt } from "@/components/shell/plan-ready-prompt";
 
 export default function App() {
   const auth = useAuth();
@@ -33,12 +35,20 @@ export default function App() {
     callState,
     isActive,
     isBusy,
+    isSpeaking,
     isVoxSpeaking,
     micLevel,
     callError,
     toggleCall,
     endCall,
   } = callSession;
+
+  const announcer = usePlanAnnouncer(authState.signed_in, {
+    isActive,
+    isSpeaking,
+    isVoxSpeaking,
+    startCall: toggleCall,
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -130,6 +140,12 @@ export default function App() {
         callError={callError}
         onToggleCall={() => void toggleCall()}
         collections={[]}
+      />
+      <PlanReadyPrompt
+        plan={announcer.prompt}
+        onTellMe={announcer.tellMe}
+        onView={announcer.view}
+        onDismiss={announcer.dismiss}
       />
     </main>
   );

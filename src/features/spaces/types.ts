@@ -26,6 +26,7 @@ export type SpaceMessage = Omit<Required<S["SpaceMessage"]>, "role"> & {
 
 export type Space = Omit<Required<S["Space"]>, "agent_spec"> & {
   agent_spec: AgentSpec | Record<string, unknown>;
+  project_id: string | null;
 };
 
 export type SpaceNode = Omit<Required<S["SpaceNode"]>, "data" | "position"> & {

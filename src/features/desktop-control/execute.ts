@@ -3,6 +3,7 @@ import { platform } from "@/platform";
 import { desktopStore } from "./store";
 import type { AppCommand, DesktopPage } from "./types";
 import { resolveTimelineFilter } from "@/features/timeline/filters";
+import { projectsApi } from "@/features/projects/api";
 import { spacesApi } from "@/features/spaces/api";
 import { timelineApi } from "@/features/timeline/api";
 import { discoveryApi } from "@/features/pulse/api";
@@ -13,6 +14,7 @@ const pages = new Set([
   "timeline",
   "pulse",
   "spaces",
+  "projects",
   "connections",
   "updates",
 ]);
@@ -40,6 +42,11 @@ export async function executeDesktopCommand(
         if (!pages.has(page)) throw new Error("Unsupported page");
         const spaceId = typeof args.spaceId === "string" ? args.spaceId : null;
         const pulseId = typeof args.pulseId === "string" ? args.pulseId : null;
+        const projectId =
+          page === "projects" && typeof args.projectId === "string"
+            ? args.projectId
+            : null;
+        if (projectId) await projectsApi.get(projectId);
         if (spaceId) await spacesApi.getSpace(spaceId);
         if (pulseId)
           await platform().http.request({
@@ -50,12 +57,13 @@ export async function executeDesktopCommand(
           page: page as DesktopPage,
           spaceId,
           pulseId,
+          projectId,
           selectedItemId: null,
         });
         await new Promise<void>((resolve) =>
           requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         );
-        output = { page, spaceId, pulseId };
+        output = { page, spaceId, pulseId, projectId };
         break;
       }
       case "terminal_panel":

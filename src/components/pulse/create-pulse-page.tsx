@@ -19,7 +19,7 @@ export function CreatePulsePage({
     <PulseShell
       scroll={mode === "suggestions"}
       glow
-      label="Create a Pulse chart"
+      label="Create an Insights chart"
       header={
         <>
           <div className="flex items-center gap-2 text-sm">

@@ -3,7 +3,7 @@ type S = components["schemas"];
 export type Bucket = S["Bucket"];
 export type PulseDefinition = Omit<
   Required<S["PulseDefinition"]>,
-  "version" | "offset_days" | "top_n"
+  "version" | "offset_days" | "top_n" | "compare_with"
 > & {
   version: 2;
   offset_days?: number;
@@ -43,4 +43,6 @@ export type DiscoveryResponse = Omit<
   Required<S["DiscoveryResponse"]>,
   "suggestions"
 > & { suggestions: PulseSuggestion[] };
-export type CanvasResponse = Omit<Required<S["CanvasResponse"]>, "charts"> & { charts: SavedPulseChart[] };
+export type CanvasResponse = Omit<Required<S["CanvasResponse"]>, "charts"> & {
+  charts: SavedPulseChart[];
+};

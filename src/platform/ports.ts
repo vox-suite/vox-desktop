@@ -1,3 +1,4 @@
+import type { ProjectLocalPort } from "@/features/projects/types";
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type HttpRequest = {
@@ -52,6 +53,7 @@ export interface CachePort {
 }
 
 export interface Platform {
+  projects?: ProjectLocalPort;
   cache?: CachePort;
   wiz?: WizPort;
   browser?: BrowserPort;

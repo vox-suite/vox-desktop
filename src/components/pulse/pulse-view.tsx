@@ -53,7 +53,7 @@ export function PulseView() {
               <Activity className="size-[18px] text-[#3ecf8e]" />
             </span>
             <div className="leading-tight">
-              <h1 className="text-base font-semibold tracking-tight">Pulse</h1>
+              <h1 className="text-base font-semibold tracking-tight">Insights</h1>
               <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
                 {empty
                   ? "No charts yet"

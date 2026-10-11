@@ -27,11 +27,15 @@ export const spacesApi = {
       method: "GET",
       path: `/v1/me/spaces/${id}`,
     }),
-  createSpace: (intent: string) =>
+  createSpace: (intent: string, projectId?: string) =>
     platform().http.request<Space>({
       method: "POST",
       path: "/v1/me/spaces",
-      body: { intent, title: intent.split(/\s+/).slice(0, 5).join(" ") },
+      body: {
+        intent,
+        title: intent.split(/\s+/).slice(0, 5).join(" "),
+        project_id: projectId ?? null,
+      },
       timeoutMs: CREATE_TIMEOUT_MS,
     }),
   dropSpace: (id: string) =>

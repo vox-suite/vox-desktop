@@ -1,7 +1,7 @@
+import { PlanProjectLink } from "@/components/projects/plan-project-link";
 import {
   ArrowLeft,
   CheckCircle2,
-  Compass,
   Flag,
   MessageSquare,
   RotateCw,
@@ -22,6 +22,7 @@ export function SpaceCanvasHeader({
   onRetryNode,
   onToggleChat,
   onOpenCommitDialog,
+  progress,
 }: {
   graph: SpaceGraph;
   loading: boolean;
@@ -34,51 +35,87 @@ export function SpaceCanvasHeader({
   onRetryNode: () => void;
   onToggleChat: () => void;
   onOpenCommitDialog: () => void;
+  progress: { done: number; total: number };
 }) {
   const isCommitted = graph.space.state === "committed";
 
+  const running = graph.space.run_state === "running";
+  const segments = Math.min(progress.total, 14);
+  const filled = progress.total
+    ? Math.round((progress.done / progress.total) * segments)
+    : 0;
+
   return (
-    <PageHeader className="z-10 flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 backdrop-blur-md sm:px-5 sm:py-3">
+    <PageHeader className="z-10 flex h-16 items-center justify-between gap-3 border-b border-border bg-background px-4 py-0 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={onBack}
-          className="text-muted-foreground hover:text-foreground p-1.5 h-8 w-8"
+          aria-label="Back to Plans"
+          className="size-8 rounded-xl text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="size-4" />
         </Button>
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Compass className="h-4 w-4 text-foreground" />
-            <h1 className="truncate text-base font-bold text-foreground">
+          <div className="flex items-center gap-2.5">
+            <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
               {graph.space.title}
             </h1>
             <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+              className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
                 isCommitted
-                  ? "border-border bg-muted text-muted-foreground"
-                  : "border-ring bg-primary/10 text-foreground"
+                  ? "bg-white/[0.06] text-muted-foreground"
+                  : "bg-[#f5b83d]/15 text-[#f5d48a]"
               }`}
             >
               {graph.space.state}
             </span>
-            {graph.space.run_state === "running" && (
-              <span className="flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
-                <RotateCw className="h-2.5 w-2.5 animate-spin" />
-                running
+            {running && (
+              <span className="flex items-center gap-1.5 text-[10px] font-mono text-[#f5d48a]">
+                <span className="size-1.5 animate-pulse rounded-full bg-[#f5b83d]" />
+                live
               </span>
             )}
             {loading && (
-              <RotateCw className="h-3 w-3 animate-spin text-muted-foreground" />
+              <RotateCw className="size-3 animate-spin text-muted-foreground" />
             )}
           </div>
+          {progress.total > 0 && (
+            <div
+              className="mt-1.5 flex items-center gap-2"
+              aria-label={`${progress.done} of ${progress.total} steps done`}
+            >
+              <div className="flex gap-[3px]">
+                {Array.from({ length: segments }, (_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1 w-3.5 rounded-full ${i < filled ? "bg-[#4ade80]" : "bg-white/10"}`}
+                  />
+                ))}
+              </div>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {progress.done}/{progress.total}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {graph.space.run_state === "running" && (
-          <Button variant="outline" size="sm" onClick={onStop}>
+        <PlanProjectLink
+          key={graph.space.id}
+          planId={graph.space.id}
+          projectId={graph.space.project_id}
+          running={running}
+        />
+        {running && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onStop}
+            className="rounded-xl"
+          >
             Stop
           </Button>
         )}
@@ -89,24 +126,28 @@ export function SpaceCanvasHeader({
                 ?.status,
             ),
           ) && (
-            <Button variant="outline" size="sm" onClick={onRetryNode}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRetryNode}
+              className="rounded-xl"
+            >
               Retry node
             </Button>
           )}
-
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={onToggleChat}
-          className="h-8 w-8 p-1.5 text-muted-foreground hover:text-foreground"
+          className="size-8 rounded-xl text-muted-foreground hover:text-foreground"
           title={chatOpen ? "Hide chat" : "Show chat"}
           aria-label={chatOpen ? "Hide chat" : "Show chat"}
         >
-          <MessageSquare className="h-4 w-4" />
+          <MessageSquare className="size-4" />
         </Button>
         {isCommitted ? (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted border border-border px-3 py-1.5 rounded-lg">
-            <CheckCircle2 className="h-4 w-4" />
+          <div className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            <CheckCircle2 className="size-4" />
             <span className="hidden sm:inline">Committed to Timeline</span>
             <span className="sm:hidden">Committed</span>
           </div>
@@ -115,12 +156,12 @@ export function SpaceCanvasHeader({
             onClick={onOpenCommitDialog}
             disabled={committing || !canCommit}
             size="sm"
-            className="bg-muted hover:bg-muted text-foreground font-medium gap-1.5 text-xs shadow-sm"
+            className="gap-1.5 rounded-xl bg-[#f5b83d] text-xs font-medium text-black hover:bg-[#f8c75e] disabled:bg-white/10 disabled:text-muted-foreground"
           >
             {committing ? (
-              <RotateCw className="h-3.5 w-3.5 animate-spin" />
+              <RotateCw className="size-3.5 animate-spin" />
             ) : (
-              <Flag className="h-3.5 w-3.5" />
+              <Flag className="size-3.5" />
             )}
             <span className="hidden sm:inline">Commit to Timeline</span>
             <span className="sm:hidden">Commit</span>

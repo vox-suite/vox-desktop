@@ -6,6 +6,7 @@ import {
   ChevronsUpDown,
   GanttChart,
   Workflow,
+  Folder,
   LogOut,
   Plug,
   Terminal,
@@ -58,8 +59,9 @@ const CONTROLS = [
 const NAV_ITEMS = [
   { id: "agent", label: "Home", icon: House },
   { id: "timeline", label: "Timeline", icon: GanttChart },
-  { id: "spaces", label: "Spaces", icon: Workflow },
-  { id: "pulse", label: "Pulse", icon: Activity },
+  { id: "spaces", label: "Plans", icon: Workflow },
+  { id: "projects", label: "Projects", icon: Folder },
+  { id: "pulse", label: "Insights", icon: Activity },
   { id: "updates", label: "Updates", icon: Bell },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
 

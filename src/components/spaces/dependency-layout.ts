@@ -75,9 +75,18 @@ export function dependencyLayout(nodes: SpaceNode[], edges: SpaceEdge[]) {
     string,
     { x: number; y: number; central: boolean }
   >();
+  const treeOf = new Map<string, number>();
+  let trees = 0;
+  for (const node of ordered) {
+    const first = [...parents.get(node.id)!][0];
+    treeOf.set(
+      node.id,
+      first !== undefined && treeOf.has(first) ? treeOf.get(first)! : trees++,
+    );
+  }
   for (const rank of [...byRank.keys()].sort((a, b) => a - b)) {
     const layer = byRank.get(rank)!;
-    const pull = (node: SpaceNode) => {
+    const desired = (node: SpaceNode) => {
       const known = [...parents.get(node.id)!]
         .map((id) => positions.get(id)?.y)
         .filter((y): y is number => y !== undefined);
@@ -85,19 +94,28 @@ export function dependencyLayout(nodes: SpaceNode[], edges: SpaceEdge[]) {
         ? known.reduce((sum, y) => sum + y, 0) / known.length
         : 0;
     };
-    layer.sort((a, b) => pull(a) - pull(b));
-    const heights = layer.map(estimateNodeHeight);
-    const total =
-      heights.reduce((sum, h) => sum + h, 0) + (layer.length - 1) * ROW_GAP;
-    let y = -total / 2;
-    layer.forEach((node, index) => {
+    const want = new Map(layer.map((node) => [node.id, desired(node)]));
+    layer.sort(
+      (a, b) =>
+        treeOf.get(a.id)! - treeOf.get(b.id)! ||
+        want.get(a.id)! - want.get(b.id)!,
+    );
+    let floor = -Infinity;
+    for (const node of layer) {
+      const height = estimateNodeHeight(node);
+      const y =
+        rank === 0
+          ? floor === -Infinity
+            ? 0
+            : floor
+          : Math.max(want.get(node.id)!, floor);
       positions.set(node.id, {
         x: rank * (NODE_WIDTH + COLUMN_GAP),
         y,
         central: node.kind === "goal",
       });
-      y += heights[index] + ROW_GAP;
-    });
+      floor = y + height + ROW_GAP;
+    }
   }
   return { positions, cyclic };
 }

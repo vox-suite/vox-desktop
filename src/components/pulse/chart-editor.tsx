@@ -114,7 +114,7 @@ export function ChartEditor({
   }
   return (
     <div className="pulse-editor">
-      <label className="block space-y-1 text-xs">
+      <label className="block plan-y-1 text-xs">
         <span>Chart name</span>
         <Input
           value={title}

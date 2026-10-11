@@ -12,6 +12,7 @@ mod local_voice;
 #[cfg(target_os = "macos")]
 mod macos_location;
 mod pkce;
+mod projects;
 mod session;
 mod session_store;
 mod sync_client;
@@ -124,6 +125,16 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            projects::project_engine_status,
+            projects::project_install_engine,
+            projects::project_pick_sources,
+            projects::project_local_sources,
+            projects::project_index_source,
+            projects::project_graph,
+            projects::project_retrieve,
+            projects::project_read_source,
+            projects::project_check_sources,
+            projects::project_remove_source,
             device_cache::cache_read,
             device_cache::cache_write,
             device_cache::cache_clear,

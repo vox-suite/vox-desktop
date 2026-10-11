@@ -66,7 +66,10 @@
     ],
     "macOS": {
       "entitlements": "Entitlements.plist"
-    }
+    },
+    "resources": [
+      "licenses/code-graph-mcp-MIT.txt"
+    ]
   },
   "plugins": {
     "deep-link": {

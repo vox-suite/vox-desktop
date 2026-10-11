@@ -284,7 +284,7 @@ export function PulseChartCard({
               No recorded values in this period
             </div>
           ) : isStat && statValue !== null ? (
-            <div className="flex flex-col items-center justify-center text-center space-y-2 py-4">
+            <div className="flex flex-col items-center justify-center text-center plan-y-2 py-4">
               <p className="font-mono text-5xl tracking-tight">
                 {formatTotal(statValue, result?.unit ?? "").text}
                 <span className="ml-2 text-xl text-[#d4dad6]">

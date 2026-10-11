@@ -1,3 +1,5 @@
+import { useProjectOptions } from "@/features/projects/use-project-options";
+import { useVisionDictation } from "@/hooks/use-vision-dictation";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import {
@@ -38,6 +40,11 @@ export function SpacesView() {
     desktopStore.patch({ spaceId, selectedItemId: null });
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [intent, setIntent] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const projectOptions = useProjectOptions(showCreateDialog);
+  const dictation = useVisionDictation((text) =>
+    setIntent((value) => `${value}${value ? " " : ""}${text}`),
+  );
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -49,7 +56,8 @@ export function SpacesView() {
     setCreating(true);
     setCreateError("");
     try {
-      const created = await create(intent.trim());
+      dictation.stop();
+      const created = await create(intent.trim(), projectId || undefined);
       setIntent("");
       setShowCreateDialog(false);
       setSelectedSpaceId(created.id);
@@ -83,7 +91,7 @@ export function SpacesView() {
       <div className="flex h-full w-full items-center justify-center bg-background text-muted-foreground">
         <div className="flex flex-col items-center gap-3">
           <RotateCw className="h-8 w-8 animate-spin text-foreground" />
-          <span className="text-xs text-muted-foreground">Loading space…</span>
+          <span className="text-xs text-muted-foreground">Loading plan…</span>
         </div>
       </div>
     );
@@ -91,6 +99,7 @@ export function SpacesView() {
 
   const openCreate = () => {
     setCreateError("");
+    setProjectId("");
     setShowCreateDialog(true);
   };
   const stateDot = (state: string, running: boolean) =>
@@ -104,7 +113,7 @@ export function SpacesView() {
             <Workflow className="size-[18px]" />
           </span>
           <div className="leading-tight">
-            <h1 className="text-base font-semibold tracking-tight">Spaces</h1>
+            <h1 className="text-base font-semibold tracking-tight">Plans</h1>
             <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
               {spaces.length === 0
                 ? "Nothing here yet"
@@ -169,7 +178,7 @@ export function SpacesView() {
                       }}
                       className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
                       aria-label={`Drop ${sp.title}`}
-                      title="Drop Space"
+                      title="Abandon plan"
                     >
                       <Trash2 />
                     </Button>
@@ -239,6 +248,41 @@ export function SpacesView() {
                 />
               </div>
 
+              <label className="grid gap-2 text-xs">
+                Attach to project (optional)
+                <select
+                  aria-label="Attach to project"
+                  className="h-9 rounded-lg border bg-background px-3 text-sm"
+                  disabled={creating}
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                >
+                  <option value="">Standalone plan</option>
+                  {projectOptions.projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {projectOptions.error && (
+                <p className="text-xs text-destructive">
+                  {projectOptions.error}
+                </p>
+              )}
+              {dictation.error && (
+                <p className="text-xs text-destructive">{dictation.error}</p>
+              )}
+              {dictation.available && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={dictation.toggle}
+                >
+                  {dictation.listening ? "Stop dictation" : "Dictate vision"}
+                </Button>
+              )}
               <div className="flex items-center justify-end gap-2 pt-1">
                 <Button
                   type="button"
@@ -260,7 +304,7 @@ export function SpacesView() {
                   ) : (
                     <Sparkles className="h-3.5 w-3.5" />
                   )}
-                  <span>Create Space</span>
+                  <span>Create plan</span>
                 </Button>
               </div>
             </form>
