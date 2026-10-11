@@ -1,11 +1,3 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { useCallback, useEffect, useState } from "react";
 import {
   FolderPlus,
@@ -27,7 +19,6 @@ import type {
   LocalSource,
   IndexResult,
   SourceChanges,
-  ProjectExcerpt,
 } from "@/features/projects/types";
 export function ProjectSources({
   project,
@@ -37,7 +28,7 @@ export function ProjectSources({
   onRemove,
   onExplore,
   onImported,
-  onUnderstand,
+  onStatus,
 }: {
   project: Project;
   busy: boolean;
@@ -46,26 +37,27 @@ export function ProjectSources({
   onRemove: (id: string) => Promise<void>;
   onExplore: (id: string) => void;
   onImported?: () => void;
-  onUnderstand: (id: string, excerpts: ProjectExcerpt[]) => Promise<void>;
+  onStatus?: (status: string) => void;
 }) {
   const [sources, setSources] = useState<LocalSource[]>([]);
   const [installed, setInstalled] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [brief, setBrief] = useState<{
-    sourceId: string;
-    excerpts: ProjectExcerpt[];
-  } | null>(null);
-  const [budget, setBudget] = useState(24000);
-  const candidates = brief?.excerpts ?? [];
-  const bounded = candidates.flatMap((e, index) => {
-    const previous = candidates
-      .slice(0, index)
-      .reduce((total, item) => total + item.text.length, 0);
-    const text = e.text.slice(0, Math.max(0, budget - previous));
-    return text ? [{ ...e, text }] : [];
-  });
+  useEffect(() => {
+    onStatus?.(status);
+  }, [status, onStatus]);
+  const [completed, setCompleted] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!status) return;
+    const start = Date.now();
+    const timer = setInterval(
+      () => setElapsed(Math.floor((Date.now() - start) / 1000)),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [status]);
   const reload = useCallback(async () => {
     if (!platform().projects) return;
     const [local, engine] = await Promise.all([
@@ -90,6 +82,8 @@ export function ProjectSources({
   const run = async (fn: () => Promise<void>) => {
     setError("");
     setWarnings([]);
+    setCompleted("");
+    setElapsed(0);
     try {
       await fn();
     } catch (e) {
@@ -111,6 +105,7 @@ export function ProjectSources({
     setStatus(`Indexing ${source?.label ?? "source"} locally…`);
     const result = await onIndex(id);
     setWarnings((old) => [...old, ...result.warnings]);
+    setCompleted("Index refreshed. Ready to build a plan.");
   };
   const add = async (kind: "folder" | "file") => {
     setStatus("Choose sources…");
@@ -125,7 +120,12 @@ export function ProjectSources({
       const result = await onIndex(s.id);
       setWarnings((old) => [...old, ...result.warnings]);
     }
-    if (newSources.length) onImported?.();
+    if (newSources.length) {
+      setCompleted(
+        `${newSources.length} ${newSources.length === 1 ? "source" : "sources"} imported. Indexing complete — ready to build a plan.`,
+      );
+      onImported?.();
+    }
   };
   const all = [
     ...project.data.sources,
@@ -143,78 +143,6 @@ export function ProjectSources({
   ];
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <Dialog
-        open={!!brief}
-        onOpenChange={(open) => {
-          if (!open && !status) setBrief(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Understand this source</DialogTitle>
-            <DialogDescription>
-              Vox will make one model request using these local excerpts and
-              existing context. Review the scope before sharing. Model pricing
-              depends on the configured provider.
-            </DialogDescription>
-          </DialogHeader>
-          <ul className="space-y-2 text-xs">
-            {bounded.map((e, i) => (
-              <li key={i}>
-                {e.citation.path}:{e.citation.start_line}–{e.citation.end_line}{" "}
-                ({e.text.length.toLocaleString()} characters)
-              </li>
-            ))}
-          </ul>
-          <label className="grid gap-2 text-xs">
-            Maximum source characters
-            <Input
-              type="number"
-              min={1000}
-              max={24000}
-              step={1000}
-              value={budget}
-              onChange={(e) =>
-                setBudget(
-                  Math.max(
-                    1000,
-                    Math.min(24000, Number(e.target.value) || 1000),
-                  ),
-                )
-              }
-            />
-          </label>
-          <p className="text-xs text-muted-foreground">
-            {bounded
-              .reduce((sum, e) => sum + e.text.length, 0)
-              .toLocaleString()}{" "}
-            source characters will be shared (roughly{" "}
-            {Math.ceil(
-              bounded.reduce((sum, e) => sum + e.text.length, 0) / 4,
-            ).toLocaleString()}{" "}
-            source tokens; context and reply are additional). Files and the full
-            index stay local.
-          </p>
-          {error && (
-            <p role="alert" className="text-xs text-destructive">
-              {error}
-            </p>
-          )}
-          <Button
-            disabled={busy || !!status || !bounded.length}
-            onClick={() =>
-              void run(async () => {
-                if (!brief) return;
-                setStatus("Understanding source…");
-                await onUnderstand(brief.sourceId, bounded);
-                setBrief(null);
-              })
-            }
-          >
-            Share excerpts and understand
-          </Button>
-        </DialogContent>
-      </Dialog>
       <div className="project-sources-heading">
         <div>
           <h2 className="text-xl font-medium tracking-tight">
@@ -258,7 +186,18 @@ export function ProjectSources({
           className="mt-5 flex items-center gap-2 rounded-lg border p-3 text-xs"
         >
           <Loader2 className="size-3.5 animate-spin" />
-          {status}
+          <span>
+            <strong className="block font-medium">{status}</strong>
+            <span className="mt-1 block text-muted-foreground">
+              {elapsed}s elapsed · Keep this project open. Large folders may
+              take a few minutes.
+            </span>
+          </span>
+        </p>
+      )}
+      {completed && !status && (
+        <p role="status" className="mt-5 rounded-lg border p-4 text-sm">
+          {completed}
         </p>
       )}
       {error && (
@@ -337,31 +276,6 @@ export function ProjectSources({
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  {local && s.indexed_at && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busy || !!status}
-                      onClick={() =>
-                        void run(async () => {
-                          setStatus("Reading project briefs for Vox…");
-                          const excerpts = await localProjects().retrieve(
-                            project.id,
-                            "",
-                            s.id,
-                            true,
-                          );
-                          if (!excerpts.length)
-                            throw new Error(
-                              "No project briefs found. Inspect code and include relevant excerpts in ideation instead.",
-                            );
-                          setBrief({ sourceId: s.id, excerpts });
-                        })
-                      }
-                    >
-                      Understand source
-                    </Button>
-                  )}
                   {local && s.indexed_at && (
                     <Button
                       size="icon-sm"
@@ -453,9 +367,8 @@ export function ProjectSources({
       )}
       <p className="mt-4 text-[11px] leading-5 text-muted-foreground">
         Structural indexing uses no model calls. Project summaries and citations
-        sync to Vox. File excerpts go to the model only when you explicitly
-        include them in ideation. Source changes are checked while this project
-        is open.
+        sync to Vox and guide your Plans. Raw files stay on this device. Source
+        changes are checked while this project is open.
       </p>
     </div>
   );

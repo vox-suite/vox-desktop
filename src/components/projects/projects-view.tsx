@@ -25,7 +25,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { projectsApi } from "@/features/projects/api";
-import { initialData, templates } from "@/features/projects/context";
+import { initialData } from "@/features/projects/context";
 import type { Project } from "@/features/projects/types";
 import { platform } from "@/platform";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
@@ -42,7 +42,6 @@ export function ProjectsView() {
   const [mode, setMode] = useState<"import" | "new" | null>(null);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
-  const [template, setTemplate] = useState("engineering");
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [initialTab, setInitialTab] = useState("context");
@@ -85,10 +84,7 @@ export function ProjectsView() {
     setCreating(true);
     setError("");
     try {
-      const p = await projectsApi.create(
-        name.trim(),
-        initialData(template, notes),
-      );
+      const p = await projectsApi.create(name.trim(), initialData(notes));
       setMode(null);
       setInitialTab(mode === "import" ? "sources" : "context");
       desktopStore.patch({
@@ -201,8 +197,8 @@ export function ProjectsView() {
                     Start with an idea
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Open an ideation panel. Work through the possibilities, save
-                    decisions, and build a Plan when ready.
+                    Start with a clean canvas. Describe what you want to build,
+                    and create a Plan when you’re ready.
                   </p>
                   <span className="mt-5 flex items-center gap-2 text-xs">
                     New project
@@ -303,27 +299,13 @@ export function ProjectsView() {
               />
             </label>
             <label className="grid gap-2 text-xs">
-              Starting point
-              <select
-                className="h-9 rounded-lg border bg-background px-3 text-sm"
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
-              >
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-xs">
               Vision or notes
               <Textarea
                 maxLength={12000}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
-                placeholder={templates.find((t) => t.id === template)?.prompt}
+                placeholder="Optional project notes"
               />
             </label>
             {error && (
@@ -345,7 +327,7 @@ export function ProjectsView() {
                   ? "Creating project…"
                   : mode === "import"
                     ? "Choose sources"
-                    : "Start ideating"}
+                    : "Create project"}
               </Button>
             </div>
           </form>

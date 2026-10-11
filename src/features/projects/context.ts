@@ -1,46 +1,8 @@
 import type { ContextNode, Project, ProjectData } from "./types";
-export const templates = [
-  {
-    id: "engineering",
-    label: "Engineering",
-    prompt: "What are you building, and what should it make easier?",
-  },
-  {
-    id: "launch",
-    label: "Launch",
-    prompt: "Who is this for, and what do you want to launch?",
-  },
-  {
-    id: "3d-print",
-    label: "3D print",
-    prompt: "What do you want to make, and what constraints matter?",
-  },
-  {
-    id: "general",
-    label: "Something else",
-    prompt: "What would you like to explore?",
-  },
-];
-export function initialData(template: string, notes: string): ProjectData {
+export function initialData(notes: string): ProjectData {
   const at = new Date().toISOString();
-  const topics: Record<string, string[]> = {
-    engineering: ["Architecture", "Data flow"],
-    launch: ["Audience", "Channels", "Timeline"],
-    "3d-print": ["Model", "Material", "Print settings"],
-  };
-  const questions: ContextNode[] = (topics[template] ?? []).map((title) => ({
-    id: crypto.randomUUID(),
-    kind: "question",
-    title,
-    body: `What should we establish about ${title.toLowerCase()} for this project?`,
-    origin: "inferred",
-    stale: false,
-    citations: [],
-    history: [],
-    updated_at: at,
-  }));
   const data: ProjectData = {
-    template,
+    template: "general",
     notes,
     nodes: notes.trim()
       ? [
@@ -61,7 +23,7 @@ export function initialData(template: string, notes: string): ProjectData {
     messages: [],
     activity: [{ id: crypto.randomUUID(), text: "Project created", at }],
   };
-  data.nodes.push(...questions);
+
   return data;
 }
 export function activity(p: Project, text: string): Project {

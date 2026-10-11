@@ -80,10 +80,6 @@
 .project-origin.user {
   background: #aeb8ae;
 }
-.project-ideation {
-  width: clamp(300px, 29vw, 390px);
-  flex-shrink: 0;
-}
 .project-sources-heading {
   display: flex;
   flex-direction: column;
@@ -133,55 +129,19 @@
   overflow-wrap: anywhere;
   color: var(--muted-foreground);
 }
-.project-ideation-welcome {
-  padding: 24px 4px;
-}
-.project-ideation-icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 24px;
-  background: var(--muted);
-  border-radius: 14px;
-}
-.project-ideation-prompts {
-  display: grid;
-  gap: 8px;
-  margin-top: 28px;
-}
-.project-ideation-prompts button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+.project-build-composer {
+  width: min(760px, calc(100% - 48px));
+  margin: 16px auto 24px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  text-align: left;
-  font-size: 12px;
+  border-radius: 12px;
   background: var(--card);
 }
-.project-ideation-prompts button:hover {
-  background: var(--muted);
-}
-.project-ideation-prompts button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.project-ideation-prompts button:disabled {
-  opacity: 0.5;
-}
-@media (max-width: 900px) {
-  .project-ideation {
-    position: absolute;
-    top: 64px;
-    right: 0;
-    bottom: 0;
-    z-index: 20;
-    width: min(360px, 95%);
-    box-shadow: -12px 0 24px #0003;
-  }
+.project-build-composer textarea {
+  border: 0;
+  box-shadow: none;
+  resize: none;
+  margin-bottom: 8px;
 }
 @media (prefers-reduced-motion: reduce) {
   .project-entry {

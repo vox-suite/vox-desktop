@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Folder,
-  MessageSquare,
   Plus,
   Workflow,
   RefreshCw,
@@ -31,7 +30,6 @@ import type { Citation, ContextNode, Project } from "@/features/projects/types";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { desktopStore } from "@/features/desktop-control/store";
-import { ProjectChat } from "./project-chat";
 import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
@@ -50,8 +48,7 @@ export function ProjectDetail({
   const state = useProject(id);
   const p = state.project;
   const [tab, setTab] = useState(initialTab);
-  const [chatOpen, setChatOpen] = useState(true);
-  const [selected, setSelected] = useState<ContextNode | null>(null);
+  const [importStatus, setImportStatus] = useState("");
   const [editing, setEditing] = useState<ContextNode | null>(null);
   const [explorer, setExplorer] = useState<string | null>(null);
   const [citation, setCitation] = useState<Citation | null>(null);
@@ -116,48 +113,6 @@ export function ProjectDetail({
         `Updated context: ${node.title}`,
       ),
     );
-    setSelected(node);
-  };
-  const accept = async (n: ContextNode, messageId: string) => {
-    await state.save((p) =>
-      activity(
-        {
-          ...p,
-          data: {
-            ...p.data,
-            nodes: replaceNode(p.data.nodes, {
-              ...n,
-              stale:
-                n.stale ||
-                n.citations.some(
-                  (c) =>
-                    !!state.changes[c.source_id]?.unavailable ||
-                    !!state.changes[c.source_id]?.files?.includes(c.path),
-                ),
-            }),
-            messages: p.data.messages.map((m) =>
-              m.id === messageId
-                ? { ...m, proposals: m.proposals.filter((o) => o.id !== n.id) }
-                : m,
-            ),
-          },
-        },
-        `Accepted context: ${n.title}`,
-      ),
-    );
-  };
-  const dismiss = async (nodeId: string, messageId: string) => {
-    await state.save((p) => ({
-      ...p,
-      data: {
-        ...p.data,
-        messages: p.data.messages.map((m) =>
-          m.id === messageId
-            ? { ...m, proposals: m.proposals.filter((n) => n.id !== nodeId) }
-            : m,
-        ),
-      },
-    }));
   };
   const removeSource = async (sourceId: string) => {
     await state.save((p) =>
@@ -229,8 +184,6 @@ export function ProjectDetail({
         </PageBody>
       </PageContainer>
     );
-  const selectedCurrent =
-    p.data.nodes.find((n) => n.id === selected?.id) ?? selected;
   const tabs = [
     { id: "context", label: "Context" },
     { id: "plans", label: "Plans" },
@@ -245,6 +198,7 @@ export function ProjectDetail({
             variant="ghost"
             size="icon-sm"
             aria-label="Back to projects"
+            disabled={!!importStatus}
             onClick={onBack}
           >
             <ArrowLeft className="size-4" />
@@ -294,12 +248,6 @@ export function ProjectDetail({
             <Plus className="size-3.5" />
             New plan
           </Button>
-          {!chatOpen && (
-            <Button size="sm" variant="ghost" onClick={() => setChatOpen(true)}>
-              <MessageSquare className="size-3.5" />
-              Ideate
-            </Button>
-          )}
         </div>
       </PageHeader>
       <div className="flex min-h-0 flex-1">
@@ -313,6 +261,7 @@ export function ProjectDetail({
               <button
                 key={t.id}
                 role="tab"
+                disabled={!!importStatus && tab !== t.id}
                 aria-selected={tab === t.id}
                 aria-controls={`project-${t.id}`}
                 className={`h-full border-b-2 text-xs ${tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -370,7 +319,6 @@ export function ProjectDetail({
               <ProjectContext
                 project={p}
                 onSelect={(n) => {
-                  setSelected(n);
                   setEditing(n);
                 }}
                 onSource={(id) => setExplorer(id)}
@@ -382,15 +330,9 @@ export function ProjectDetail({
                 busy={state.busy}
                 changes={state.changes}
                 onIndex={state.index}
+                onStatus={setImportStatus}
                 onRemove={removeSource}
                 onExplore={setExplorer}
-                onUnderstand={async (_sourceId, excerpts) => {
-                  setChatOpen(true);
-                  await state.chat(
-                    "Use these project manifests and documents to explain the architecture, goals, and constraints. Propose a small set of useful project context nodes with exact citations. Preserve unknowns; manifest dependencies alone do not prove runtime behavior.",
-                    excerpts,
-                  );
-                }}
               />
             )}
             {tab === "activity" && (
@@ -437,7 +379,7 @@ export function ProjectDetail({
                       Choose a direction when you’re ready.
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Ideate first, then turn a goal into a Plan.
+                      Describe what you want to build to start a Plan.
                     </p>
                   </div>
                 ) : (
@@ -477,11 +419,10 @@ export function ProjectDetail({
                                   throw new Error(
                                     "This plan has no completed final output yet.",
                                   );
-                                setChatOpen(true);
-                                await state.chat(
-                                  `Review this completed Plan and propose useful updates to our project context. Keep decisions as proposals until I accept them. Plan: ${s.title}\n${final.body}`,
-                                  [],
+                                setIntent(
+                                  `Review the findings from ${s.title} and plan the next iteration.\n${final.body}`,
                                 );
+                                setNewPlan(true);
                               })
                             }
                           >
@@ -495,18 +436,44 @@ export function ProjectDetail({
               </div>
             )}
           </PageBody>
+          {tab === "context" && (
+            <form
+              className="project-build-composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void createPlan();
+              }}
+            >
+              <Textarea
+                aria-label="What do you want to build?"
+                placeholder="What do you want to build? For example, design the voice pipeline architecture…"
+                value={intent}
+                maxLength={12000}
+                onChange={(e) => setIntent(e.target.value)}
+                rows={2}
+                disabled={creating}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTab("sources")}
+                >
+                  <Folder className="size-3.5" />
+                  Add files or folders
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={state.busy || creating || !intent.trim()}
+                >
+                  {creating ? "Starting plan…" : "Build a plan"}
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
-        {chatOpen && (
-          <ProjectChat
-            project={p}
-            busy={state.busy}
-            onSend={state.chat}
-            onAccept={accept}
-            onDismiss={dismiss}
-            selected={selectedCurrent}
-            onClose={() => setChatOpen(false)}
-          />
-        )}
       </div>
       {editing && (
         <ContextEditor
@@ -547,7 +514,6 @@ export function ProjectDetail({
                 `Removed context: ${editing.title}`,
               ),
             );
-            setSelected(null);
           }}
           onRead={setCitation}
         />
@@ -700,11 +666,13 @@ export function ProjectCard({
         <div className="min-w-0">
           <h2 className="text-sm font-medium">{project.name}</h2>
           <p className="mt-1.5 line-clamp-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-            {project.data.notes || "Open to ideate and build context"}
+            {project.data.notes ||
+              "Add sources and describe what you want to build"}
           </p>
           <p className="mt-2 text-[11px] text-muted-foreground">
             {project.data.sources.length} sources ·{" "}
-            {project.data.template || "General"}
+            {project.data.nodes.filter((n) => n.origin !== "extracted").length}{" "}
+            saved decisions
           </p>
         </div>
       </div>

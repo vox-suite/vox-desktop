@@ -125,6 +125,24 @@ export function ProjectContext({
         label: sourceId ? "contains" : "context",
       });
     }
+    if (!sourceId) {
+      const meaningful = context.filter(
+        (n) =>
+          !(
+            n.kind === "question" &&
+            n.origin === "inferred" &&
+            !n.citations.length &&
+            n.body ===
+              `What should we establish about ${n.title.toLowerCase()} for this project?`
+          ),
+      );
+      const ids = new Set(meaningful.map((n) => n.id));
+      if (!ids.size) return { nodes: [], edges: [] };
+      return {
+        nodes: nodes.filter((n) => n.id === rootId || ids.has(n.id)),
+        edges: edges.filter((e) => ids.has(e.target)),
+      };
+    }
     return { nodes, edges };
   }, [project, sourceId, search]);
   return (
@@ -186,10 +204,10 @@ export function ProjectContext({
         <Background color="#33353a" gap={22} />
         <Controls showInteractive={false} />
       </ReactFlow>
-      {project.data.nodes.length === 0 && project.data.sources.length === 0 && (
+      {graph.nodes.length === 0 && (
         <div className="pointer-events-none absolute bottom-16 left-6 right-6 text-center text-sm text-muted-foreground">
           <FileText className="mx-auto mb-2 size-5" />
-          Start ideating or add sources to build your project context.
+          Add sources, then describe what you want to build below.
         </div>
       )}
       <div className="absolute bottom-3 left-4 flex gap-3 text-[11px] text-muted-foreground pointer-events-none">
