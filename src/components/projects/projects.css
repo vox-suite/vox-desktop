@@ -148,3 +148,12 @@
     transition: none;
   }
 }
+.project-flow-card {
+  width: 270px;
+  max-height: 310px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  background: var(--card);
+}

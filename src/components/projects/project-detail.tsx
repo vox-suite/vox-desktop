@@ -30,6 +30,7 @@ import type { Citation, ContextNode, Project } from "@/features/projects/types";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { desktopStore } from "@/features/desktop-control/store";
+import { ProjectFlowCanvas } from "./project-flow";
 import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
@@ -55,6 +56,8 @@ export function ProjectDetail({
   const [newPlan, setNewPlan] = useState(false);
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
+  const [traceStatus, setTraceStatus] = useState("");
+  const [shareSources, setShareSources] = useState(false);
   const [error, setError] = useState("");
   const [plans, setPlans] = useState<Space[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
@@ -153,6 +156,34 @@ export function ProjectDetail({
       setError(String(e));
     } finally {
       setCreating(false);
+    }
+  };
+  const trace = async () => {
+    if (!p || !intent.trim() || state.busy || traceStatus) return;
+    setError("");
+    setTraceStatus("Finding relevant source files…");
+    try {
+      if (!shareSources)
+        throw new Error(
+          "Enable source excerpts to trace the actual code. Only relevant excerpts are shared with the model.",
+        );
+      const excerpts = await localProjects().retrieve(p.id, intent.trim());
+      if (!excerpts.length)
+        throw new Error(
+          "No relevant indexed code found. Refresh your sources or name the endpoint or function you want to trace.",
+        );
+      setTraceStatus(
+        `Tracing calls across ${new Set(excerpts.map((e) => e.citation.path)).size} files…`,
+      );
+      await state.chat(
+        `Explain the actual implementation in this imported project and draw its runtime flowchart. This is a code explanation, not a plan. Request: ${intent.trim()}`,
+        excerpts,
+      );
+      setIntent("");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTraceStatus("");
     }
   };
   if (!p)
@@ -315,15 +346,26 @@ export function ProjectDetail({
             id={`project-${tab}`}
             role="tabpanel"
           >
-            {tab === "context" && (
-              <ProjectContext
-                project={p}
-                onSelect={(n) => {
-                  setEditing(n);
-                }}
-                onSource={(id) => setExplorer(id)}
-              />
-            )}
+            {tab === "context" &&
+              (p.data.messages.filter((m) => m.role === "assistant").at(-1)
+                ?.flow ? (
+                <ProjectFlowCanvas
+                  flow={
+                    p.data.messages
+                      .filter((m) => m.role === "assistant")
+                      .at(-1)!.flow!
+                  }
+                  onRead={setCitation}
+                />
+              ) : (
+                <ProjectContext
+                  project={p}
+                  onSelect={(n) => {
+                    setEditing(n);
+                  }}
+                  onSource={(id) => setExplorer(id)}
+                />
+              ))}
             {tab === "sources" && (
               <ProjectSources
                 project={p}
@@ -441,18 +483,43 @@ export function ProjectDetail({
               className="project-build-composer"
               onSubmit={(e) => {
                 e.preventDefault();
-                void createPlan();
+                void trace();
               }}
             >
               <Textarea
-                aria-label="What do you want to build?"
-                placeholder="What do you want to build? For example, design the voice pipeline architecture…"
+                aria-label="What do you want to understand or build?"
+                placeholder="What do you want to understand or build? For example, how does the voice pipeline work in this codebase?"
                 value={intent}
                 maxLength={12000}
                 onChange={(e) => setIntent(e.target.value)}
                 rows={2}
                 disabled={creating}
               />
+              <label className="my-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={shareSources}
+                  onChange={(e) => setShareSources(e.target.checked)}
+                  disabled={!!traceStatus}
+                />
+                Share relevant local source excerpts to trace this request
+              </label>
+              {traceStatus && (
+                <p
+                  role="status"
+                  className="my-2 flex items-center gap-2 text-xs"
+                >
+                  <Loader2 className="size-3 animate-spin" />
+                  {traceStatus}
+                </p>
+              )}
+              {!traceStatus &&
+                p.data.messages.at(-1)?.role === "assistant" &&
+                !p.data.messages.at(-1)?.flow && (
+                  <p className="my-2 text-xs text-muted-foreground">
+                    {p.data.messages.at(-1)?.body}
+                  </p>
+                )}
               <div className="flex items-center justify-between gap-3">
                 <Button
                   type="button"
@@ -466,9 +533,11 @@ export function ProjectDetail({
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={state.busy || creating || !intent.trim()}
+                  disabled={
+                    state.busy || creating || !!traceStatus || !intent.trim()
+                  }
                 >
-                  {creating ? "Starting plan…" : "Build a plan"}
+                  {traceStatus ? "Tracing…" : "Draw flowchart"}
                 </Button>
               </div>
             </form>

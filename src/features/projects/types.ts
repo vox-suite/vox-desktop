@@ -27,12 +27,31 @@ export type ProjectSource = {
   fingerprint: string;
   indexed_at: string;
 };
+export type ProjectFlow = {
+  title: string;
+  nodes: {
+    id: string;
+    title: string;
+    kind: string;
+    detail: string;
+    citations: Citation[];
+  }[];
+  edges: {
+    from: string;
+    to: string;
+    label: string;
+    evidence: string;
+    citations: Citation[];
+  }[];
+  gaps: string[];
+};
 export type ProjectMessage = {
   id: string;
   role: string;
   body: string;
   at: string;
   proposals: ContextNode[];
+  flow?: ProjectFlow | null;
 };
 export type ProjectActivity = { id: string; text: string; at: string };
 export type ProjectData = {

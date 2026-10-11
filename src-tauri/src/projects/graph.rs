@@ -3,7 +3,7 @@ use super::{
     sources,
     types::*,
 };
-use rusqlite::{params, Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, params};
 use serde_json::json;
 use std::{collections::BTreeMap, path::Path};
 
@@ -87,7 +87,9 @@ pub fn page(
             .map(|s| s.id.to_string())
             .collect::<Vec<_>>()
             .join(",");
-        let sql=format!("SELECT source_id,target_id,relation,confidence FROM edges WHERE source_id IN ({ids}) AND target_id IN ({ids}) LIMIT 400");
+        let sql = format!(
+            "SELECT source_id,target_id,relation,confidence FROM edges WHERE source_id IN ({ids}) AND target_id IN ({ids}) LIMIT 400"
+        );
         let mut stmt = db.prepare(&sql).map_err(|e| e.to_string())?;
         for row in stmt
             .query_map([], |r| {
@@ -151,7 +153,17 @@ pub fn summary(
     let mut nodes = vec![];
     for (name, files) in groups.into_iter().take(60) {
         let citations=files.iter().take(8).map(|file|json!({"source_id":source.id,"path":file,"start_line":1,"end_line":1,"hash":source.hashes.get(*file)})).collect::<Vec<_>>();
-        let body=format!("{} contains {} indexed text files. Files include: {}. Open this component to inspect symbols and relationships. This is extracted structure; behavior has not been inferred.",source.label,files.len(),files.iter().take(10).map(|s|s.as_str()).collect::<Vec<_>>().join(", "));
+        let body = format!(
+            "{} contains {} indexed text files. Files include: {}. Open this component to inspect symbols and relationships. This is extracted structure; behavior has not been inferred.",
+            source.label,
+            files.len(),
+            files
+                .iter()
+                .take(10)
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
         nodes.push(json!({"id":uuid::Uuid::new_v4().to_string(),"kind":"component","title":format!("{} / {}",source.label,name),"body":body,"origin":"extracted","stale":false,"citations":citations,"history":[],"updated_at":now}));
     }
     let fingerprint =
@@ -185,6 +197,10 @@ pub fn retrieve(dir: &Path, source: &LocalSource, query: &str) -> Result<Vec<Cit
                         | "our"
                         | "project"
                         | "please"
+                        | "works"
+                        | "work"
+                        | "pipeline"
+                        | "explain"
                 )
         })
         .take(12)
@@ -193,28 +209,73 @@ pub fn retrieve(dir: &Path, source: &LocalSource, query: &str) -> Result<Vec<Cit
     if words.is_empty() {
         return Ok(vec![]);
     }
-    let mut stmt=db.prepare("SELECT f.path,n.start_line,n.end_line FROM nodes_fts JOIN nodes n ON n.id=nodes_fts.rowid JOIN files f ON f.id=n.file_id WHERE nodes_fts MATCH ?1 ORDER BY rank LIMIT 6").map_err(|e|e.to_string())?;
+    let mut stmt=db.prepare("SELECT n.id,f.path,n.start_line,n.end_line FROM nodes_fts JOIN nodes n ON n.id=nodes_fts.rowid JOIN files f ON f.id=n.file_id WHERE nodes_fts MATCH ?1 AND f.path NOT LIKE '%/tests/%' AND f.path NOT LIKE '%/test/%' ORDER BY CASE WHEN n.type IN ('function','method') AND n.is_test=0 THEN 0 ELSE 1 END, rank LIMIT 16").map_err(|e|e.to_string())?;
     let mut citations = vec![];
+    let mut seeds = vec![];
     for row in stmt
         .query_map(params![words.join(" OR ")], |r| {
             Ok((
-                r.get::<_, String>(0)?,
-                r.get::<_, u32>(1)?,
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
                 r.get::<_, u32>(2)?,
+                r.get::<_, u32>(3)?,
             ))
         })
         .map_err(|e| e.to_string())?
     {
-        let (file, start, end) = row.map_err(|e| e.to_string())?;
+        let (id, file, start, end) = row.map_err(|e| e.to_string())?;
+        seeds.push(id);
         let path = relative(file, dir, source);
         if let Some(hash) = source.hashes.get(&path) {
             citations.push(Citation {
                 source_id: source.id.clone(),
                 path,
-                start_line: start.max(1),
-                end_line: end.max(start).max(1).min(start.saturating_add(199)),
+                start_line: start.saturating_sub(8).max(1),
+                end_line: end
+                    .max(start.saturating_add(100))
+                    .min(start.saturating_add(199)),
                 hash: hash.clone(),
             });
+        }
+    }
+    if !seeds.is_empty() {
+        let ids = seeds
+            .iter()
+            .map(i64::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!(
+            "SELECT DISTINCT f.path,n.start_line,n.end_line FROM edges e JOIN nodes n ON n.id = CASE WHEN e.source_id IN ({ids}) THEN e.target_id ELSE e.source_id END JOIN files f ON f.id=n.file_id WHERE e.source_id IN ({ids}) OR e.target_id IN ({ids}) LIMIT 20"
+        );
+        let mut related = db.prepare(&sql).map_err(|e| e.to_string())?;
+        for row in related
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, u32>(1)?,
+                    r.get::<_, u32>(2)?,
+                ))
+            })
+            .map_err(|e| e.to_string())?
+        {
+            let (file, start, end) = row.map_err(|e| e.to_string())?;
+            let path = relative(file, dir, source);
+            if let Some(hash) = source.hashes.get(&path) {
+                if !citations
+                    .iter()
+                    .any(|c| c.path == path && c.start_line == start.max(1))
+                {
+                    citations.push(Citation {
+                        source_id: source.id.clone(),
+                        path,
+                        start_line: start.saturating_sub(8).max(1),
+                        end_line: end
+                            .max(start.saturating_add(100))
+                            .min(start.saturating_add(199)),
+                        hash: hash.clone(),
+                    });
+                }
+            }
         }
     }
     Ok(citations)
