@@ -215,19 +215,20 @@ export function ProjectSources({
           </Button>
         </DialogContent>
       </Dialog>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="project-sources-heading">
         <div>
-          <h2 className="text-base font-medium">Sources on this device</h2>
+          <h2 className="text-xl font-medium tracking-tight">
+            Project sources
+          </h2>
           <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
-            Add project folders or up to five individual text and code files.
-            Vox respects .gitignore, skips generated files and common credential
-            files, and keeps the index on your device.
+            Connect your codebase, briefs, and notes. Files and their index stay
+            on this device.
           </p>
         </div>
         <div className="flex gap-2">
           <Button
             size="sm"
-            variant="secondary"
+            variant="default"
             disabled={busy || !!status || !platform().projects}
             onClick={() => void run(() => add("folder"))}
           >
@@ -266,11 +267,12 @@ export function ProjectSources({
         </p>
       )}
       {warnings.length > 0 && (
-        <details
-          open
-          className="mt-4 rounded-lg border border-amber-400/30 p-3 text-xs text-amber-200"
-        >
-          <summary>Import coverage ({warnings.length} notices)</summary>
+        <details className="project-import-notices mt-4 text-xs">
+          <summary>{warnings.length} import notices · view details</summary>
+          <p className="mt-3 leading-5 text-muted-foreground">
+            Some files were excluded from the index. The details below explain
+            which files are missing from project context and why.
+          </p>
           <ul className="mt-2 max-h-40 overflow-auto space-y-1">
             {warnings.map((w, i) => (
               <li key={i}>{w}</li>
@@ -278,7 +280,7 @@ export function ProjectSources({
           </ul>
         </details>
       )}
-      <div className="mt-6 divide-y rounded-xl border">
+      <div className="project-source-list mt-6 divide-y rounded-xl border">
         {all.length === 0 ? (
           <div className="p-8 text-center">
             <Folder className="mx-auto mb-3 size-7 text-muted-foreground" />
@@ -293,10 +295,7 @@ export function ProjectSources({
             const change = changes[s.id];
             const stale = !!change?.files?.length;
             return (
-              <div
-                key={s.id}
-                className="flex flex-wrap items-center justify-between gap-3 p-4"
-              >
+              <div key={s.id} className="project-source-row">
                 <div className="flex min-w-0 items-start gap-3">
                   {s.kind === "folder" ? (
                     <Folder className="mt-1 size-4" />
@@ -304,11 +303,26 @@ export function ProjectSources({
                     <File className="mt-1 size-4" />
                   )}
                   <div className="min-w-0">
-                    <strong className="text-sm font-medium">{s.label}</strong>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <strong className="text-base font-medium">
+                        {s.label}
+                      </strong>
+                      <span className="project-source-state">
+                        {!local
+                          ? "Another device"
+                          : stale
+                            ? "Changes found"
+                            : s.indexed_at
+                              ? "Indexed"
+                              : status
+                                ? "Indexing"
+                                : "Ready to index"}
+                      </span>
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {s.indexed_at
-                        ? `${s.files} files · ${s.symbols} symbols · ${new Date(s.indexed_at).toLocaleString()}`
-                        : "Ready to index"}
+                        ? `${s.files.toLocaleString()} files · ${s.symbols.toLocaleString()} symbols`
+                        : "Waiting for a local index"}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {change?.unavailable ??
@@ -316,7 +330,9 @@ export function ProjectSources({
                           ? "Source is on another device"
                           : stale
                             ? `${change.files?.length} changed files · refresh to update context`
-                            : "Local files stay on this device")}
+                            : s.indexed_at
+                              ? `Last indexed ${new Date(s.indexed_at).toLocaleString()}`
+                              : "Local files stay on this device")}
                     </p>
                   </div>
                 </div>

@@ -89,8 +89,13 @@ export function ProjectChat({
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-4 py-5">
         {!project.data.messages.length && (
-          <div className="pt-5">
-            <h2 className="text-lg font-medium">Let’s think it through.</h2>
+          <div className="project-ideation-welcome">
+            <div className="project-ideation-icon">
+              <Lightbulb className="size-6" />
+            </div>
+            <h2 className="text-2xl font-medium tracking-tight">
+              Think it through with Vox.
+            </h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {templates.find((t) => t.id === project.data.template)?.prompt ??
                 "What would you like to explore?"}
@@ -99,6 +104,23 @@ export function ProjectChat({
               Ideas stay here. Useful decisions can become project context; a
               concrete direction can become a Plan.
             </p>
+            <div className="project-ideation-prompts">
+              {[
+                "Help me understand this project",
+                "Explore an idea for this project",
+                "Turn my next step into a plan",
+              ].map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  disabled={busy || sending}
+                  onClick={() => setDraft(prompt)}
+                >
+                  {prompt}
+                  <ArrowUp className="size-3.5 rotate-45" />
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <div className="space-y-6">
