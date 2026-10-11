@@ -8,6 +8,7 @@ import type {
   PulseResult,
 } from "@/features/pulse/discovery-types";
 import { LatestRequest } from "@/features/pulse/utils";
+import { SERIES_COLORS } from "@/features/pulse/format";
 import { PulseChartCard } from "./chart-card";
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-2 text-xs";
@@ -32,6 +33,27 @@ export function ChartEditor({
   const [loading, setLoading] = useState(!initialPreview);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [catalog, setCatalog] = useState<Measurement[]>([]);
+  useEffect(() => {
+    let active = true;
+    discoveryApi
+      .listMeasurements()
+      .then((data) => {
+        if (active) setCatalog(data);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+  const compare = definition.compare_with ?? [];
+  const candidates = catalog.filter(
+    (m) =>
+      m.id !== definition.measurement_id &&
+      !compare.includes(m.id) &&
+      !!definition.bucket &&
+      m.buckets.includes(definition.bucket),
+  );
   const requests = useRef(new LatestRequest());
   const key = useRef(crypto.randomUUID());
   const inFlight = useRef(false);
@@ -117,8 +139,19 @@ export function ChartEditor({
             }
             onChange={(e) => {
               const [kind, value] = e.target.value.split(":");
+              const keep =
+                kind === "time"
+                  ? compare.filter((id) =>
+                      catalog
+                        .find((m) => m.id === id)
+                        ?.buckets.includes(
+                          value as PulseDefinition["bucket"] & string,
+                        ),
+                    )
+                  : [];
               void change({
                 ...definition,
+                compare_with: keep.length ? keep : undefined,
                 bucket:
                   kind === "time" ? (value as PulseDefinition["bucket"]) : null,
                 dimension: kind === "field" ? value : null,
@@ -131,7 +164,7 @@ export function ChartEditor({
                 {b[0].toUpperCase() + b.slice(1)}
               </option>
             ))}
-            {measurement.dimensions.map((d) => (
+            {(compare.length ? [] : measurement.dimensions).map((d) => (
               <option key={d} value={`field:${d}`}>
                 {d.replaceAll("_", " ")}
               </option>
@@ -180,7 +213,9 @@ export function ChartEditor({
             }
           >
             {(definition.bucket
-              ? ["bar", "line", "area", "stat"]
+              ? compare.length
+                ? ["line", "area", "bar"]
+                : ["bar", "line", "area", "stat"]
               : measurement.profile.currency
                 ? ["bar"]
                 : ["bar", "pie"]
@@ -192,6 +227,80 @@ export function ChartEditor({
           </select>
         </label>
       </div>
+      {definition.bucket && (
+        <div className="space-y-2 text-xs">
+          <span>Compare with</span>
+          {compare.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {[measurement.id, ...compare].map((id, i) => {
+                const item =
+                  catalog.find((m) => m.id === id) ??
+                  (i === 0 ? measurement : null);
+                return (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1"
+                  >
+                    <i
+                      className="size-2 rounded-full"
+                      style={{
+                        background: SERIES_COLORS[i % SERIES_COLORS.length],
+                      }}
+                    />
+                    {item?.title ?? "Measurement"}
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        aria-label={`Remove ${item?.title ?? "measurement"}`}
+                        disabled={saving}
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          const next = compare.filter((c) => c !== id);
+                          void change({
+                            ...definition,
+                            compare_with: next.length ? next : undefined,
+                          });
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          <select
+            className={selectClass}
+            disabled={saving || compare.length >= 5 || !candidates.length}
+            value=""
+            onChange={(e) => {
+              if (!e.target.value) return;
+              void change({
+                ...definition,
+                compare_with: [...compare, e.target.value],
+                dimension: null,
+                chart_type: ["line", "area", "bar"].includes(
+                  definition.chart_type,
+                )
+                  ? definition.chart_type
+                  : "line",
+              });
+            }}
+          >
+            <option value="">
+              {candidates.length
+                ? "Add a measurement to compare…"
+                : "Nothing else to compare"}
+            </option>
+            {candidates.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div
         aria-busy={loading}
         className={`pulse-editor-preview ${loading ? "opacity-50" : ""}`}
@@ -216,9 +325,11 @@ export function ChartEditor({
           !preview ||
           !title.trim() ||
           Boolean(preview.error) ||
-          !preview.points.some(
-            (p) => typeof p.value === "number" && Number.isFinite(p.value),
-          )
+          !(
+            preview.series && preview.series.length > 1
+              ? preview.series.flatMap((s) => s.points)
+              : preview.points
+          ).some((p) => typeof p.value === "number" && Number.isFinite(p.value))
         }
       >
         {saving ? "Adding…" : loading ? "Loading preview…" : "Add to Pulse"}

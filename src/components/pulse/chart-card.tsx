@@ -45,6 +45,10 @@ import type {
 import { HairlineBar } from "./chart/hairline-bar";
 import { SegmentedRing } from "./chart/segmented-ring";
 import { ChartLegend } from "./chart/chart-legend";
+import {
+  MultiSeriesChart,
+  MultiSeriesLegend,
+} from "./chart/multi-series-chart";
 
 export { PulseChartSkeleton } from "./chart/chart-skeleton";
 
@@ -73,7 +77,19 @@ export function PulseChartCard({
   const observed = points.filter(
     (p) => typeof p.value === "number" && Number.isFinite(p.value),
   );
-  const sourceName = source ?? result?.source ?? "";
+  const multiSeries =
+    result?.series && result.series.length > 1 ? result.series : null;
+  const multiHasValues = !!multiSeries?.some((s) =>
+    s.points.some(
+      (p) => typeof p.value === "number" && Number.isFinite(p.value),
+    ),
+  );
+  const sourceName =
+    source ??
+    (multiSeries
+      ? [...new Set(multiSeries.map((s) => s.source))].join(" + ")
+      : result?.source) ??
+    "";
   const Icon =
     sourceName === "spotify"
       ? Music2
@@ -93,7 +109,8 @@ export function PulseChartCard({
   );
   const isStat = definition.chart_type === "stat";
   const statValue =
-    result?.total ?? (observed.reduce((sum, p) => sum + (p.value ?? 0), 0) || null);
+    result?.total ??
+    (observed.reduce((sum, p) => sum + (p.value ?? 0), 0) || null);
   const headline = categorical ? largest : latest;
   const chartConfig = { value: { label: title, color: CHART_COLORS[0] } };
 
@@ -149,6 +166,7 @@ export function PulseChartCard({
           <p>
             {[
               sourceName.replaceAll("_", " "),
+              multiSeries ? `${multiSeries.length} measurements` : null,
               definition.bucket
                 ? `${definition.period_days >= 3650 ? "all time" : `${definition.period_days} days`} · by ${definition.bucket}`
                 : definition.dimension?.replaceAll("_", " "),
@@ -210,7 +228,7 @@ export function PulseChartCard({
       </header>
 
       <div className="pulse-chart-body">
-        {headline && !result?.error && !isStat && (
+        {headline && !result?.error && !isStat && !multiSeries && (
           <div className="pulse-chart-stat">
             <strong>
               {headline.value?.toLocaleString(undefined, {
@@ -244,6 +262,23 @@ export function PulseChartCard({
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {result.error}
             </div>
+          ) : multiSeries ? (
+            multiHasValues ? (
+              <MultiSeriesChart
+                series={multiSeries}
+                type={
+                  definition.chart_type === "bar"
+                    ? "bar"
+                    : definition.chart_type === "area"
+                      ? "area"
+                      : "line"
+                }
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                No recorded values in this period
+              </div>
+            )
           ) : !observed.length ? (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
               No recorded values in this period
@@ -350,7 +385,9 @@ export function PulseChartCard({
           )}
         </div>
 
-        {!compact && categorical && observed.length > 0 && (
+        {!compact && multiSeries && <MultiSeriesLegend series={multiSeries} />}
+
+        {!compact && !multiSeries && categorical && observed.length > 0 && (
           <ChartLegend
             points={observed}
             colors={CHART_COLORS}

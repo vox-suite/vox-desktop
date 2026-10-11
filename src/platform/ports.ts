@@ -45,7 +45,14 @@ export interface WizPort {
   disconnect(): Promise<void>;
 }
 
+export interface CachePort {
+  read(key: string): Promise<string | null>;
+  write(key: string, value: string): Promise<void>;
+  clear(): Promise<void>;
+}
+
 export interface Platform {
+  cache?: CachePort;
   wiz?: WizPort;
   browser?: BrowserPort;
   http: HttpPort;

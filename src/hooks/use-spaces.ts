@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { registerCacheReset } from "@/features/cache-reset";
+import { readPersisted, schedulePersist } from "@/features/persist";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { platform } from "@/platform";
@@ -21,7 +22,21 @@ const cache: { rev: string | null; spaces: Space[] | null } = {
   spaces: null,
 };
 
+let hydrating: Promise<void> | null = null;
+const ready = () => {
+  hydrating ??= readPersisted<{ rev: string | null; spaces: Space[] }>(
+    "spaces",
+  ).then((data) => {
+    if (!data || cache.spaces) return;
+    cache.rev = data.rev;
+    cache.spaces = data.spaces;
+  });
+  return hydrating;
+};
+const persist = () =>
+  schedulePersist("spaces", () => ({ rev: cache.rev, spaces: cache.spaces }));
 registerCacheReset(() => {
+  hydrating = null;
   cache.rev = null;
   cache.spaces = null;
 });
@@ -39,12 +54,18 @@ export function useSpaces(enabled = true) {
 
   const load = useCallback(async (countFirst = false) => {
     try {
+      await ready();
+      if (cache.spaces)
+        setSpaces((existing) =>
+          existing.length ? existing : (cache.spaces ?? []),
+        );
       let rev: string | null = null;
       if (countFirst) {
         const meta = await spacesApi.countSpaces().catch(() => null);
         if (meta?.count === 0) {
           cache.rev = meta.rev;
           cache.spaces = [];
+          persist();
           setSpaces([]);
           setError("");
           return;
@@ -59,6 +80,7 @@ export function useSpaces(enabled = true) {
       const data = await spacesApi.listSpaces();
       cache.spaces = data;
       cache.rev = rev;
+      persist();
       setSpaces(data);
       setError("");
     } catch (err) {

@@ -5,6 +5,15 @@ const SYMBOLS: Record<string, string> = {
   GBP: "£",
 };
 
+export const SERIES_COLORS = [
+  "#3ecf8e",
+  "#f5b83d",
+  "#6ea8fe",
+  "#ff5a67",
+  "#c084fc",
+  "#22d3ee",
+];
+
 export const CHART_COLORS = [
   "#3ecf8e",
   "#a2aaa4",

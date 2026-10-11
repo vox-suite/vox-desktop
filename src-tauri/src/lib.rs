@@ -5,6 +5,7 @@ mod bridge_voice;
 mod codec;
 mod config;
 mod deep_link;
+mod device_cache;
 mod device_link;
 mod live_link;
 mod local_voice;
@@ -123,6 +124,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            device_cache::cache_read,
+            device_cache::cache_write,
+            device_cache::cache_clear,
             terminal::terminal_open,
             terminal::terminal_output,
             terminal::terminal_input,

@@ -480,6 +480,9 @@ impl AuthManager {
     }
 
     pub fn sign_out(&self) -> Result<AuthState, String> {
+        if let Some(session) = self.current_session() {
+            crate::device_cache::clear_user(&session.user_id);
+        }
         if let Ok(mut guard) = self.session.lock() {
             *guard = None;
         }

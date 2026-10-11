@@ -5,6 +5,7 @@ import type {
   PulseResult,
 } from "@/features/pulse/discovery-types";
 import { registerCacheReset } from "@/features/cache-reset";
+import { readPersisted, schedulePersist } from "@/features/persist";
 import { LatestRequest, uniqueCharts } from "@/features/pulse/utils";
 import { platform } from "@/platform";
 const PAGE_SIZE = 12;
@@ -16,7 +17,31 @@ type ResultCache = {
   results: Map<string, PulseResult>;
   canvas: CanvasResponse | null;
 };
+let hydrating: Promise<void> | null = null;
+type PersistedPulse = {
+  revision: string | null;
+  count: number | null;
+  canvas: CanvasResponse | null;
+};
+const ready = () => {
+  hydrating ??= readPersisted<PersistedPulse>("pulse").then((data) => {
+    if (!data?.canvas || cache.canvas) return;
+    cache.revision = data.revision;
+    cache.count = data.count;
+    cache.canvas = data.canvas;
+    for (const chart of data.canvas.charts)
+      if (chart.result) cache.results.set(chart.id, chart.result);
+  });
+  return hydrating;
+};
+const persist = () =>
+  schedulePersist("pulse", () => ({
+    revision: cache.revision,
+    count: cache.count,
+    canvas: cache.canvas,
+  }));
 registerCacheReset(() => {
+  hydrating = null;
   cache.revision = null;
   cache.count = null;
   cache.results.clear();
@@ -70,6 +95,11 @@ export function usePulseCanvas() {
     const current = () => requests.current.isCurrent(ticket);
     setRefreshing(true);
     try {
+      await ready();
+      if (cache.canvas && current()) {
+        setCanvas((existing) => existing ?? cache.canvas);
+        setLoading(false);
+      }
       let revision: string | null = null;
       let total: number | null = null;
       if (!cursor) {
@@ -79,6 +109,7 @@ export function usePulseCanvas() {
           cache.revision = meta.revision;
           cache.count = 0;
           cache.canvas = { charts: [], next_cursor: null };
+          persist();
           if (current()) {
             loadedPages.current = 1;
             setCanvas(cache.canvas);
@@ -136,6 +167,7 @@ export function usePulseCanvas() {
       if (cursor) loadedPages.current = pageIndexes[0] + 1;
       let snapshot = merge(cache.canvas);
       cache.canvas = snapshot;
+      persist();
       setCanvas(snapshot);
       setError("");
       setLoading(false);
@@ -162,11 +194,13 @@ export function usePulseCanvas() {
           ),
         };
         cache.canvas = snapshot;
+        persist();
         setCanvas(snapshot);
       });
       if (current() && !cursor && revision) {
         cache.revision = revision;
         cache.count = total;
+        persist();
       }
     } catch (e) {
       if (current()) setError(String(e));

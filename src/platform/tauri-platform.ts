@@ -8,6 +8,11 @@ import type { WizStatus } from "./ports";
 import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
+  cache: {
+    read: (key) => invoke<string | null>("cache_read", { key }),
+    write: (key, value) => invoke<void>("cache_write", { key, value }),
+    clear: () => invoke<void>("cache_clear"),
+  },
   wiz: {
     getStatus: () => invoke("get_wiz_status"),
     connect: (consent, link) =>

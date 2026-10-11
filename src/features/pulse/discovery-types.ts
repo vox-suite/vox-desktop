@@ -4,12 +4,29 @@ export type Bucket = S["Bucket"];
 export type PulseDefinition = Omit<
   Required<S["PulseDefinition"]>,
   "version" | "offset_days" | "top_n"
-> & { version: 2; offset_days?: number; top_n?: number | null };
+> & {
+  version: 2;
+  offset_days?: number;
+  top_n?: number | null;
+  compare_with?: string[];
+};
 export type SourceProfile = Required<S["SourceProfile"]>;
 export type Measurement = Omit<Required<S["Measurement"]>, "profile"> & {
   profile: SourceProfile;
 };
-export type PulseResult = Required<S["PulseResult"]>;
+export type PulseSeries = {
+  measurement_id: string;
+  title: string;
+  source: string;
+  unit: string;
+  quality: string;
+  total: number | null;
+  record_count: number;
+  points: { label: string; value?: number | null }[];
+};
+export type PulseResult = Required<Omit<S["PulseResult"], "series">> & {
+  series?: PulseSeries[];
+};
 export type PulseSuggestion = Omit<
   Required<S["PulseSuggestion"]>,
   "definition" | "measurement" | "preview"

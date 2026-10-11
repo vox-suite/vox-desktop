@@ -1,4 +1,5 @@
 import { registerCacheReset } from "@/features/cache-reset";
+import { readPersisted, schedulePersist } from "@/features/persist";
 import {
   TIMELINE_PAGE_SIZE,
   timelineApi,
@@ -61,7 +62,17 @@ async function pool<T>(
   await Promise.all(workers);
 }
 
+const MAX_PERSISTED_DAYS = 90;
+const MAX_PERSISTED_COUNTS = 800;
+
+type Persisted = {
+  counts: [string, TimelineDaySummary][];
+  entries: [string, TimelineDayEntry][];
+};
+
 class TimelineDayStore {
+  private touched = new Map<string, number>();
+  private hydrating: Promise<void> | null = null;
   private counts = new Map<string, TimelineDaySummary>();
   private entries = new Map<string, TimelineDayEntry>();
   private loadedRanges = new Set<string>();
@@ -94,7 +105,40 @@ class TimelineDayStore {
     return this.loadedRanges.has(`${scope}|${fromDay}:${toDay}`);
   }
 
+  private ready(): Promise<void> {
+    this.hydrating ??= readPersisted<Persisted>("timeline").then((data) => {
+      if (!data) return;
+      for (const [key, summary] of data.counts)
+        if (!this.counts.has(key)) this.counts.set(key, summary);
+      for (const [key, entry] of data.entries)
+        if (!this.entries.has(key)) {
+          this.entries.set(key, { ...entry, loading: false, error: "" });
+          this.touched.set(key, 0);
+        }
+      this.emit();
+    });
+    return this.hydrating;
+  }
+
+  private persist() {
+    schedulePersist("timeline", () => {
+      const keys = [...this.entries.keys()]
+        .filter((key) => (this.entries.get(key)?.rev ?? "0") !== "0")
+        .sort((a, b) => (this.touched.get(b) ?? 0) - (this.touched.get(a) ?? 0))
+        .slice(0, MAX_PERSISTED_DAYS);
+      const counts = [...this.counts.entries()]
+        .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+        .slice(0, MAX_PERSISTED_COUNTS);
+      return {
+        counts,
+        entries: keys.map((key) => [key, this.entries.get(key)!]),
+      } satisfies Persisted;
+    });
+  }
+
   reset() {
+    this.hydrating = null;
+    this.touched.clear();
     this.counts.clear();
     this.entries.clear();
     this.loadedRanges.clear();
@@ -116,6 +160,10 @@ class TimelineDayStore {
 
   private patch(scope: string, day: string, next: Partial<TimelineDayEntry>) {
     this.entries.set(`${scope}|${day}`, { ...this.entry(scope, day), ...next });
+    if (next.items) {
+      this.touched.set(`${scope}|${day}`, Date.now());
+      this.persist();
+    }
     this.emit();
   }
 
@@ -136,6 +184,7 @@ class TimelineDayStore {
           else this.counts.delete(`${scope}|${d}`);
         }
         this.loadedRanges.add(`${scope}|${fromDay}:${toDay}`);
+        this.persist();
         this.emit();
       },
     );
@@ -211,12 +260,14 @@ class TimelineDayStore {
 
   async loadRange(scope: string, days: string[]) {
     if (!days.length) return;
+    await this.ready();
     await this.loadCounts(scope, days[0], days[days.length - 1]);
     await pool(days, 6, (day) => this.loadFirst(scope, day));
   }
 
   async prefetch(scope: string, days: string[]) {
     if (!days.length) return;
+    await this.ready();
     await this.loadCounts(scope, days[0], days[days.length - 1]);
     for (let i = 0; i < days.length; i += 7) {
       const batch = days.slice(i, i + 7).filter((d) => this.count(scope, d));

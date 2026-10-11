@@ -11,4 +11,12 @@ export function platform(): Platform {
   return current;
 }
 
-export type { BrowserPort, Platform, HttpPort, LivePort, LiveEvent, HttpRequest } from "@/platform/ports";
+export type {
+  BrowserPort,
+  CachePort,
+  Platform,
+  HttpPort,
+  LivePort,
+  LiveEvent,
+  HttpRequest,
+} from "@/platform/ports";
