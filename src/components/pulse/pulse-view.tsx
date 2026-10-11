@@ -2,10 +2,11 @@ import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import { desktopActions } from "@/features/desktop-control/action-state";
 import { useEffect, useState } from "react";
-import { Music2, Gamepad2, Plus, RotateCw, Wallet } from "lucide-react";
+import { Activity, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
-import { CreatePulsePage, PulseOrbit } from "./create-pulse-page";
+import { CreatePulsePage } from "./create-pulse-page";
+import { PulseIntroduction } from "./pulse-introduction";
 import { PulseShell } from "./pulse-shell";
 import { PulseChartSkeleton } from "./chart-card";
 import { SavedChart } from "./saved-chart";
@@ -44,36 +45,53 @@ export function PulseView() {
     canvas?.charts.filter((chart) => !removed.includes(chart.id)).length === 0;
   return (
     <PulseShell
+      scroll={!empty}
       header={
         <>
-          <h1 className="text-sm font-medium">Pulse</h1>
-          {!empty && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3.5">
+            <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
+              <Activity className="size-[18px] text-[#3ecf8e]" />
+            </span>
+            <div className="leading-tight">
+              <h1 className="text-base font-semibold tracking-tight">Pulse</h1>
+              <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                {empty
+                  ? "No charts yet"
+                  : `${canvas?.charts.length ?? 0} live charts`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!empty && (
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="icon"
+                className="size-8 rounded-lg"
                 aria-label="Refresh charts"
                 disabled={refreshing}
                 onClick={() => void reload(true)}
               >
                 <RotateCw
-                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                  className={`size-3.5 ${refreshing ? "animate-spin" : ""}`}
                 />
               </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Add to Pulse"
-                onClick={() => setAdding(true)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-3 text-xs"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="size-3.5" />
+              Add chart
+            </Button>
+          </div>
         </>
       }
     >
-      <div className="flex min-h-full flex-col p-4 sm:p-6">
+      <div
+        className={`relative flex flex-col p-4 sm:p-6 ${empty ? "h-full" : "min-h-full"}`}
+      >
         {loading && !canvas ? (
           <div
             role="status"
@@ -100,34 +118,7 @@ export function PulseView() {
         ) : (
           <>
             {empty ? (
-              <div className="mx-auto flex flex-1 flex-col items-center justify-center gap-6 text-center">
-                <PulseOrbit />
-                <div>
-                  <h2 className="text-xl font-medium">No charts yet</h2>
-                  <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-                    Pulse turns your connected apps into small, living charts —
-                    what you listen to, what you play, where your money goes.
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
-                  {[
-                    [Music2, "Top artists this month"],
-                    [Gamepad2, "Recorded gaming activity"],
-                    [Wallet, "Spend by category"],
-                  ].map(([Icon, label]) => (
-                    <span
-                      key={label as string}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5"
-                    >
-                      <Icon className="h-3.5 w-3.5 text-primary" />
-                      {label as string}
-                    </span>
-                  ))}
-                </div>
-                <Button onClick={() => setAdding(true)}>
-                  <Plus className="h-4 w-4" /> Add your first chart
-                </Button>
-              </div>
+              <PulseIntroduction onCreate={() => setAdding(true)} />
             ) : null}
             {(error || actionError) && (
               <p role="alert" className="mb-4 text-xs text-destructive">
