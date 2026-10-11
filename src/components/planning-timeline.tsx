@@ -213,10 +213,12 @@ export function PlanningTimeline({
           {items.map(({ span, from, to, left, barWidth, lane }) => {
             const style = spanStyle(span);
             const amount = formatAmount(span);
-            const timeLabel = span.data?.time_precision === "day" ? "Date only" : formatTime(span.start_at);
+            const timeLabel =
+              span.data?.time_precision === "day"
+                ? "Date only"
+                : formatTime(span.start_at);
             const badge =
-              amount ||
-              (to > from ? durationLabel(from, to) : timeLabel);
+              amount || (to > from ? durationLabel(from, to) : timeLabel);
             return (
               <SpanInfoTooltip key={span.id} span={span}>
                 <button
@@ -258,21 +260,38 @@ export function PlanningTimeline({
         </div>
       </div>
       {items.length === 0 && !unavailable && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex flex-col items-center justify-center gap-2 px-6 text-center">
-          {loading ? (
-            <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
-          ) : (
-            <CalendarX className="size-6 text-muted-foreground/60" />
-          )}
-          <p className="text-sm font-medium text-foreground">
-            {loading ? "Loading your timeline…" : "No recorded entries"}
-          </p>
-          {!loading && (
-            <p className="max-w-xs text-xs text-muted-foreground">
-              No entries were recorded in this date range. Pick another date
-              or connect a source to add history.
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-center justify-center px-6">
+          <div className="relative flex max-w-sm flex-col items-center gap-2 rounded-2xl bg-background px-10 py-8 text-center">
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 size-full text-muted-foreground/12"
+            >
+              <rect
+                x="0.5"
+                y="0.5"
+                width="calc(100% - 1px)"
+                height="calc(100% - 1px)"
+                rx="16"
+                fill="none"
+                stroke="currentColor"
+                strokeDasharray="4 6"
+              />
+            </svg>
+            {loading ? (
+              <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+            ) : (
+              <CalendarX className="size-6 text-muted-foreground/60" />
+            )}
+            <p className="text-sm font-medium text-foreground">
+              {loading ? "Loading your timeline…" : "No recorded entries"}
             </p>
-          )}
+            {!loading && (
+              <p className="max-w-xs text-xs text-muted-foreground">
+                No entries were recorded in this date range. Pick another date
+                or connect a source to add history.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

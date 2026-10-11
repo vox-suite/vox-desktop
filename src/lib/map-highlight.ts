@@ -120,7 +120,7 @@ function footprintAt(
 export function setHighlights(
   map: maplibregl.Map,
   points: [number, number][],
-): ([number, number] | null)[] {
+): ({ anchor: [number, number]; height: number } | null)[] {
   if (!map.getLayer(BUILDINGS_LAYER)) return points.map(() => null);
   ensureHighlightLayer(map);
   const hits = points.map(([lng, lat]) => footprintAt(map, lng, lat));
@@ -130,5 +130,12 @@ export function setHighlights(
   (
     map.getSource(HIGHLIGHT_SOURCE) as maplibregl.GeoJSONSource | undefined
   )?.setData({ type: "FeatureCollection", features });
-  return hits.map((h) => h?.anchor ?? null);
+  return hits.map((h) =>
+    h
+      ? {
+          anchor: h.anchor,
+          height: Number(h.feature.properties?.render_height ?? 12),
+        }
+      : null,
+  );
 }

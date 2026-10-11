@@ -2,12 +2,14 @@ import {
   CalendarDays,
   Gamepad2,
   Lightbulb,
+  Mail,
   MapPin,
   Music2,
   Plug,
   Youtube,
 } from "lucide-react";
 import googleCalendarLogo from "@/assets/brands/google-calendar.svg";
+import gmailLogo from "@/assets/brands/gmail.svg";
 import playstationLogo from "@/assets/brands/playstation.svg";
 import spotifyLogo from "@/assets/brands/spotify.svg";
 import youtubeLogo from "@/assets/brands/youtube.svg";
@@ -19,6 +21,13 @@ import { platform } from "@/platform";
 import type { BrandConfig, Connector } from "./types";
 
 export const BRANDS: Record<string, BrandConfig> = {
+  gmail: {
+    icon: Mail,
+    logo: gmailLogo,
+    bare: true,
+    color: "#ea4335",
+    tagline: "Connected account",
+  },
   google_calendar: {
     icon: CalendarDays,
     logo: googleCalendarLogo,

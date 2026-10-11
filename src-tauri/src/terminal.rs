@@ -3,8 +3,10 @@
 * device's real-time connection to Vox Core.
 */
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
+use base64::Engine;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter};
 use std::time::{Duration, Instant};
 
 const DONE_MARKER: &str = "__VOX_CMD_DONE__";
@@ -18,10 +20,64 @@ struct PtySession {
     _child: Box<dyn Child + Send + Sync>,
 }
 
+type Session = Arc<Mutex<Option<PtySession>>>;
+
 #[derive(Clone, Default)]
-pub struct TerminalManager(Arc<Mutex<Option<PtySession>>>);
+pub struct TerminalManager(Session, Arc<Mutex<Option<AppHandle>>>);
+
+#[cfg(windows)]
+fn shell_command() -> CommandBuilder {
+    let mut cmd = CommandBuilder::new("powershell.exe");
+    cmd.arg("-NoLogo");
+    if let Ok(home) = std::env::var("USERPROFILE") {
+        cmd.cwd(home);
+    }
+    cmd
+}
+
+#[cfg(not(windows))]
+fn shell_command() -> CommandBuilder {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    let mut cmd = CommandBuilder::new(shell);
+    cmd.arg("-l");
+    cmd.env("TERM", "xterm-256color");
+    if let Ok(home) = std::env::var("HOME") {
+        cmd.cwd(home);
+    }
+    cmd
+}
+
+#[cfg(windows)]
+fn done_marker_command() -> String {
+    format!("Write-Host \"`n{DONE_MARKER}:$(if ($?) {{0}} else {{1}})\"\r")
+}
+
+#[cfg(not(windows))]
+fn done_marker_command() -> String {
+    format!("printf '\\n{DONE_MARKER}:%d\\n' $?\n")
+}
 
 impl TerminalManager {
+    pub fn set_app_handle(&self, app: AppHandle) {
+        if let Ok(mut guard) = self.1.lock() {
+            *guard = Some(app);
+        }
+    }
+
+    pub fn resize(&self, rows: u16, cols: u16) -> Result<(), String> {
+        let guard = self.0.lock().map_err(|e| e.to_string())?;
+        let session = guard.as_ref().ok_or("no terminal session is open")?;
+        session
+            ._master
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|e| e.to_string())
+    }
+
     /// Opens a shell session if one isn't already running. Idempotent.
     pub fn open_shell(&self) -> Result<(), String> {
         let mut guard = self.0.lock().map_err(|e| e.to_string())?;
@@ -39,14 +95,7 @@ impl TerminalManager {
             })
             .map_err(|e| e.to_string())?;
 
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        let mut cmd = CommandBuilder::new(shell);
-        cmd.arg("-l");
-        if let Ok(home) = std::env::var("HOME") {
-            cmd.cwd(home);
-        }
-
-        let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+        let child = pair.slave.spawn_command(shell_command()).map_err(|e| e.to_string())?;
         drop(pair.slave);
 
         let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
@@ -54,12 +103,20 @@ impl TerminalManager {
 
         let output = Arc::new(Mutex::new(Vec::new()));
         let output_writer = output.clone();
+        let session_slot = self.0.clone();
+        let app = self.1.lock().ok().and_then(|a| a.clone());
         std::thread::spawn(move || {
             let mut chunk = [0u8; 4096];
             loop {
                 match reader.read(&mut chunk) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
+                        if let Some(app) = &app {
+                            let _ = app.emit(
+                                "terminal-data",
+                                base64::engine::general_purpose::STANDARD.encode(&chunk[..n]),
+                            );
+                        }
                         if let Ok(mut buf) = output_writer.lock() {
                             buf.extend_from_slice(&chunk[..n]);
                             if buf.len() > 262144 {
@@ -69,6 +126,12 @@ impl TerminalManager {
                         }
                     }
                 }
+            }
+            if let Ok(mut slot) = session_slot.lock() {
+                slot.take();
+            }
+            if let Some(app) = &app {
+                let _ = app.emit("terminal-exit", ());
             }
         });
 
@@ -125,10 +188,10 @@ impl TerminalManager {
                 .writer
                 .write_all(command.as_bytes())
                 .map_err(|e| e.to_string())?;
-            session.writer.write_all(b"\n").map_err(|e| e.to_string())?;
+            session.writer.write_all(if cfg!(windows) { b"\r" } else { b"\n" }).map_err(|e| e.to_string())?;
             session
                 .writer
-                .write_all(format!("printf '\\n{DONE_MARKER}:%d\\n' $?\n").as_bytes())
+                .write_all(done_marker_command().as_bytes())
                 .map_err(|e| e.to_string())?;
             session.writer.flush().map_err(|e| e.to_string())?;
             session.output.clone()
@@ -235,4 +298,12 @@ pub fn terminal_input(
     input: String,
 ) -> Result<(), String> {
     state.write_input(&input)
+}
+#[tauri::command]
+pub fn terminal_resize(
+    state: tauri::State<'_, TerminalManager>,
+    rows: u16,
+    cols: u16,
+) -> Result<(), String> {
+    state.resize(rows, cols)
 }

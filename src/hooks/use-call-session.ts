@@ -6,6 +6,7 @@ export function useCallSession(signedIn: boolean) {
   const [callState, setCallState] = useState("idle");
   const [isActive, setIsActive] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isVoxSpeaking, setIsVoxSpeaking] = useState(false);
   const [callError, setCallError] = useState("");
@@ -18,10 +19,12 @@ export function useCallSession(signedIn: boolean) {
         if (!status.state) return;
         setCallState(status.state);
         setIsActive(status.active);
+        setMicLevel(status.active ? status.mic_level : 0);
         setIsSpeaking(status.is_speaking);
         setIsVoxSpeaking(status.is_vox_speaking);
         if (status.state === "idle" || status.state === "ended") {
           setIsBusy(false);
+          setMicLevel(0);
           setIsSpeaking(false);
           setIsVoxSpeaking(false);
         }
@@ -55,6 +58,7 @@ export function useCallSession(signedIn: boolean) {
     setCallState("idle");
     setIsActive(false);
     setIsBusy(false);
+    setMicLevel(0);
     setIsSpeaking(false);
     setIsVoxSpeaking(false);
     setCallError("");
@@ -93,6 +97,7 @@ export function useCallSession(signedIn: boolean) {
   function resetCallState() {
     setIsActive(false);
     setIsBusy(false);
+    setMicLevel(0);
     setIsSpeaking(false);
     setIsVoxSpeaking(false);
     setCallState("idle");
@@ -104,6 +109,7 @@ export function useCallSession(signedIn: boolean) {
     isActive,
     isBusy,
     isSpeaking,
+    micLevel,
     isVoxSpeaking,
     callError,
     toggleCall,

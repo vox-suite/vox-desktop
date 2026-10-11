@@ -1,4 +1,7 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-container";
@@ -17,6 +20,8 @@ export function TimelineHeader({
   onBack,
   onReload,
   loading,
+  range,
+  onRangeChange,
 }: {
   collection?: Collection | null;
   anchor: Date;
@@ -28,6 +33,8 @@ export function TimelineHeader({
   onBack?: () => void;
   onReload: () => void;
   loading: boolean;
+  range: DateRange | null;
+  onRangeChange: (range: DateRange | null) => void;
 }) {
   return (
     <PageHeader className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-background px-3 py-2.5 sm:px-6 sm:py-3">
@@ -43,14 +50,32 @@ export function TimelineHeader({
           </Button>
         ) : null}
 
-        <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-card shadow-sm">
-          <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-destructive leading-none">
-            {anchor.toLocaleDateString(undefined, { month: "short" })}
-          </span>
-          <span className="font-mono text-[14px] font-bold text-foreground leading-tight">
-            {anchor.getDate()}
-          </span>
-        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Select date range"
+              title="Select date range"
+              className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-violet-300"
+            >
+              <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-destructive leading-none">
+                {anchor.toLocaleDateString(undefined, { month: "short" })}
+              </span>
+              <span className="font-mono text-[14px] font-bold text-foreground leading-tight">
+                {anchor.getDate()}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-0">
+            <Calendar
+              mode="range"
+              numberOfMonths={2}
+              defaultMonth={anchor}
+              selected={range ?? undefined}
+              onSelect={(next) => onRangeChange(next ?? null)}
+            />
+          </PopoverContent>
+        </Popover>
 
         <div className="min-w-0">
           <h1 className="truncate text-base font-semibold tracking-tight text-foreground leading-tight">

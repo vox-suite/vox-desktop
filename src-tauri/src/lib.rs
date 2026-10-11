@@ -6,7 +6,6 @@ mod codec;
 mod config;
 mod deep_link;
 mod device_link;
-mod filelog;
 mod live_link;
 mod local_voice;
 #[cfg(target_os = "macos")]
@@ -102,6 +101,8 @@ pub fn run() {
                 }
             }
 
+            app.state::<terminal::TerminalManager>()
+                .set_app_handle(app.handle().clone());
             app.state::<AuthManager>()
                 .set_app_handle(app.handle().clone());
 
@@ -125,6 +126,7 @@ pub fn run() {
             terminal::terminal_open,
             terminal::terminal_output,
             terminal::terminal_input,
+            terminal::terminal_resize,
             auth::get_auth_state,
             auth::sign_in_with_google,
             auth::sign_out,
@@ -134,6 +136,8 @@ pub fn run() {
             center_window,
             session::start_call,
             bridge_voice::set_call_muted,
+            bridge_voice::list_microphones,
+            bridge_voice::select_microphone,
             bridge_voice::send_desktop_text,
             app_control::set_app_context,
             app_control::complete_app_command,

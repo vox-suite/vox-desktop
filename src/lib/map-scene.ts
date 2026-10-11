@@ -182,7 +182,7 @@ export function createSceneLayer(
   opts: {
     onActiveChange: (active: boolean) => void;
     onCamera: () => void;
-    onHomeAnchor?: (anchor: [number, number]) => void;
+    onHomeAnchor?: (anchor: [number, number], height: number) => void;
   },
 ) {
   ensureLayers(map);
@@ -202,7 +202,8 @@ export function createSceneLayer(
         map,
         home ? [home, ...highlights] : highlights,
       );
-      if (home && anchors[0]) opts.onHomeAnchor?.(anchors[0]);
+      if (home && anchors[0])
+        opts.onHomeAnchor?.(anchors[0].anchor, anchors[0].height);
     };
     map.once("idle", paint);
     for (const ms of HIGHLIGHT_RETRY_MS)

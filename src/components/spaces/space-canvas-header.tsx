@@ -85,10 +85,8 @@ export function SpaceCanvasHeader({
         {selectedNode &&
           ["failed", "blocked", "cancelled"].includes(
             String(
-              (
-                selectedNode.data.execution as
-                  { status?: string } | undefined
-              )?.status,
+              (selectedNode.data.execution as { status?: string } | undefined)
+                ?.status,
             ),
           ) && (
             <Button variant="outline" size="sm" onClick={onRetryNode}>

@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Trash2,
   Calendar,
+  Workflow,
 } from "lucide-react";
 import {
   Dialog,
@@ -97,18 +98,34 @@ export function SpacesView() {
 
   return (
     <PageContainer>
-      <PageHeader>
-        <h1 className="text-sm font-medium">Spaces</h1>
+      <PageHeader className="h-16 px-6 py-0">
+        <div className="flex items-center gap-3.5">
+          <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
+            <Workflow className="size-[18px]" />
+          </span>
+          <div className="leading-tight">
+            <h1 className="text-base font-semibold tracking-tight">Spaces</h1>
+            <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+              {spaces.length === 0
+                ? "Nothing here yet"
+                : `${spaces.length} ${spaces.length === 1 ? "space" : "spaces"}`}
+            </p>
+          </div>
+        </div>
         <Button
           onClick={openCreate}
-          variant="outline"
-          size="icon"
-          aria-label="New space"
+          variant="secondary"
+          size="sm"
+          className="h-8 gap-1.5 rounded-lg px-3 text-xs"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="size-3.5" />
+          New space
         </Button>
       </PageHeader>
-      <PageBody className="flex flex-col p-6">
+      <PageBody
+        scroll={loading || spaces.length > 0}
+        className="flex flex-col p-6"
+      >
         {error && (
           <div className="relative z-10 mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
             {error}

@@ -89,13 +89,6 @@ pub fn download_local_models(app: AppHandle, state: State<'_, ModelsState>) -> R
     Ok(())
 }
 
-pub fn auto_start(app: &AppHandle) {
-    let status = snapshot(app);
-    if !status.ready && status.configured {
-        let _ = download_local_models(app.clone(), app.state::<ModelsState>());
-    }
-}
-
 async fn run(app: &AppHandle, base: &str, dir: &Path) -> Result<(), String> {
     let mut last_emit = Instant::now();
     super::fetch::sync(

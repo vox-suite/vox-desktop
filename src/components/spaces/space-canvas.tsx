@@ -73,14 +73,12 @@ function SpaceCanvasInner({
           title: graph.space.title,
           state: graph.space.state,
         },
-        nodes: graph.nodes
-          .slice(0, 40)
-          .map((node) => ({
-            id: node.id,
-            title: node.title,
-            kind: node.kind,
-            version: node.version,
-          })),
+        nodes: graph.nodes.slice(0, 40).map((node) => ({
+          id: node.id,
+          title: node.title,
+          kind: node.kind,
+          version: node.version,
+        })),
       },
     });
     return () => desktopStore.patch({ resourceDetails: undefined });

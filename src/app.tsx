@@ -34,6 +34,7 @@ export default function App() {
     isActive,
     isBusy,
     isVoxSpeaking,
+    micLevel,
     callError,
     toggleCall,
     endCall,
@@ -124,6 +125,7 @@ export default function App() {
         onSignOut={() => void signOut()}
         isActive={isActive}
         voxSpeaking={isVoxSpeaking}
+        micLevel={micLevel}
         callState={callState}
         callError={callError}
         onToggleCall={() => void toggleCall()}

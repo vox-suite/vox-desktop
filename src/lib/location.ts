@@ -6,6 +6,7 @@ export type DeviceLocation = {
   source: "gps" | "ip" | "default";
   label: string;
   city?: string;
+  ip?: string;
   permissionDenied: boolean;
 };
 
@@ -34,6 +35,7 @@ async function ipApprox(): Promise<{
   lat: number;
   lng: number;
   city?: string;
+  ip?: string;
 }> {
   const res = await fetch("https://ipapi.co/json/", {
     signal: AbortSignal.timeout(8_000),
@@ -43,6 +45,7 @@ async function ipApprox(): Promise<{
     latitude?: number;
     longitude?: number;
     city?: string;
+    ip?: string;
     error?: boolean;
   };
   if (data.error || data.latitude == null || data.longitude == null) {
@@ -52,6 +55,7 @@ async function ipApprox(): Promise<{
     lat: data.latitude,
     lng: data.longitude,
     city: data.city,
+    ip: data.ip,
   };
 }
 
@@ -64,7 +68,10 @@ async function reverseGeocodeCity(
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`,
-      { signal: AbortSignal.timeout(6_000), headers: { Accept: "application/json" } },
+      {
+        signal: AbortSignal.timeout(6_000),
+        headers: { Accept: "application/json" },
+      },
     );
     if (!res.ok) return undefined;
     const data = (await res.json()) as {
@@ -83,10 +90,12 @@ export async function resolveDeviceLocation(): Promise<DeviceLocation> {
 
   try {
     const gps = await gpsOnce();
+    const network = await ipApprox().catch(() => undefined);
     return {
       lat: gps.lat,
       lng: gps.lng,
       source: "gps",
+      ip: network?.ip,
       label: "You are here",
       city: await reverseGeocodeCity(gps.lat, gps.lng),
       permissionDenied: false,
@@ -105,6 +114,7 @@ export async function resolveDeviceLocation(): Promise<DeviceLocation> {
       lat: ip.lat,
       lng: ip.lng,
       source: "ip",
+      ip: ip.ip,
       label: ip.city ? `Approx · ${ip.city}` : "Approx from network",
       city: ip.city,
       permissionDenied,

@@ -101,71 +101,14 @@ impl ProcessingState {
     }
 }
 
-/// Feeds `minimp3::Decoder` from a growable shared byte queue instead of a
-/// fixed buffer, so one `Decoder` instance can be reused across many
-/// WebSocket chunks: `Decoder::next_frame` keeps any bytes it couldn't yet
-/// assemble into a full frame in its own internal ring buffer between
-/// calls, which is what lets an MP3 frame split across two chunks decode
-/// correctly instead of losing its tail every time.
-struct QueueReader {
-    queue: Arc<Mutex<VecDeque<u8>>>,
-}
-
-impl std::io::Read for QueueReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut queue = self.queue.lock().unwrap();
-        let n = buf.len().min(queue.len());
-        for slot in buf.iter_mut().take(n) {
-            *slot = queue.pop_front().unwrap();
-        }
-        Ok(n)
-    }
-}
-
-fn new_mp3_decoder(queue: &Arc<Mutex<VecDeque<u8>>>) -> minimp3::Decoder<QueueReader> {
-    minimp3::Decoder::new(QueueReader {
-        queue: Arc::clone(queue),
-    })
-}
-
-struct RenderProbe {
-    origin: std::time::Instant,
-    remaining: AtomicU64,
-    first_us: AtomicU64,
-}
-
-impl RenderProbe {
-    fn record(&self, samples: u64) {
-        let remaining = self.remaining.load(Ordering::Relaxed);
-        if remaining == u64::MAX || samples == 0 {
-            return;
-        }
-        if samples >= remaining {
-            self.first_us
-                .store(self.origin.elapsed().as_micros() as u64, Ordering::Release);
-            self.remaining.store(u64::MAX, Ordering::Relaxed);
-        } else {
-            self.remaining.store(remaining - samples, Ordering::Relaxed);
-        }
-    }
-}
-
 pub struct AudioEngine {
     output_queue: Arc<Mutex<VecDeque<f32>>>,
     playback_epoch: Arc<AtomicU64>,
+    playback_started_ms: Arc<AtomicU64>,
     stop_tx: Mutex<Option<oneshot::Sender<()>>>,
-    render_probe: Arc<RenderProbe>,
-    probe_armed: std::sync::atomic::AtomicBool,
     out_rate: u32,
     out_channels: u16,
-    mp3_queue: Arc<Mutex<VecDeque<u8>>>,
-    mp3_decoder: Mutex<minimp3::Decoder<QueueReader>>,
     resampler: Mutex<StreamResampler>,
-    /// Samples the output callback had to fill with silence because the
-    /// queue ran dry -- audible as a click/gap. Incremented on the
-    /// real-time audio thread (a cheap atomic add only, never file I/O
-    /// there), read/reset from `take_underrun_samples`.
-    underrun_samples: Arc<AtomicU64>,
 }
 
 pub enum MicSender {
@@ -193,21 +136,20 @@ impl MicSender {
 }
 
 impl AudioEngine {
-    pub fn start(mic_tx: impl Into<MicSender>, mic_level: Arc<AtomicU32>) -> Result<Self, String> {
+    pub fn start_with_device(
+        mic_tx: impl Into<MicSender>,
+        mic_level: Arc<AtomicU32>,
+        device_name: Option<String>,
+    ) -> Result<Self, String> {
         let mic_tx = mic_tx.into();
         let output_queue = Arc::new(Mutex::new(VecDeque::<f32>::new()));
         let playback_epoch = Arc::new(AtomicU64::new(0));
-        let underrun_samples = Arc::new(AtomicU64::new(0));
+        let playback_started_ms = Arc::new(AtomicU64::new(u64::MAX));
+        let playback_clock = std::time::Instant::now();
+        let thread_playback_started_ms = playback_started_ms.clone();
 
-        let render_probe = Arc::new(RenderProbe {
-            origin: std::time::Instant::now(),
-            remaining: AtomicU64::new(u64::MAX),
-            first_us: AtomicU64::new(u64::MAX),
-        });
-        let render_clone = Arc::clone(&render_probe);
         let aec = Arc::new(Aec::new()?);
         let queue_clone = Arc::clone(&output_queue);
-        let underrun_clone = Arc::clone(&underrun_samples);
 
         let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<(u32, u16), String>>();
         let (thread_stop_tx, thread_stop_rx) = oneshot::channel::<()>();
@@ -215,7 +157,13 @@ impl AudioEngine {
         std::thread::spawn(move || {
             let host = cpal::default_host();
 
-            let input_device = match host.default_input_device() {
+            let selected = match device_name {
+                Some(name) => host.input_devices().ok().and_then(|mut devices| {
+                    devices.find(|device| device.name().ok().as_deref() == Some(name.as_str()))
+                }),
+                None => host.default_input_device(),
+            };
+            let input_device = match selected {
                 Some(d) => d,
                 None => {
                     let _ = ready_tx.send(Err("No audio input device available".to_string()));
@@ -324,14 +272,13 @@ impl AudioEngine {
 
             let output_stream = match out_default_config.sample_format() {
                 SampleFormat::F32 => {
-                    let probe = Arc::clone(&render_clone);
                     let queue = Arc::clone(&queue_clone);
-                    let underrun = Arc::clone(&underrun_clone);
                     let aec_out = Arc::clone(&aec);
+                    let played_at = thread_playback_started_ms.clone();
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [f32], _| {
-                            drain_output_f32(data, &queue, &underrun, &probe);
+                            drain_output_f32(data, &queue, &played_at, playback_clock);
                             aec_out.render(data, out_rate, out_channels);
                         },
                         |err| eprintln!("Output audio stream error: {err}"),
@@ -339,14 +286,13 @@ impl AudioEngine {
                     )
                 }
                 SampleFormat::I16 => {
-                    let probe = Arc::clone(&render_clone);
                     let queue = Arc::clone(&queue_clone);
-                    let underrun = Arc::clone(&underrun_clone);
                     let aec_out = Arc::clone(&aec);
+                    let played_at = thread_playback_started_ms.clone();
                     output_device.build_output_stream(
                         &out_config,
                         move |data: &mut [i16], _| {
-                            drain_output_i16(data, &queue, &underrun, &probe);
+                            drain_output_i16(data, &queue, &played_at, playback_clock);
                             let played: Vec<f32> =
                                 data.iter().map(|&s| s as f32 / 32768.0).collect();
                             aec_out.render(&played, out_rate, out_channels);
@@ -390,67 +336,25 @@ impl AudioEngine {
             .recv()
             .map_err(|e| format!("Audio engine initialization channel closed: {e}"))??;
 
-        let mp3_queue = Arc::new(Mutex::new(VecDeque::<u8>::new()));
-        let mp3_decoder = Mutex::new(new_mp3_decoder(&mp3_queue));
-
         Ok(Self {
-            render_probe,
-            probe_armed: std::sync::atomic::AtomicBool::new(false),
             output_queue,
             playback_epoch,
+            playback_started_ms,
             stop_tx: Mutex::new(Some(thread_stop_tx)),
             out_rate,
             out_channels,
-            mp3_queue,
-            mp3_decoder,
             resampler: Mutex::new(StreamResampler::new()),
-            underrun_samples,
         })
     }
 
-    pub fn enqueue_mp3_chunk(&self, mp3_bytes: &[u8]) {
-        if mp3_bytes.is_empty() {
-            return;
-        }
-        let epoch = self.playback_epoch.load(Ordering::SeqCst);
-        self.mp3_queue
-            .lock()
-            .unwrap()
-            .extend(mp3_bytes.iter().copied());
+    pub fn reset_playback_measurement(&self) {
+        let _queue = self.output_queue.lock().unwrap();
+        self.playback_started_ms.store(u64::MAX, Ordering::Relaxed);
+    }
 
-        let mut pcm_samples: Vec<f32> = Vec::new();
-        let mut src_rate = 44100;
-        let mut decoder = self.mp3_decoder.lock().unwrap();
-
-        loop {
-            match decoder.next_frame() {
-                Ok(frame) => {
-                    src_rate = frame.sample_rate as u32;
-                    let channels = frame.channels.max(1);
-                    let samples_per_channel = frame.data.len() / channels;
-                    if channels == 1 {
-                        pcm_samples.extend(frame.data.iter().map(|&s| s as f32 / 32768.0));
-                    } else {
-                        for i in 0..samples_per_channel {
-                            let mut sum = 0.0f32;
-                            for c in 0..channels {
-                                sum += frame.data[i * channels + c] as f32 / 32768.0;
-                            }
-                            pcm_samples.push(sum / channels as f32);
-                        }
-                    }
-                }
-                Err(minimp3::Error::Eof) | Err(minimp3::Error::InsufficientData) => break,
-                Err(minimp3::Error::SkippedData) => continue,
-                Err(err) => {
-                    eprintln!("MP3 decoding warning: {err}");
-                    break;
-                }
-            }
-        }
-        drop(decoder);
-
-        self.enqueue_pcm(&pcm_samples, src_rate, epoch);
+    pub fn playback_started_after_ms(&self) -> Option<u64> {
+        let value = self.playback_started_ms.load(Ordering::Relaxed);
+        (value != u64::MAX).then_some(value)
     }
 
     pub fn playback_epoch(&self) -> u64 {
@@ -481,29 +385,7 @@ impl AudioEngine {
         if self.playback_epoch.load(Ordering::SeqCst) != epoch {
             return;
         }
-        if !output_samples.is_empty() && self.probe_armed.swap(false, Ordering::Relaxed) {
-            self.render_probe
-                .remaining
-                .store(queue.len() as u64 + 1, Ordering::Relaxed);
-        }
         queue.extend(output_samples);
-    }
-
-    pub fn arm_render_probe(&self) {
-        let _queue = self.output_queue.lock().unwrap();
-        self.render_probe
-            .remaining
-            .store(u64::MAX, Ordering::Relaxed);
-        self.render_probe
-            .first_us
-            .store(u64::MAX, Ordering::Release);
-        self.probe_armed.store(true, Ordering::Relaxed);
-    }
-
-    pub fn take_first_rendered_at(&self) -> Option<std::time::Instant> {
-        let micros = self.render_probe.first_us.swap(u64::MAX, Ordering::AcqRel);
-        (micros != u64::MAX)
-            .then(|| self.render_probe.origin + std::time::Duration::from_micros(micros))
     }
 
     pub fn is_playing(&self) -> bool {
@@ -522,26 +404,12 @@ impl AudioEngine {
         frames * 1000.0 / self.out_rate.max(1) as f64
     }
 
-    /// Returns the number of output samples filled with silence since the
-    /// last call (an underrun/glitch), resetting the counter.
-    pub fn take_underrun_samples(&self) -> u64 {
-        self.underrun_samples.swap(0, Ordering::Relaxed)
-    }
-
     pub fn clear_playback(&self) {
         self.playback_epoch.fetch_add(1, Ordering::SeqCst);
         let mut queue = self.output_queue.lock().unwrap();
         queue.clear();
-        self.probe_armed.store(false, Ordering::Relaxed);
-        self.render_probe
-            .remaining
-            .store(u64::MAX, Ordering::Relaxed);
-        self.render_probe
-            .first_us
-            .store(u64::MAX, Ordering::Release);
+        self.playback_started_ms.store(u64::MAX, Ordering::Relaxed);
         drop(queue);
-        self.mp3_queue.lock().unwrap().clear();
-        *self.mp3_decoder.lock().unwrap() = new_mp3_decoder(&self.mp3_queue);
         self.resampler.lock().unwrap().reset();
     }
 }
@@ -556,61 +424,46 @@ impl Drop for AudioEngine {
     }
 }
 
-fn drain_output_f32(
-    data: &mut [f32],
-    queue: &Mutex<VecDeque<f32>>,
-    underrun_samples: &AtomicU64,
-    probe: &RenderProbe,
-) {
+fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, played_at: &AtomicU64, clock: std::time::Instant) {
     let mut queue = queue.lock().unwrap();
-    let had_audio = !queue.is_empty();
-    let mut missed = 0u64;
-    for sample in data.iter_mut() {
-        *sample = match queue.pop_front() {
-            Some(val) => val,
-            None => {
-                missed += 1;
-                0.0
-            }
-        };
+    if !queue.is_empty() {
+        let _ = played_at.compare_exchange(u64::MAX, clock.elapsed().as_millis() as u64, Ordering::Relaxed, Ordering::Relaxed);
     }
-    // Only a dry-out that follows real audio is an underrun; padding silence
-    // while idle is normal and must not be counted.
-    probe.record(data.len() as u64 - missed);
-    if missed > 0 && had_audio {
-        underrun_samples.fetch_add(missed, Ordering::Relaxed);
+    for sample in data {
+        *sample = queue.pop_front().unwrap_or(0.0);
     }
 }
 
-fn drain_output_i16(
-    data: &mut [i16],
-    queue: &Mutex<VecDeque<f32>>,
-    underrun_samples: &AtomicU64,
-    probe: &RenderProbe,
-) {
+fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, played_at: &AtomicU64, clock: std::time::Instant) {
     let mut queue = queue.lock().unwrap();
-    let had_audio = !queue.is_empty();
-    let mut missed = 0u64;
-    for sample in data.iter_mut() {
-        *sample = match queue.pop_front() {
-            Some(val) => (val.clamp(-1.0, 1.0) * 32767.0) as i16,
-            None => {
-                missed += 1;
-                0
-            }
-        };
+    if !queue.is_empty() {
+        let _ = played_at.compare_exchange(u64::MAX, clock.elapsed().as_millis() as u64, Ordering::Relaxed, Ordering::Relaxed);
     }
-    // Only a dry-out that follows real audio is an underrun; padding silence
-    // while idle is normal and must not be counted.
-    probe.record(data.len() as u64 - missed);
-    if missed > 0 && had_audio {
-        underrun_samples.fetch_add(missed, Ordering::Relaxed);
+    for sample in data {
+        *sample = (queue.pop_front().unwrap_or(0.0).clamp(-1.0, 1.0) * 32767.0) as i16;
     }
 }
 
 #[cfg(test)]
 mod bounded_capture_tests {
     use super::*;
+    #[test]
+    fn output_preserves_pcm_and_pads_exhausted_queue_with_silence() {
+        let queue = Mutex::new(VecDeque::from([0.25, -0.5]));
+        let mut output = [1.0; 4];
+        drain_output_f32(&mut output, &queue, &AtomicU64::new(u64::MAX), std::time::Instant::now());
+        assert_eq!(output, [0.25, -0.5, 0.0, 0.0]);
+        assert!(queue.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn integer_output_clamps_pcm_and_pads_with_silence() {
+        let queue = Mutex::new(VecDeque::from([2.0, -2.0]));
+        let mut output = [1; 3];
+        drain_output_i16(&mut output, &queue, &AtomicU64::new(u64::MAX), std::time::Instant::now());
+        assert_eq!(output, [32767, -32767, 0]);
+    }
+
     #[test]
     fn full_capture_queue_marks_overflow_without_growing() {
         let (tx, mut rx) = mpsc::channel(1);

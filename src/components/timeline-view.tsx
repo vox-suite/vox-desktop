@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { PlanningTimeline } from "@/components/planning-timeline";
 import { SpanMonthCounts } from "@/components/span-month-counts";
 import { daysFrom } from "@/lib/span-format";
+import type { DateRange } from "react-day-picker";
 import { addDays, addMonths, monthGridDays, startOfDay, startOfMonth } from "@/lib/span-layout";
 import type { Collection, Span, SpanDaySummary } from "@/features/spans/types";
 import { timelineApi, type TimelineEntry, type TimelineGroup, type TimelineEventType } from "@/features/timeline/api";
@@ -17,6 +18,7 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const voiceFilter = useDesktopContext().timeline;
   const [mode, setMode] = useState<ViewMode>("day");
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
+  const [range, setRange] = useState<DateRange | null>(null);
   const [group, setGroup] = useState("");
   const [groups, setGroups] = useState<TimelineGroup[]>([]);
   const [types, setTypes] = useState<TimelineEventType[]>([]);
@@ -28,7 +30,7 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const ticket = useRef(0);
-  const days = useMemo(() => mode === "day" ? [anchor] : mode === "month" ? monthGridDays(anchor) : daysFrom(anchor, 7), [anchor, mode]);
+  const days = useMemo(() => range?.from && range.to ? daysFrom(range.from, Math.min(31, Math.round((startOfDay(range.to).getTime() - startOfDay(range.from).getTime()) / 864e5) + 1)) : mode === "day" ? [anchor] : mode === "month" ? monthGridDays(anchor) : daysFrom(anchor, 7), [anchor, mode, range]);
   const start = voiceFilter?.startAt ?? days[0].toISOString();
   const end = voiceFilter?.endAt ?? addDays(days[days.length - 1], 1).toISOString();
   const spending = { spending_only: voiceFilter?.spendingOnly, merchant: voiceFilter?.merchant, category: voiceFilter?.category };
@@ -75,10 +77,10 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     schema_id: e.event_type_id, schema_color_token: null, schema_icon_token: null, parent_id: null, source: evidence[0]?.source_type ?? "timeline",
     source_event_id: null, source_ref: evidence[0]?.source_id ?? null, execution_type: null, execution_result: null, collection_ids: [], version: e.revision, created_at: e.created_at, updated_at: e.updated_at,
   }));
-  return <PageContainer><TimelineHeader anchor={anchor} days={days} mode={mode} onBack={onBack} loading={loading} onReload={() => setRevision((r) => r + 1)}
-    onModeChange={(next) => { setMode(next); setAnchor((date) => next === "month" ? startOfMonth(date) : next === "week" ? addDays(date, -date.getDay()) : date); }}
-    onPrev={() => setAnchor((date) => mode === "month" ? addMonths(date, -1) : addDays(date, mode === "week" ? -7 : -1))}
-    onNext={() => setAnchor((date) => mode === "month" ? addMonths(date, 1) : addDays(date, mode === "week" ? 7 : 1))} />
+  return <PageContainer><TimelineHeader range={range} onRangeChange={(next) => { setRange(next); if (next?.from) { setAnchor(startOfDay(next.from)); setMode(next.to && startOfDay(next.to).getTime() !== startOfDay(next.from).getTime() ? "week" : "day"); } }} anchor={anchor} days={days} mode={mode} onBack={onBack} loading={loading} onReload={() => setRevision((r) => r + 1)}
+    onModeChange={(next) => { setRange(null); setMode(next); setAnchor((date) => next === "month" ? startOfMonth(date) : next === "week" ? addDays(date, -date.getDay()) : date); }}
+    onPrev={() => { if (range) setRange(null); setAnchor((date) => mode === "month" ? addMonths(date, -1) : addDays(date, mode === "week" ? -7 : -1)); }}
+    onNext={() => { if (range) setRange(null); setAnchor((date) => mode === "month" ? addMonths(date, 1) : addDays(date, mode === "week" ? 7 : 1)); }} />
     <div className="flex shrink-0 flex-wrap gap-2 border-b border-border px-6 py-2" role="group" aria-label="Timeline groups">
       <Button size="sm" variant={!group ? "secondary" : "ghost"} onClick={() => setGroup("")}>All</Button>
       {groups.map((g) => <Button key={g.id} size="sm" variant={group === g.value ? "secondary" : "ghost"} onClick={() => setGroup(g.value)}>{g.label}</Button>)}

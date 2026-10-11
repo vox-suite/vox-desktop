@@ -1,5 +1,5 @@
 import { DesktopActionOverlay } from "@/components/shell/desktop-action-overlay";
-import { DesktopTaskbar } from "@/components/shell/desktop-taskbar";
+import { TerminalPanel } from "@/components/shell/terminal-panel";
 import { ConnectedAppsView } from "@/components/connected-apps-view";
 import { lazy, Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/shell/app-sidebar";
@@ -34,6 +34,7 @@ export function HomeShell({
   onSignOut,
   isActive,
   voxSpeaking,
+  micLevel,
   callState,
   callError,
   onToggleCall,
@@ -47,6 +48,7 @@ export function HomeShell({
   onSignOut: () => void;
   isActive: boolean;
   voxSpeaking: boolean;
+  micLevel: number;
   callState: string;
   callError: string;
   onToggleCall: () => void;
@@ -112,7 +114,7 @@ export function HomeShell({
           <div ref={mapNode} className="vox-map-host size-full" />
         </div>
 
-        {activeTab === "agent" ? <ActivityLogs /> : null}
+        <ActivityLogs />
 
         <AppSidebar
           activeTab={activeTab}
@@ -121,6 +123,14 @@ export function HomeShell({
           userName={userName}
           avatarUrl={avatarUrl}
           onSignOut={onSignOut}
+          voice={{
+            isActive,
+            speaking: voxSpeaking,
+            micLevel,
+            callState,
+            error: callError,
+            onToggleCall,
+          }}
         />
 
         <SidebarInset
@@ -132,7 +142,8 @@ export function HomeShell({
           }
         >
           {body}
-        <DesktopActionOverlay />
+          <DesktopActionOverlay />
+          <TerminalPanel />
           {activeTab === "agent" && mapError ? (
             <Alert
               variant="destructive"
@@ -148,13 +159,6 @@ export function HomeShell({
           ) : null}
         </SidebarInset>
       </SidebarProvider>
-      <DesktopTaskbar
-        isActive={isActive}
-        speaking={voxSpeaking}
-        callState={callState}
-        error={callError}
-        onToggleCall={onToggleCall}
-      />
     </div>
   );
 }

@@ -81,6 +81,7 @@ export function useMissionMap(reaction: {
         pitch: MAP_PITCH,
         bearing: -28,
         attributionControl: false,
+        interactive: false,
         maxPitch: 70,
         minPitch: 45,
         // Helps WebGL composite correctly over Tauri's transparent window.
@@ -97,13 +98,53 @@ export function useMissionMap(reaction: {
       el.className = "vox-hud-marker";
       el.style.visibility = "hidden";
       el.innerHTML = `
-      <div class="vox-hud-marker__pin"></div>
+      <button class="vox-hud-marker__target" aria-label="Your location details" type="button">
+        <span class="vox-hud-marker__pin"></span><span class="vox-hud-marker__label">IP unavailable</span>
+      </button>
       <div class="vox-hud-marker__stem"></div>
+      <section class="vox-location-card" aria-label="Your location">
+        <span class="vox-location-card__eyebrow"><i></i>YOUR LOCATION</span>
+        <strong class="vox-location-card__title">Locating…</strong>
+        <p class="vox-location-card__source"></p>
+        <dl><div><dt>Public IP</dt><dd class="vox-location-card__ip">Unavailable</dd></div>
+        <div><dt>Coordinates</dt><dd class="vox-location-card__coords">Unavailable</dd></div></dl>
+      </section>
     `;
       const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
         .setLngLat(initialCenter)
         .addTo(map);
       markerRef.current = marker;
+      let roofHeight = 0;
+      const placeOnRoof = (matrix: ArrayLike<number>) => {
+        const anchor = marker.getLngLat();
+        const ground = map.project(anchor);
+        const point = maplibregl.MercatorCoordinate.fromLngLat(
+          anchor,
+          roofHeight,
+        );
+        const w =
+          matrix[3] * point.x +
+          matrix[7] * point.y +
+          matrix[11] * point.z +
+          matrix[15];
+        if (!w) return;
+        const x =
+          (matrix[0] * point.x +
+            matrix[4] * point.y +
+            matrix[8] * point.z +
+            matrix[12]) /
+          w;
+        const y =
+          (matrix[1] * point.x +
+            matrix[5] * point.y +
+            matrix[9] * point.z +
+            matrix[13]) /
+          w;
+        marker.setOffset([
+          ((x + 1) * container.clientWidth) / 2 - ground.x,
+          ((1 - y) * container.clientHeight) / 2 - ground.y,
+        ]);
+      };
 
       const resize = () => {
         try {
@@ -217,17 +258,57 @@ export function useMissionMap(reaction: {
         sceneLayerRef.current?.setHome([lng, lat]);
       };
 
+      el.addEventListener("mouseenter", () => pauseOrbit(3_600_000));
+      el.addEventListener("mouseleave", () => pauseOrbit(2200));
+      el.addEventListener("focusin", () => pauseOrbit(3_600_000));
+      el.addEventListener("focusout", () => pauseOrbit(2200));
       const runLocate = async () => {
         const loc = await resolveDeviceLocation();
+        if (!container.isConnected) return;
+        const write = (selector: string, value: string) => {
+          const node = el.querySelector(selector);
+          if (node) node.textContent = value;
+        };
+        write(".vox-hud-marker__label", loc.ip ?? "IP unavailable");
+        write(
+          ".vox-location-card__title",
+          loc.city ??
+            (loc.source === "default"
+              ? "Location unavailable"
+              : "Your location"),
+        );
+        write(
+          ".vox-location-card__source",
+          loc.source === "gps"
+            ? "Device location"
+            : loc.source === "ip"
+              ? "Approximate · based on network"
+              : "Showing the default map position",
+        );
+        write(".vox-location-card__ip", loc.ip ?? "Unavailable");
+        write(
+          ".vox-location-card__coords",
+          loc.source === "default"
+            ? "Unavailable"
+            : `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
+        );
         applyPosition(loc.lng, loc.lat);
       };
 
       map.on("load", () => {
         ensureMissionControlLook(map);
         ensure3dBuildings(map);
+        map.addLayer({
+          id: "vox-marker-roof-projection",
+          type: "custom",
+          renderingMode: "3d",
+          render: (_gl, parameters) =>
+            placeOnRoof(parameters.defaultProjectionData.mainMatrix),
+        });
         const layer = createSceneLayer(map, {
           onCamera: () => pauseOrbit(3_600_000),
-          onHomeAnchor: (anchor) => {
+          onHomeAnchor: (anchor, height) => {
+            roofHeight = height;
             marker.setLngLat(anchor);
             userLngLat.current = anchor;
           },

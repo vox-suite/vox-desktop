@@ -16,7 +16,7 @@ export function AgentPane({
           {callError ||
             (isActive
               ? "Your space stays in view while you talk."
-              : "Use Talk to Vox below to start a live conversation.")}
+              : null)}
         </p>
       </PageBody>
     </PageContainer>

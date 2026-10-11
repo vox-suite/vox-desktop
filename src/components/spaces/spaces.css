@@ -419,92 +419,40 @@
   pointer-events: none;
 }
 
-.spaces-introduction {
-  display: grid;
-  grid-template-columns: minmax(250px, 360px) minmax(520px, 660px);
-  align-items: center;
-  justify-content: center;
-  gap: clamp(32px, 5vw, 80px);
-  flex: 1;
-  min-height: 460px;
-  padding: 48px 16px;
+
+.spaces-flow {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: spaces-draw 2.4s ease-out 0.4s forwards;
 }
-.spaces-introduction-preview {
-  min-width: 0;
-  overflow: visible;
-}
-.spaces-introduction-graph {
-  width: 660px;
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 120px);
-  column-gap: 48px;
-  row-gap: 16px;
-}
-.spaces-introduction-edges {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.spaces-introduction-edges > path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1;
-  marker-end: url(#spaces-intro-arrow);
-}
-.spaces-introduction-node {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--card);
-}
-.spaces-introduction-node.vision {
-  grid-column: 1;
-  grid-row: 2;
-}
-.spaces-introduction-node.research {
-  grid-column: 2;
-  grid-row: 1;
-}
-.spaces-introduction-node.context {
-  grid-column: 2;
-  grid-row: 3;
-}
-.spaces-introduction-node.plan {
-  grid-column: 3;
-  grid-row: 2;
-}
-@media (max-width: 1150px) {
-  .spaces-introduction {
-    grid-template-columns: 1fr;
-    gap: 48px;
-    justify-items: center;
-  }
-  .spaces-introduction-copy {
-    width: min(100%, 660px);
-  }
-  .spaces-introduction-preview {
-    width: min(100%, 660px);
+@keyframes spaces-draw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
-@media (max-width: 620px) {
-  .spaces-introduction {
-    padding: 24px 0;
-    min-height: 0;
+@media (prefers-reduced-motion: reduce) {
+  .spaces-flow {
+    animation: none;
+    stroke-dashoffset: 0;
   }
-  .spaces-introduction-preview {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: #343438 transparent;
+}
+
+.spaces-dots {
+  background-image: radial-gradient(#ffffff17 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(to top left, black, transparent 85%);
+}
+
+.spaces-float {
+  animation: spaces-float 5s ease-in-out infinite;
+}
+@keyframes spaces-float {
+  50% {
+    transform: translateY(-4px);
   }
-  .spaces-introduction-graph {
-    min-width: 620px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spaces-float {
+    animation: none;
   }
 }

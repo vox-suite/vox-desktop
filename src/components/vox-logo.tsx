@@ -49,6 +49,12 @@ export function VoxOrbSvg({
           r={r}
           fill="currentColor"
           opacity={op}
+          style={
+            {
+              "--dot-opacity": op,
+              "--dot-delay": `${-(cy / 64) * 2.4}s`,
+            } as React.CSSProperties
+          }
         />
       ))}
     </svg>

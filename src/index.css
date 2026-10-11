@@ -60,7 +60,7 @@ a,
 .sign-in-glow {
   background: radial-gradient(
     ellipse 86vh 71vh at 12vh 9vh,
-    rgba(255, 99, 99, 0.550) 0%,
+    rgba(255, 99, 99, 0.55) 0%,
     rgba(255, 99, 99, 0.526) 10%,
     rgba(255, 99, 99, 0.461) 20%,
     rgba(255, 99, 99, 0.373) 30%,
@@ -70,7 +70,7 @@ a,
     rgba(255, 99, 99, 0.047) 70%,
     rgba(255, 99, 99, 0.015) 80%,
     rgba(255, 99, 99, 0.002) 90%,
-    rgba(255, 99, 99, 0.000) 100%
+    rgba(255, 99, 99, 0) 100%
   );
 }
 
@@ -197,7 +197,8 @@ a,
   display: flex;
   flex-direction: column;
   align-items: center;
-  pointer-events: none;
+  pointer-events: auto;
+  position: relative;
 }
 
 .vox-hud-marker__pin {
@@ -276,4 +277,138 @@ a,
 .sidebar-resizing {
   cursor: col-resize;
   user-select: none;
+}
+
+.vox-hud-marker__target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: white;
+}
+.vox-hud-marker__target .vox-hud-marker__label {
+  position: absolute;
+  left: 18px;
+  text-transform: none;
+  border-color: #ffffff25;
+  border-radius: 5px;
+  background: #111318e8;
+  letter-spacing: 0;
+}
+.vox-location-card {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 272px;
+  padding: 16px;
+  border: 1px solid #242426;
+  border-radius: 20px;
+  background: #161719e6;
+  color: #eee;
+  box-shadow: 0 16px 64px #0009;
+  backdrop-filter: blur(30px);
+  font-family: Inter, sans-serif;
+}
+.vox-location-card::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  transform: translateX(-50%) rotate(45deg);
+  border: solid #242426;
+  border-width: 0 1px 1px 0;
+  background: #161719;
+}
+.vox-location-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 18px;
+}
+.vox-hud-marker:hover .vox-location-card,
+.vox-hud-marker:focus-within .vox-location-card {
+  display: block;
+}
+.vox-location-card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: #969ba5;
+}
+.vox-location-card__eyebrow i {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 #4ade8099;
+  animation: vox-live-dot 2s ease-out infinite;
+}
+@keyframes vox-live-dot {
+  to {
+    box-shadow: 0 0 0 7px #4ade8000;
+  }
+}
+.vox-location-card__title {
+  display: block;
+  margin-top: 12px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.vox-location-card__source {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #989da7;
+}
+.vox-location-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 0;
+}
+.vox-location-card dl div {
+  padding: 8px 10px;
+  border: 1px solid #ffffff0d;
+  border-radius: 12px;
+  background: #ffffff0a;
+}
+.vox-location-card dt {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8d939e;
+}
+.vox-location-card dd {
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.xterm,
+.xterm .xterm-viewport,
+.xterm .xterm-screen canvas {
+  background-color: transparent !important;
+}
+.xterm .xterm-viewport {
+  scrollbar-width: none;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  display: none;
 }
