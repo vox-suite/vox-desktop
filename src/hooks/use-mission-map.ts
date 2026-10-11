@@ -99,15 +99,15 @@ export function useMissionMap(reaction: {
       el.style.visibility = "hidden";
       el.innerHTML = `
       <button class="vox-hud-marker__target" aria-label="Your location details" type="button">
-        <span class="vox-hud-marker__pin"></span><span class="vox-hud-marker__label">IP unavailable</span>
+        <span class="vox-hud-marker__pin"></span><span class="vox-hud-marker__label"></span>
       </button>
       <div class="vox-hud-marker__stem"></div>
       <section class="vox-location-card" aria-label="Your location">
         <span class="vox-location-card__eyebrow"><i></i>YOUR LOCATION</span>
         <strong class="vox-location-card__title">Locating…</strong>
         <p class="vox-location-card__source"></p>
-        <dl><div><dt>Public IP</dt><dd class="vox-location-card__ip">Unavailable</dd></div>
-        <div><dt>Coordinates</dt><dd class="vox-location-card__coords">Unavailable</dd></div></dl>
+        <dl><div><dt>Public IP</dt><dd class="vox-location-card__ip"></dd></div>
+        <div><dt>Coordinates</dt><dd class="vox-location-card__coords"></dd></div></dl>
       </section>
     `;
       const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
@@ -269,28 +269,28 @@ export function useMissionMap(reaction: {
           const node = el.querySelector(selector);
           if (node) node.textContent = value;
         };
-        write(".vox-hud-marker__label", loc.ip ?? "IP unavailable");
+        if (loc.source === "default") {
+          el.style.visibility = "hidden";
+          return;
+        }
+        const ip = loc.ip?.trim();
+        write(".vox-hud-marker__label", ip || loc.city || "Your location");
         write(
           ".vox-location-card__title",
-          loc.city ??
-            (loc.source === "default"
-              ? "Location unavailable"
-              : "Your location"),
+          loc.city || "Your location",
         );
         write(
           ".vox-location-card__source",
           loc.source === "gps"
             ? "Device location"
-            : loc.source === "ip"
-              ? "Approximate · based on network"
-              : "Showing the default map position",
+            : "Approximate · based on network",
         );
-        write(".vox-location-card__ip", loc.ip ?? "Unavailable");
+        write(".vox-location-card__ip", ip || "");
+        const ipRow = el.querySelector(".vox-location-card__ip")?.parentElement;
+        if (ipRow) ipRow.style.display = ip ? "" : "none";
         write(
           ".vox-location-card__coords",
-          loc.source === "default"
-            ? "Unavailable"
-            : `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
+          `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
         );
         applyPosition(loc.lng, loc.lat);
       };
