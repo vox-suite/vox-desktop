@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -51,10 +52,39 @@ const LAYERS: Layer[] = [
 
 const cyOf = (i: number) => 76 + i * GAP;
 
-function Plate({ cy, w }: { cy: number; w: number }) {
+const AMBER_HEX = "#f5b83d";
+const BASE: [number, number, number] = [154, 163, 174];
+const AMBER: [number, number, number] = [245, 184, 61];
+const mix = (g: number, from = BASE) =>
+  `rgb(${from.map((c, k) => Math.round(c + (AMBER[k] - c) * g)).join(",")})`;
+
+function useClock() {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    let last = 0;
+    const loop = (time: number) => {
+      raf = requestAnimationFrame(loop);
+      if (time - last < 40) return;
+      last = time;
+      setT(time / 1000);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return t;
+}
+
+function Plate({ cy, w, g }: { cy: number; w: number; g: number }) {
   const h = w / 2;
   return (
-    <g fill="#0a0b0c" stroke={LINE} strokeWidth="0.8" strokeLinejoin="round">
+    <g
+      fill="#0a0b0c"
+      stroke={mix(g)}
+      strokeWidth={0.8 + 0.6 * g}
+      strokeLinejoin="round"
+    >
       <path
         d={`M${CX - w},${cy} L${CX - w},${cy + T} L${CX},${cy + h + T} L${CX + w},${cy + T} L${CX + w},${cy} L${CX},${cy + h} Z`}
       />
@@ -189,6 +219,9 @@ function Plan({ cy }: { cy: number }) {
 const CONTENT = [Plan, Context, Research, Vision];
 
 export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
+  const t = useClock();
+  const sweep = ((t % 4.5) / 4.5) * 1.5 - 0.15;
+  const glow = (i: number) => Math.exp(-(((sweep - (3 - i) / 3) / 0.14) ** 2));
   return (
     <section className="relative isolate -m-6 flex flex-1 overflow-hidden">
       <div
@@ -261,6 +294,35 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                 )),
               )}
             </g>
+            {(t > 0 ? [0, 1, 2] : []).flatMap((i) =>
+              [-1, 0, 1].flatMap((sign) =>
+                [0, 1].map((n) => {
+                  const u =
+                    (((t * 0.32 + (n * 0.5 + sign * 0.17 + i * 0.23)) % 1) +
+                      1) %
+                    1;
+                  const lx = (k: number) =>
+                    CX +
+                    sign *
+                      (LAYERS[i + 1].w + (LAYERS[i].w - LAYERS[i + 1].w) * k);
+                  const ly = (k: number) =>
+                    cyOf(i + 1) + (cyOf(i) - cyOf(i + 1)) * k;
+                  const tail = Math.max(0, u - 0.07);
+                  return (
+                    <g key={`${i}${sign}${n}`} opacity={Math.sin(Math.PI * u)}>
+                      <path
+                        d={`M${lx(tail)},${ly(tail)} L${lx(u)},${ly(u)}`}
+                        stroke={AMBER_HEX}
+                        strokeWidth="1.2"
+                        strokeLinecap="round"
+                        opacity="0.5"
+                      />
+                      <circle cx={lx(u)} cy={ly(u)} r="2" fill={AMBER_HEX} />
+                    </g>
+                  );
+                }),
+              ),
+            )}
             {[3, 2, 1, 0].map((i) => {
               const layer = LAYERS[i];
               const cy = cyOf(i);
@@ -274,7 +336,7 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                   className="spaces-float"
                   style={{ animationDelay: `${i * -1.1}s` }}
                 >
-                  <Plate cy={cy} w={layer.w} />
+                  <Plate cy={cy} w={layer.w} g={glow(i)} />
                   <Content cy={cy} w={layer.w} />
                   <path
                     d={`M${vx},${cy} L${vx + (left ? -26 : 26)},${cy - 26} H${ex}`}
@@ -282,12 +344,12 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                     stroke={FAINT}
                     strokeWidth="0.8"
                   />
-                  <circle cx={vx} cy={cy} r="2" fill={LINE} />
+                  <circle cx={vx} cy={cy} r="2" fill={mix(glow(i))} />
                   <g textAnchor={left ? "start" : "end"}>
                     <text
                       x={ex}
                       y={cy - 58}
-                      fill="#8a929c"
+                      fill={mix(glow(i), [138, 146, 156])}
                       fontSize="8"
                       letterSpacing="1.5"
                     >

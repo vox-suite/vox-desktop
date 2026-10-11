@@ -26,8 +26,19 @@ export function useSpaces(enabled = true) {
     if (enabled) setLoading(true);
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (countFirst = false) => {
     try {
+      if (countFirst) {
+        const total = await spacesApi
+          .countSpaces()
+          .then((r) => r.count)
+          .catch(() => null);
+        if (total === 0) {
+          setSpaces([]);
+          setError("");
+          return;
+        }
+      }
       const data = await spacesApi.listSpaces();
       setSpaces(data);
       setError("");
@@ -40,7 +51,7 @@ export function useSpaces(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    queueMicrotask(() => void load());
+    queueMicrotask(() => void load(true));
   }, [enabled, load]);
 
   useEffect(() => {
@@ -82,7 +93,7 @@ export function useSpaces(enabled = true) {
 
   const reload = useCallback(() => {
     setLoading(true);
-    return load();
+    return load(true);
   }, [load]);
 
   return { spaces, loading, error, reload, create, drop };

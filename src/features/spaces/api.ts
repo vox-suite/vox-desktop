@@ -10,6 +10,12 @@ import type {
 const CREATE_TIMEOUT_MS = 30_000;
 
 export const spacesApi = {
+  countSpaces: () =>
+    platform().http.request<{ count: number }>({
+      method: "GET",
+      path: "/v1/me/spaces/count",
+      timeoutMs: 8000,
+    }),
   listSpaces: () =>
     platform().http.request<Space[]>({ method: "GET", path: "/v1/me/spaces" }),
   getSpace: (id: string) =>

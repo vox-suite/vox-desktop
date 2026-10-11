@@ -12,6 +12,12 @@ export const pulseTimezone = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export const discoveryApi = {
+  countCharts: () =>
+    platform().http.request<{ count: number }>({
+      method: "GET",
+      path: "/v1/me/pulse/charts/count",
+      timeoutMs: 8000,
+    }),
   getCanvas: (refresh = false, cursor?: string) =>
     platform().http.request<CanvasResponse>({
       method: "GET",
@@ -35,7 +41,10 @@ export const discoveryApi = {
     platform().http.request<DiscoveryResponse>({
       method: "POST",
       path: "/v1/me/pulse/suggestions",
-      body: { timezone: pulseTimezone(), refresh: opts.refresh ?? opts.more ?? false },
+      body: {
+        timezone: pulseTimezone(),
+        refresh: opts.refresh ?? opts.more ?? false,
+      },
       timeoutMs: 200000,
     }),
   preview: (definition: PulseDefinition) =>

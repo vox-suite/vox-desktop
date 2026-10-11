@@ -14,6 +14,20 @@ export function usePulseCanvas() {
     const ticket = requests.current.start();
     setRefreshing(true);
     try {
+      if (!cursor) {
+        const total = await discoveryApi
+          .countCharts()
+          .then((r) => r.count)
+          .catch(() => null);
+        if (total === 0) {
+          if (requests.current.isCurrent(ticket)) {
+            cursors.current = [undefined];
+            setCanvas({ charts: [], next_cursor: null });
+            setError("");
+          }
+          return;
+        }
+      }
       const pages = await Promise.all(
         (cursor ? [cursor] : cursors.current).map((page) =>
           discoveryApi.getCanvas(refresh, page),
