@@ -148,7 +148,7 @@ export function AppSidebar({
           </div>
           <SidebarTrigger
             title="Toggle sidebar (⌘B)"
-            className="size-6 rounded-full bg-white/5 text-muted-foreground"
+            className="size-6 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
           />
         </div>
         <span className="flex min-w-0 items-center gap-2 px-1 py-1 font-heading text-sm font-normal text-muted-foreground group-data-[collapsible=icon]:hidden">
