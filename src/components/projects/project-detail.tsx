@@ -57,7 +57,7 @@ export function ProjectDetail({
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
   const [traceStatus, setTraceStatus] = useState("");
-  const [shareSources, setShareSources] = useState(false);
+  const [responseAfter, setResponseAfter] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [plans, setPlans] = useState<Space[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
@@ -161,12 +161,9 @@ export function ProjectDetail({
   const trace = async () => {
     if (!p || !intent.trim() || state.busy || traceStatus) return;
     setError("");
+    setResponseAfter(p.data.messages.at(-1)?.id ?? "");
     setTraceStatus("Finding relevant source files…");
     try {
-      if (!shareSources)
-        throw new Error(
-          "Enable source excerpts to trace the actual code. Only relevant excerpts are shared with the model.",
-        );
       const excerpts = await localProjects().retrieve(p.id, intent.trim());
       if (!excerpts.length)
         throw new Error(
@@ -495,15 +492,10 @@ export function ProjectDetail({
                 rows={2}
                 disabled={creating}
               />
-              <label className="my-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={shareSources}
-                  onChange={(e) => setShareSources(e.target.checked)}
-                  disabled={!!traceStatus}
-                />
-                Share relevant local source excerpts to trace this request
-              </label>
+              <p className="my-2 text-xs text-muted-foreground">
+                Drawing a flowchart sends relevant source excerpts to Vox. Full
+                files stay on this device.
+              </p>
               {traceStatus && (
                 <p
                   role="status"
@@ -513,7 +505,9 @@ export function ProjectDetail({
                   {traceStatus}
                 </p>
               )}
-              {!traceStatus &&
+              {responseAfter !== null &&
+                p.data.messages.at(-1)?.id !== responseAfter &&
+                !traceStatus &&
                 p.data.messages.at(-1)?.role === "assistant" &&
                 !p.data.messages.at(-1)?.flow && (
                   <p className="my-2 text-xs text-muted-foreground">
