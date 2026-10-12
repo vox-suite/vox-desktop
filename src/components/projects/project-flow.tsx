@@ -31,7 +31,12 @@ import {
   type FlowLayout,
   type FlowPoint,
 } from "./flow-layout";
-import { FLOW_PALETTE, flowCategory, type FlowCategory } from "./flow-palette";
+import {
+  FLOW_PALETTE,
+  flowCategory,
+  connectionColor,
+  type FlowCategory,
+} from "./flow-palette";
 import { Button } from "@/components/ui/button";
 import "@xyflow/react/dist/style.css";
 
@@ -65,6 +70,7 @@ function FlowCard({ data, selected }: NodeProps<Node<FlowData>>) {
         <Icon className="size-3" aria-label={category.label} />
         <button
           className="nodrag nopan project-evidence-badge"
+          data-supported={data.citations.length > 0}
           aria-label={`Inspect ${data.title}: ${data.citations.length} source references`}
           onClick={() => data.onInspect(data)}
         >
@@ -209,10 +215,16 @@ export function ProjectFlowCanvas({
     const edges: Edge<RouteData>[] = flow.edges.map((edge, i) => {
       const route = layout.routes[`call-${i}`];
       const source = flow.nodes.find((n) => n.id === edge.from)!;
-      const color =
-        edge.evidence === "observed"
-          ? FLOW_PALETTE[flowCategory(source.kind)].color
-          : "#fbbf24";
+      const target = flow.nodes.find((n) => n.id === edge.to)!;
+      const focused =
+        !!selection?.id &&
+        (edge.from === selection.id || edge.to === selection.id);
+      const color = connectionColor(
+        edge.evidence,
+        source.kind,
+        target.kind,
+        focused,
+      );
       return {
         id: `call-${i}`,
         type: "routed",
@@ -306,8 +318,8 @@ export function ProjectFlowCanvas({
           >
             <Background
               variant={BackgroundVariant.Lines}
-              bgColor="#07101d"
-              color="#152337"
+              bgColor="#020617"
+              color="#1e293b"
               gap={32}
               lineWidth={0.5}
             />
