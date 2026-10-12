@@ -194,13 +194,13 @@
   flex-shrink: 0;
 }
 .project-composer-dock {
-  padding: 16px 24px 20px;
+  padding: 10px 16px 12px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--background);
 }
 .project-build-composer {
-  width: min(780px, 100%);
+  width: 100%;
   margin: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -211,15 +211,15 @@
   display: block;
   font-size: 11px;
   color: var(--muted-foreground);
-  margin: 14px 16px 0;
+  margin: 10px 14px 0;
 }
 .project-build-composer textarea {
   border: 0;
   border-radius: 0;
   box-shadow: none;
   background: transparent;
-  padding: 10px 16px;
-  min-height: 62px;
+  padding: 8px 14px;
+  min-height: 44px;
   max-height: 150px;
   resize: vertical;
   font-size: 13px;
@@ -369,32 +369,6 @@
 .project-origin.user {
   background: #aeb8ae;
 }
-.project-flow-card {
-  width: 270px;
-  max-height: 310px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  background: var(--card);
-}
-.project-flow-kind {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted-foreground);
-  font-size: 10px;
-}
-.project-flow-references {
-  margin-top: 12px;
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-  font-size: 10px;
-  color: var(--muted-foreground);
-}
-.project-flow-references summary {
-  cursor: pointer;
-}
 .project-flow-header {
   display: flex;
   align-items: center;
@@ -467,4 +441,248 @@
   .project-list-row {
     transition: none;
   }
+}
+
+.project-architecture {
+  display: flex;
+  height: 100%;
+  min-height: 280px;
+  flex-direction: column;
+  background: #07101d;
+}
+.project-architecture-stage {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+}
+.project-architecture-node {
+  width: 188px;
+  height: 88px;
+  padding: 9px 11px;
+  border: 1px solid var(--node-color);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--node-color) 8%, #101a29);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--node-color) 12%, transparent);
+  font-family: "Geist Mono", monospace;
+  color: #eef4fa;
+}
+.project-architecture-node.is-selected {
+  outline: 2px solid var(--node-color);
+  outline-offset: 3px;
+}
+.project-architecture-node-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--node-color);
+  height: 14px;
+}
+.project-evidence-badge {
+  padding: 1px 5px;
+  border: 1px solid var(--node-color);
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 1.3;
+  background: #091524;
+}
+.project-evidence-badge:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.project-architecture-node h3 {
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  margin-top: 5px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.project-architecture-node p {
+  color: #a1b2c6;
+  font-size: 9px;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.project-architecture-node .react-flow__handle {
+  width: 3px;
+  height: 3px;
+  background: var(--node-color);
+  border: none;
+  opacity: 0;
+}
+.project-code-boundary {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed #c6a744;
+  border-radius: 9px;
+  background: #bd9c3110;
+  pointer-events: none;
+}
+.project-code-boundary > span {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  padding: 3px 6px;
+  background: #081221;
+  font-family: "Geist Mono", monospace;
+  color: #d7c384;
+  font-size: 9px;
+}
+.project-route-label {
+  position: absolute;
+  pointer-events: all;
+  padding: 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: #07101df2;
+  color: #b7c8db;
+  font-family: "Geist Mono", monospace;
+  font-size: 9px;
+  max-width: 210px;
+  white-space: nowrap;
+}
+.project-route-label:hover,
+.project-route-label:focus-visible {
+  border-color: #637990;
+  outline: none;
+  color: #fff;
+}
+.project-flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-top: 1px solid #192739;
+  background: #08111e;
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  color: #a6b7cd;
+}
+.project-flow-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.project-flow-legend i {
+  width: 15px;
+  height: 9px;
+  border: 1px solid var(--node-color);
+  background: color-mix(in srgb, var(--node-color) 12%, transparent);
+  border-radius: 2px;
+}
+.project-flow-legend small {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #26394d;
+  font-size: 9px;
+}
+.project-flow-line-key {
+  margin-left: auto;
+  font-size: 9px;
+  color: #8196af;
+}
+.project-layout-status {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #a6b7cd;
+}
+.project-flow-inspector {
+  position: absolute;
+  z-index: 10;
+  right: 14px;
+  top: 14px;
+  width: 280px;
+  max-width: calc(100% - 28px);
+  max-height: calc(100% - 28px);
+  overflow: auto;
+  border: 1px solid #35485d;
+  border-radius: 8px;
+  background: #101c2bf5;
+  padding: 14px;
+  box-shadow: 0 8px 32px #0006;
+  color: #e1ebf6;
+}
+.project-inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: #a1b2c6;
+}
+.project-flow-inspector h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 8px 0;
+}
+.project-flow-inspector > p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #a1b2c6;
+}
+.project-inspector-sources {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #26384d;
+}
+.project-inspector-sources h4 {
+  font-size: 10px;
+  color: #a1b2c6;
+  margin-bottom: 8px;
+}
+.project-inspector-sources button {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  text-align: left;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.project-inspector-sources button svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #2dd4bf;
+}
+.project-inspector-sources small {
+  display: block;
+  font-size: 10px;
+  margin-top: 3px;
+  color: #8196af;
+}
+.project-inspector-sources button:hover {
+  color: #2dd4bf;
+}
+.project-architecture .react-flow__controls button {
+  background: #142134;
+  border-color: #2b3d52;
+  color: #c5d3e2;
+}
+@media (max-width: 600px) {
+  .project-flow-legend {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .project-flow-line-key {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+.project-architecture .react-flow {
+  background: transparent;
 }

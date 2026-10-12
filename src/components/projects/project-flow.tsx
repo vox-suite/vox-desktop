@@ -1,70 +1,146 @@
-import { useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { Loader2, X, FileCode2 } from "lucide-react";
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MarkerType,
   Handle,
   Position,
+  BaseEdge,
+  EdgeLabelRenderer,
   type NodeProps,
   type Node,
   type Edge,
+  type EdgeProps,
 } from "@xyflow/react";
 import type { Citation, ProjectFlow } from "@/features/projects/types";
+import {
+  layoutFlow,
+  compactLabel,
+  NODE_WIDTH,
+  NODE_HEIGHT,
+  type FlowLayout,
+  type FlowPoint,
+} from "./flow-layout";
+import { FLOW_PALETTE, flowCategory, type FlowCategory } from "./flow-palette";
+import { Button } from "@/components/ui/button";
 import "@xyflow/react/dist/style.css";
 
-type FlowData = {
+type Selection = {
+  id?: string;
   title: string;
-  kind: string;
   detail: string;
   citations: Citation[];
-  onRead: (citation: Citation) => void;
+  kind: string;
+  evidence?: string;
 };
-function FlowCard({ data }: NodeProps<Node<FlowData>>) {
+type FlowData = ProjectFlow["nodes"][number] & {
+  onInspect: (item: Selection) => void;
+};
+type RouteData = {
+  points: FlowPoint[];
+  labelPosition?: FlowPoint;
+  onInspect: () => void;
+};
+
+function FlowCard({ data, selected }: NodeProps<Node<FlowData>>) {
+  const category = FLOW_PALETTE[flowCategory(data.kind)];
+  const Icon = category.icon;
   return (
-    <div className="project-flow-card">
+    <div
+      className={`project-architecture-node ${selected ? "is-selected" : ""}`}
+      style={{ "--node-color": category.color } as CSSProperties}
+    >
       <Handle type="target" position={Position.Left} />
-      <span className="project-flow-kind">
-        <span className="project-status-dot" />
-        {data.kind}
-      </span>
-      <h3 className="mt-2 text-sm font-medium break-words">{data.title}</h3>
-      <p
-        className="mt-2 text-xs leading-5 text-muted-foreground line-clamp-3"
-        title={data.detail}
-      >
-        {data.detail}
-      </p>
-      {!data.citations.length && (
-        <p className="mt-3 text-[11px] text-amber-200">
-          Inferred · source not verified
-        </p>
-      )}
-      {data.citations.length > 0 && (
-        <details className="project-flow-references nodrag">
-          <summary>
-            {data.citations.length}{" "}
-            {data.citations.length === 1
-              ? "source reference"
-              : "source references"}
-          </summary>
-          {data.citations.map((c, i) => (
-            <button
-              key={i}
-              className="nodrag mt-2 block max-w-full truncate text-left text-[11px] underline underline-offset-4"
-              title={`${c.path}:${c.start_line}-${c.end_line}`}
-              onClick={() => data.onRead(c)}
-            >
-              {c.path}:{c.start_line}
-            </button>
-          ))}
-        </details>
-      )}
+      <div className="project-architecture-node-top">
+        <Icon className="size-3" aria-label={category.label} />
+        <button
+          className="nodrag nopan project-evidence-badge"
+          aria-label={`Inspect ${data.title}: ${data.citations.length} source references`}
+          onClick={() => data.onInspect(data)}
+        >
+          SRC {data.citations.length}
+        </button>
+      </div>
+      <h3 title={data.title}>{data.title}</h3>
+      <p title={data.detail}>{data.detail}</p>
       <Handle type="source" position={Position.Right} />
     </div>
   );
 }
-const nodeTypes = { flow: FlowCard };
+function CodeBoundary({ data }: NodeProps<Node<{ label: string }>>) {
+  return (
+    <div className="project-code-boundary">
+      <span title="Grouped by the folder paths in source references">
+        Code folder · {data.label}
+      </span>
+    </div>
+  );
+}
+function routePath(points: FlowPoint[]) {
+  if (!points.length) return "";
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const before = points[i - 1],
+      point = points[i],
+      after = points[i + 1];
+    const a = Math.hypot(point.x - before.x, point.y - before.y),
+      b = Math.hypot(after.x - point.x, after.y - point.y);
+    const r = Math.min(8, a / 2, b / 2);
+    if (!a || !b) continue;
+    path += ` L ${point.x - ((point.x - before.x) * r) / a} ${point.y - ((point.y - before.y) * r) / a} Q ${point.x} ${point.y} ${point.x + ((after.x - point.x) * r) / b} ${point.y + ((after.y - point.y) * r) / b}`;
+  }
+  const end = points.at(-1)!;
+  return `${path} L ${end.x} ${end.y}`;
+}
+function RoutedEdge({
+  id,
+  data,
+  markerEnd,
+  style,
+  label,
+}: EdgeProps<Edge<RouteData>>) {
+  if (!data?.points.length) return null;
+  const position =
+    data.labelPosition ?? data.points[Math.floor(data.points.length / 2)];
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={routePath(data.points)}
+        markerEnd={markerEnd}
+        style={style}
+        interactionWidth={18}
+      />
+      {!!label && (
+        <EdgeLabelRenderer>
+          <button
+            className="project-route-label nodrag nopan"
+            style={{
+              transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
+            }}
+            onClick={data.onInspect}
+            title={String(label)}
+          >
+            {compactLabel(String(label))}
+          </button>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+const nodeTypes = { flow: FlowCard, boundary: CodeBoundary };
+const edgeTypes = { routed: RoutedEdge };
+
 export function ProjectFlowCanvas({
   flow,
   onRead,
@@ -72,55 +148,121 @@ export function ProjectFlowCanvas({
   flow: ProjectFlow;
   onRead: (citation: Citation) => void;
 }) {
-  const graph = useMemo(() => {
-    const ranks = new Map<string, number>();
-    const incoming = new Set(flow.edges.map((e) => e.to));
-    const roots = flow.nodes.filter((n) => !incoming.has(n.id));
-    const queue = (roots.length ? roots : flow.nodes.slice(0, 1)).map(
-      (n) => n.id,
-    );
-    queue.forEach((id) => ranks.set(id, 0));
-    for (let i = 0; i < queue.length; i++) {
-      const id = queue[i];
-      for (const edge of flow.edges.filter((e) => e.from === id)) {
-        if (!ranks.has(edge.to)) {
-          ranks.set(edge.to, (ranks.get(id) ?? 0) + 1);
-          queue.push(edge.to);
+  const [result, setResult] = useState<{
+    flow: ProjectFlow;
+    layout?: FlowLayout;
+    error?: string;
+  } | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selection) inspectorRef.current?.focus();
+  }, [selection]);
+  const [retry, setRetry] = useState(0);
+  const inspect = useCallback((item: Selection) => setSelection(item), []);
+  useEffect(() => {
+    let active = true;
+    void layoutFlow(flow)
+      .then((layout) => {
+        if (active) {
+          setResult({ flow, layout });
+          setSelection(null);
         }
-      }
-    }
-    const rows = new Map<number, number>();
-    const nodes: Node<FlowData>[] = flow.nodes.map((n) => {
-      const rank = ranks.get(n.id) ?? 0;
-      const row = rows.get(rank) ?? 0;
-      rows.set(rank, row + 1);
+      })
+      .catch(() => {
+        if (active)
+          setResult({ flow, error: "Could not arrange this diagram." });
+      });
+    return () => {
+      active = false;
+    };
+  }, [flow, retry]);
+  const layout = result?.flow === flow ? result.layout : undefined;
+  const graph = useMemo(() => {
+    if (!layout) return { nodes: [], edges: [] };
+    const positions = new Map(layout.nodes.map((n) => [n.id, n]));
+    const nodes: Node[] = [
+      ...layout.groups.map((group) => ({
+        id: group.id,
+        type: "boundary",
+        position: { x: group.x, y: group.y },
+        style: { width: group.width, height: group.height },
+        data: { label: group.label },
+        selectable: false,
+        focusable: false,
+        zIndex: -1,
+      })),
+      ...flow.nodes.map((node) => {
+        const position = positions.get(node.id)!;
+        return {
+          id: node.id,
+          type: "flow",
+          selected: selection?.id === node.id,
+          position: { x: position.x, y: position.y },
+          parentId: position.parentId,
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
+          data: { ...node, onInspect: inspect },
+        };
+      }),
+    ];
+    const edges: Edge<RouteData>[] = flow.edges.map((edge, i) => {
+      const route = layout.routes[`call-${i}`];
+      const source = flow.nodes.find((n) => n.id === edge.from)!;
+      const color =
+        edge.evidence === "observed"
+          ? FLOW_PALETTE[flowCategory(source.kind)].color
+          : "#fbbf24";
       return {
-        id: n.id,
-        type: "flow",
-        position: {
-          x: rank * 350,
-          y: row * 220,
+        id: `call-${i}`,
+        type: "routed",
+        source: edge.from,
+        target: edge.to,
+        label: edge.label,
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color,
+          width: 16,
+          height: 16,
         },
-        data: { ...n, onRead },
+        style: {
+          stroke: color,
+          strokeWidth:
+            selection?.id &&
+            (edge.from === selection.id || edge.to === selection.id)
+              ? 2.5
+              : 1.5,
+          strokeDasharray: edge.evidence === "observed" ? undefined : "5 5",
+        },
+        data: {
+          points: route?.points ?? [],
+          labelPosition: route?.label,
+          onInspect: () =>
+            inspect({
+              title: edge.label || "Connection",
+              kind: `${source.title} → ${flow.nodes.find((n) => n.id === edge.to)?.title}`,
+              detail:
+                edge.evidence === "observed"
+                  ? "This connection is supported by the referenced call sites."
+                  : "This connection is inferred. The available code does not establish a complete call path.",
+              evidence: edge.evidence,
+              citations: edge.citations,
+            }),
+        },
       };
     });
-    const edges: Edge[] = flow.edges.map((e, i) => ({
-      id: `call-${i}`,
-      source: e.from,
-      target: e.to,
-      label: e.label,
-      type: "smoothstep",
-      markerEnd: { type: MarkerType.ArrowClosed },
-      style: {
-        stroke: e.evidence === "observed" ? "#a7b7c5" : "#ae905b",
-        strokeDasharray: e.evidence === "observed" ? undefined : "5 5",
-      },
-      data: e,
-    }));
     return { nodes, edges };
-  }, [flow, onRead]);
+  }, [flow, layout, inspect, selection]);
+  const categories = useMemo(() => {
+    const counts = new Map<FlowCategory, number>();
+    flow.nodes.forEach((node) => {
+      const kind = flowCategory(node.kind);
+      counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    });
+    return [...counts];
+  }, [flow]);
   return (
-    <div className="flex h-full min-h-80 flex-col">
+    <div className="project-architecture">
       <div className="project-flow-header">
         <h2>{flow.title}</h2>
         <div className="project-flow-coverage">
@@ -141,29 +283,122 @@ export function ProjectFlowCanvas({
           )}
         </div>
       </div>
-      <div className="min-h-0 flex-1">
-        <ReactFlow
-          nodes={graph.nodes}
-          edges={graph.edges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.16, minZoom: 0.7, maxZoom: 1 }}
-          minZoom={0.2}
-          maxZoom={1.3}
-          nodesDraggable
-          nodesConnectable={false}
-          colorMode="dark"
-          onEdgeClick={(_, edge) => {
-            const citations = edge.data?.citations as Citation[] | undefined;
-            if (citations?.length) onRead(citations[0]);
-          }}
-        >
-          <Background color="#33353a" gap={24} />
-          <Controls showInteractive={false} />
-          <div className="absolute bottom-4 right-4 text-[10px] text-muted-foreground pointer-events-none">
-            Solid: traced in code · Dashed: inferred
+      <div className="project-architecture-stage">
+        {layout ? (
+          <ReactFlow
+            key={flow.title + retry + flow.nodes.map((n) => n.id).join("|")}
+            nodes={graph.nodes}
+            edges={graph.edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.16, maxZoom: 1.2 }}
+            minZoom={0.15}
+            maxZoom={2}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            colorMode="dark"
+            onNodeClick={(_, node) => {
+              if (node.type === "flow") inspect(node.data as FlowData);
+            }}
+            onEdgeClick={(_, edge) => edge.data?.onInspect()}
+            onPaneClick={() => setSelection(null)}
+          >
+            <Background
+              variant={BackgroundVariant.Lines}
+              bgColor="#07101d"
+              color="#152337"
+              gap={32}
+              lineWidth={0.5}
+            />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+        ) : (
+          <div className="project-layout-status" role="status">
+            {result?.flow === flow && result.error ? (
+              <>
+                <span>{result.error}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRetry((n) => n + 1)}
+                >
+                  Retry layout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Arranging the map…
+              </>
+            )}
           </div>
-        </ReactFlow>
+        )}
+        {selection && (
+          <aside
+            className="project-flow-inspector"
+            aria-label="Diagram details"
+            tabIndex={-1}
+            ref={inspectorRef}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSelection(null);
+            }}
+          >
+            <div className="project-inspector-heading">
+              <span>
+                {selection.evidence
+                  ? selection.evidence === "observed"
+                    ? "Traced connection"
+                    : "Inferred connection"
+                  : selection.kind}
+              </span>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Close diagram details"
+                onClick={() => setSelection(null)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+            <h3>{selection.title}</h3>
+            <p>{selection.detail}</p>
+            <div className="project-inspector-sources">
+              <h4>Source references</h4>
+              {selection.citations.length ? (
+                selection.citations.map((c, i) => (
+                  <button key={i} onClick={() => onRead(c)}>
+                    <FileCode2 className="size-3.5" />
+                    <span>
+                      {c.path}
+                      <small>
+                        Lines {c.start_line}–{c.end_line}
+                      </small>
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p>No source reference available.</p>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
+      <div className="project-flow-legend" aria-label="Component types">
+        {categories.map(([kind, count]) => (
+          <span key={kind}>
+            <i
+              style={
+                { "--node-color": FLOW_PALETTE[kind].color } as CSSProperties
+              }
+            />
+            {FLOW_PALETTE[kind].label}
+            <small>{count}</small>
+          </span>
+        ))}
+        <span className="project-flow-line-key">
+          Dashed connections are inferred
+        </span>
       </div>
     </div>
   );

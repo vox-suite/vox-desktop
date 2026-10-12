@@ -13,3 +13,9 @@ read_source checks path containment, indexed membership, current file hash and l
 The frontend checks for changed sources and refreshes their indexes before investigation. Native progress streams through a Tauri channel. The user can stop the investigation; leaving the project cancels it. The native process group and loopback gateway are closed at completion or cancellation. A successful diagram is persisted through normal project revision and ownership checks, so it reopens on the canvas and can be used as context for a follow-up investigation. Each follow-up must gather new evidence rather than reusing old citation IDs.
 
 The managed runtime currently supports Apple Silicon and Intel macOS. Other desktop platforms report the missing runtime explicitly. Existing Core text-ideation endpoints remain for other clients, but desktop tracing no longer uses the single-call excerpt path.
+
+## Canvas presentation
+
+The runtime map uses compact semantic nodes, source-count badges and routed connections inspired by [Archify](https://github.com/tt-a1i/archify/blob/main/DESIGN.md). Its viewer code is not embedded. ELK computes node positions and orthogonal routes in a lazily loaded browser worker, which is terminated after layout. Solid connections retain observed evidence; dashed connections retain inferred evidence. Selecting a component or connection opens its full description and source references.
+
+Dashed folder groups are derived only when all references for a component share the same top-level code folder. These groups describe file organization, not an asserted runtime or security boundary. The legend includes only categories present in the current diagram.
