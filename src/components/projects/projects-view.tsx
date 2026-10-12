@@ -5,7 +5,6 @@ import {
   FolderInput,
   Plus,
   Search,
-  ArrowRight,
   Loader2,
   RefreshCw,
 } from "lucide-react";
@@ -144,7 +143,7 @@ export function ProjectsView() {
         </div>
       </PageHeader>
       <PageBody>
-        <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="project-library">
           {error && (
             <p role="alert" className="mb-5 text-sm text-destructive">
               {error}
@@ -156,22 +155,15 @@ export function ProjectsView() {
             </div>
           ) : items.length === 0 ? (
             <div className="project-start">
-              <div className="project-tree-art" aria-hidden="true">
-                <span className="project-tree-root">
-                  <Folder className="size-6" />
-                </span>
-                <span className="project-tree-branch">Context</span>
-                <span className="project-tree-branch">Ideas</span>
-                <span className="project-tree-branch">Plans</span>
+              <div className="project-empty-mark">
+                <Folder className="size-6" />
               </div>
-              <h2 className="mt-10 text-3xl font-medium tracking-tight">
-                Start with what you have.
-                <br />
-                Or what you have in mind.
+              <h2 className="mt-6 text-2xl font-medium tracking-tight">
+                A home for your project.
               </h2>
-              <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
-                A project keeps your code, notes and decisions together, so
-                every iteration starts with context.
+              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+                Bring your code and notes, or start with an idea. Your sources,
+                diagrams and decisions stay together.
               </p>
               <div className="mt-9 grid gap-4 sm:grid-cols-2">
                 <button
@@ -186,10 +178,7 @@ export function ProjectsView() {
                     Connect local folders and files. Explore the structure,
                     inspect sources, and plan your next change.
                   </p>
-                  <span className="mt-5 flex items-center gap-2 text-xs">
-                    Import project
-                    <ArrowRight className="size-3.5" />
-                  </span>
+                  <span className="mt-5 block text-xs">Import project</span>
                 </button>
                 <button className="project-entry" onClick={() => start("new")}>
                   <Plus className="size-5" />
@@ -197,29 +186,32 @@ export function ProjectsView() {
                     Start with an idea
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Start with a clean canvas. Describe what you want to build,
-                    and create a Plan when you’re ready.
+                    Keep a brief and your decisions together. Add sources as
+                    your project takes shape.
                   </p>
-                  <span className="mt-5 flex items-center gap-2 text-xs">
-                    New project
-                    <ArrowRight className="size-3.5" />
-                  </span>
+                  <span className="mt-5 block text-xs">New project</span>
                 </button>
               </div>
             </div>
           ) : (
             <>
-              <div className="relative mb-5 max-w-sm">
-                <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                <Input
-                  aria-label="Find projects"
-                  placeholder="Find a project"
-                  className="pl-9"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="project-library-heading">
+                <div>
+                  <h2>Your projects</h2>
+                  <p>Pick up where you left off.</p>
+                </div>
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                  <Input
+                    aria-label="Find projects"
+                    placeholder="Find a project"
+                    className="pl-9"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="overflow-hidden rounded-xl border">
+              <div className="project-library-grid">
                 {items
                   .filter((p) =>
                     `${p.name} ${p.data.notes}`
@@ -234,6 +226,16 @@ export function ProjectsView() {
                     />
                   ))}
               </div>
+              {items.every(
+                (p) =>
+                  !`${p.name} ${p.data.notes}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+              ) && (
+                <p className="project-quiet-empty">
+                  No projects match “{search}”.
+                </p>
+              )}
               {next && (
                 <Button
                   variant="ghost"

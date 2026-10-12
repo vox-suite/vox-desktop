@@ -24,9 +24,15 @@ function FlowCard({ data }: NodeProps<Node<FlowData>>) {
   return (
     <div className="project-flow-card">
       <Handle type="target" position={Position.Left} />
-      <span className="text-[11px] text-muted-foreground">{data.kind}</span>
+      <span className="project-flow-kind">
+        <span className="project-status-dot" />
+        {data.kind}
+      </span>
       <h3 className="mt-2 text-sm font-medium break-words">{data.title}</h3>
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+      <p
+        className="mt-2 text-xs leading-5 text-muted-foreground line-clamp-3"
+        title={data.detail}
+      >
         {data.detail}
       </p>
       {!data.citations.length && (
@@ -34,16 +40,26 @@ function FlowCard({ data }: NodeProps<Node<FlowData>>) {
           Inferred · source not verified
         </p>
       )}
-      {data.citations.map((c, i) => (
-        <button
-          key={i}
-          className="nodrag mt-2 block max-w-full truncate text-left text-[11px] underline underline-offset-4"
-          title={`${c.path}:${c.start_line}-${c.end_line}`}
-          onClick={() => data.onRead(c)}
-        >
-          {c.path}:{c.start_line}
-        </button>
-      ))}
+      {data.citations.length > 0 && (
+        <details className="project-flow-references nodrag">
+          <summary>
+            {data.citations.length}{" "}
+            {data.citations.length === 1
+              ? "source reference"
+              : "source references"}
+          </summary>
+          {data.citations.map((c, i) => (
+            <button
+              key={i}
+              className="nodrag mt-2 block max-w-full truncate text-left text-[11px] underline underline-offset-4"
+              title={`${c.path}:${c.start_line}-${c.end_line}`}
+              onClick={() => data.onRead(c)}
+            >
+              {c.path}:{c.start_line}
+            </button>
+          ))}
+        </details>
+      )}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -74,25 +90,6 @@ export function ProjectFlowCanvas({
       }
     }
     const rows = new Map<number, number>();
-    const counts = new Map<number, number>();
-    for (const n of flow.nodes) {
-      const rank = ranks.get(n.id) ?? 0;
-      counts.set(rank, (counts.get(rank) ?? 0) + 1);
-    }
-    const bandOffsets = new Map<number, number>();
-    let height = 0;
-    for (
-      let band = 0;
-      band <= Math.floor(Math.max(0, ...ranks.values()) / 3);
-      band++
-    ) {
-      bandOffsets.set(band, height);
-      height +=
-        Math.max(
-          1,
-          ...[0, 1, 2].map((column) => counts.get(band * 3 + column) ?? 0),
-        ) * 340;
-    }
     const nodes: Node<FlowData>[] = flow.nodes.map((n) => {
       const rank = ranks.get(n.id) ?? 0;
       const row = rows.get(rank) ?? 0;
@@ -101,8 +98,8 @@ export function ProjectFlowCanvas({
         id: n.id,
         type: "flow",
         position: {
-          x: (rank % 3) * 350,
-          y: (bandOffsets.get(Math.floor(rank / 3)) ?? 0) + row * 340,
+          x: rank * 350,
+          y: row * 220,
         },
         data: { ...n, onRead },
       };
@@ -124,24 +121,25 @@ export function ProjectFlowCanvas({
   }, [flow, onRead]);
   return (
     <div className="flex h-full min-h-80 flex-col">
-      <div className="shrink-0 border-b bg-background px-5 py-3">
-        <h2 className="text-sm font-medium">{flow.title}</h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Runtime calls · dashed connections are inferred · select a file
-          reference to inspect
-        </p>
-        {!!flow.gaps.length && (
-          <details className="mt-2 text-xs text-muted-foreground">
-            <summary className="cursor-pointer">
-              {flow.gaps.length} evidence gaps
-            </summary>
-            <ul className="mt-2 space-y-2">
-              {flow.gaps.map((g, i) => (
-                <li key={i}>{g}</li>
-              ))}
-            </ul>
-          </details>
-        )}
+      <div className="project-flow-header">
+        <h2>{flow.title}</h2>
+        <div className="project-flow-coverage">
+          <span>{flow.nodes.length} components</span>
+          <span>{flow.edges.length} connections</span>
+          {!!flow.gaps.length && (
+            <details>
+              <summary>
+                {flow.gaps.length}{" "}
+                {flow.gaps.length === 1 ? "open question" : "open questions"}
+              </summary>
+              <ul>
+                {flow.gaps.map((g, i) => (
+                  <li key={i}>{g}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
       </div>
       <div className="min-h-0 flex-1">
         <ReactFlow
@@ -149,7 +147,7 @@ export function ProjectFlowCanvas({
           edges={graph.edges}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.16 }}
+          fitViewOptions={{ padding: 0.16, minZoom: 0.7, maxZoom: 1 }}
           minZoom={0.2}
           maxZoom={1.3}
           nodesDraggable
@@ -162,6 +160,9 @@ export function ProjectFlowCanvas({
         >
           <Background color="#33353a" gap={24} />
           <Controls showInteractive={false} />
+          <div className="absolute bottom-4 right-4 text-[10px] text-muted-foreground pointer-events-none">
+            Solid: traced in code · Dashed: inferred
+          </div>
         </ReactFlow>
       </div>
     </div>

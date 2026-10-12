@@ -105,7 +105,7 @@ export function ProjectSources({
     setStatus(`Indexing ${source?.label ?? "source"} locally…`);
     const result = await onIndex(id);
     setWarnings((old) => [...old, ...result.warnings]);
-    setCompleted("Index refreshed. Ready to build a plan.");
+    setCompleted("Index refreshed. Ready to explore.");
   };
   const add = async (kind: "folder" | "file") => {
     setStatus("Choose sources…");
@@ -122,7 +122,7 @@ export function ProjectSources({
     }
     if (newSources.length) {
       setCompleted(
-        `${newSources.length} ${newSources.length === 1 ? "source" : "sources"} imported. Indexing complete — ready to build a plan.`,
+        `${newSources.length} ${newSources.length === 1 ? "source" : "sources"} imported. Indexing complete — ready to explore.`,
       );
       onImported?.();
     }
@@ -142,15 +142,14 @@ export function ProjectSources({
       })),
   ];
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="project-content-page">
       <div className="project-sources-heading">
         <div>
           <h2 className="text-xl font-medium tracking-tight">
             Project sources
           </h2>
           <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
-            Connect your codebase, briefs, and notes. Files and their index stay
-            on this device.
+            The code and files Vox uses to understand this project.
           </p>
         </div>
         <div className="flex gap-2">
@@ -189,8 +188,7 @@ export function ProjectSources({
           <span>
             <strong className="block font-medium">{status}</strong>
             <span className="mt-1 block text-muted-foreground">
-              {elapsed}s elapsed · Keep this project open. Large folders may
-              take a few minutes.
+              {elapsed}s elapsed · Scanning files and building the local index.
             </span>
           </span>
         </p>
@@ -346,30 +344,33 @@ export function ProjectSources({
           })
         )}
       </div>
-      {platform().projects && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
-          <span>
-            Local engine: code-graph-mcp · v0.169.0 ·{" "}
-            {installed ? "installed" : "downloads on first import"}
-          </span>
-          {!installed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy || !!status}
-              onClick={() => void run(ensureEngine)}
-            >
-              <Download className="size-3.5" />
-              Install indexer
-            </Button>
-          )}
-        </div>
-      )}
-      <p className="mt-4 text-[11px] leading-5 text-muted-foreground">
-        Structural indexing uses no model calls. Project summaries and citations
-        sync to Vox and guide your Plans. Raw files stay on this device. Source
-        changes are checked while this project is open.
-      </p>
+      <details className="project-source-details">
+        <summary>How sources are handled</summary>
+        {platform().projects && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
+            <span>
+              Local engine: code-graph-mcp · v0.169.0 ·{" "}
+              {installed ? "installed" : "downloads on first import"}
+            </span>
+            {!installed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy || !!status}
+                onClick={() => void run(ensureEngine)}
+              >
+                <Download className="size-3.5" />
+                Install indexer
+              </Button>
+            )}
+          </div>
+        )}
+        <p className="mt-4 text-[11px] leading-5 text-muted-foreground">
+          Structural indexing uses no model calls. Project summaries and
+          citations sync to Vox. Relevant excerpts are shared when you ask a
+          question. Source changes are checked while this project is open.
+        </p>
+      </details>
     </div>
   );
 }

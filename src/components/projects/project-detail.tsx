@@ -8,8 +8,9 @@ import {
   Archive,
   Loader2,
   FileText,
-  Square,
   Settings2,
+  MoreHorizontal,
+  ChevronRight,
 } from "lucide-react";
 import {
   PageContainer,
@@ -37,6 +38,14 @@ import type {
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { desktopStore } from "@/features/desktop-control/store";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { InvestigationComposer } from "./investigation-composer";
 import { ProjectFlowCanvas } from "./project-flow";
 import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
@@ -91,7 +100,6 @@ export function ProjectDetail({
           .catch(() => {});
     };
   }, []);
-  const [responseAfter, setResponseAfter] = useState<string | null>(null);
   const [plans, setPlans] = useState<Space[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -194,7 +202,6 @@ export function ProjectDetail({
   const trace = async () => {
     if (!p || !intent.trim() || state.busy || traceRequest.current) return;
     setError("");
-    setResponseAfter(p.data.messages.at(-1)?.id ?? "");
     setTraceLog([]);
     const requestId = crypto.randomUUID();
     traceRequest.current = requestId;
@@ -309,13 +316,13 @@ export function ProjectDetail({
       </PageContainer>
     );
   const tabs = [
-    { id: "context", label: "Context" },
-    { id: "plans", label: "Plans" },
+    { id: "context", label: "Canvas" },
     { id: "sources", label: "Sources" },
+    { id: "plans", label: "Plans" },
     { id: "activity", label: "Activity" },
   ];
   return (
-    <PageContainer>
+    <PageContainer className="project-workspace">
       <PageHeader className="h-16 px-5">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -330,39 +337,23 @@ export function ProjectDetail({
           <Folder className="size-4 shrink-0" />
           <div className="min-w-0">
             <h1 className="truncate text-base font-medium">{p.name}</h1>
-            <p className="text-[11px] text-muted-foreground">
-              {p.data.sources.length} sources · {p.data.nodes.length} context
-              nodes
-              {p.data.nodes.some((n) => n.stale)
-                ? " · review outdated context"
-                : ""}
+            <p className="project-header-meta">
+              {p.data.sources.length}{" "}
+              {p.data.sources.length === 1 ? "source" : "sources"}
+              <span className="project-meta-divider" />
+              {p.data.sources
+                .reduce((sum, source) => sum + source.files, 0)
+                .toLocaleString()}{" "}
+              files
+              {p.data.nodes.some((n) => n.stale) && (
+                <span className="project-needs-review">
+                  Context needs review
+                </span>
+              )}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Edit project"
-            aria-label="Edit project"
-            onClick={() => {
-              setName(p.name);
-              setNotes(p.data.notes);
-              setSettings(true);
-            }}
-          >
-            <FileText className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            title="Archive project"
-            aria-label="Archive project"
-            disabled={state.busy || !!traceStatus}
-            onClick={() => setPendingArchive(true)}
-          >
-            <Archive className="size-4" />
-          </Button>
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="secondary"
             size="sm"
@@ -372,35 +363,35 @@ export function ProjectDetail({
             <Plus className="size-3.5" />
             New plan
           </Button>
-        </div>
-      </PageHeader>
-      <div className="flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div
-            className="flex h-12 shrink-0 items-center gap-5 border-b px-6"
-            role="tablist"
-            aria-label="Project views"
-          >
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                role="tab"
-                disabled={(!!importStatus || !!traceStatus) && tab !== t.id}
-                aria-selected={tab === t.id}
-                aria-controls={`project-${t.id}`}
-                className={`h-full border-b-2 text-xs ${tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-            {tab === "context" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
-                className="ml-auto"
-                disabled={state.busy || !!traceStatus}
-                onClick={() =>
+                size="icon-sm"
+                aria-label="Project options"
+                disabled={!!traceStatus || !!importStatus}
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setName(p.name);
+                  setNotes(p.data.notes);
+                  setSettings(true);
+                }}
+              >
+                <FileText />
+                Edit project
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setAgentSetup(true)}>
+                <Settings2 />
+                Model connection
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={state.busy}
+                onSelect={() =>
                   setEditing({
                     id: crypto.randomUUID(),
                     kind: "decision",
@@ -414,10 +405,69 @@ export function ProjectDetail({
                   })
                 }
               >
-                <Plus className="size-3" />
-                Add context
-              </Button>
-            )}
+                <Plus />
+                Add decision
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={state.busy}
+                variant="destructive"
+                onSelect={() => setPendingArchive(true)}
+              >
+                <Archive />
+                Archive project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </PageHeader>
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div
+            className="project-tabs"
+            role="tablist"
+            aria-label="Project views"
+          >
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                id={`project-tab-${t.id}`}
+                disabled={(!!importStatus || !!traceStatus) && tab !== t.id}
+                tabIndex={tab === t.id ? 0 : -1}
+                aria-selected={tab === t.id}
+                aria-controls={`project-${t.id}`}
+                className={`h-full border-b-2 text-xs ${tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                onKeyDown={(e) => {
+                  if (
+                    !["ArrowLeft", "ArrowRight", "Home", "End"].includes(
+                      e.key,
+                    ) ||
+                    importStatus ||
+                    traceStatus
+                  )
+                    return;
+                  e.preventDefault();
+                  const current = tabs.findIndex((item) => item.id === tab);
+                  const next =
+                    e.key === "Home"
+                      ? 0
+                      : e.key === "End"
+                        ? tabs.length - 1
+                        : (current +
+                            (e.key === "ArrowRight" ? 1 : -1) +
+                            tabs.length) %
+                          tabs.length;
+                  setTab(tabs[next].id);
+                  document
+                    .getElementById(`project-tab-${tabs[next].id}`)
+                    ?.focus();
+                }}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
           {(state.error || error) && (
             <div
@@ -438,6 +488,7 @@ export function ProjectDetail({
             scroll={tab !== "context"}
             id={`project-${tab}`}
             role="tabpanel"
+            aria-labelledby={`project-tab-${tab}`}
           >
             {tab === "context" &&
               (p.data.messages.filter((m) => m.role === "assistant").at(-1)
@@ -453,6 +504,8 @@ export function ProjectDetail({
               ) : (
                 <ProjectContext
                   project={p}
+                  onAddSources={() => setTab("sources")}
+                  investigating={!!traceStatus}
                   onSelect={(n) => {
                     if (!traceStatus) setEditing(n);
                   }}
@@ -471,8 +524,13 @@ export function ProjectDetail({
               />
             )}
             {tab === "activity" && (
-              <div className="mx-auto max-w-3xl p-6">
+              <div className="project-content-page">
                 <h2 className="mb-5 text-base font-medium">Project activity</h2>
+                {!p.data.activity.length && (
+                  <p className="project-quiet-empty">
+                    Imports, diagrams and decisions will appear here.
+                  </p>
+                )}
                 {[...p.data.activity].reverse().map((a) => (
                   <div key={a.id} className="flex gap-4 border-l pl-5 pb-6">
                     <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground" />
@@ -487,15 +545,15 @@ export function ProjectDetail({
               </div>
             )}
             {tab === "plans" && (
-              <div className="mx-auto max-w-4xl p-6">
+              <div className="project-content-page">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <h2 className="text-base font-medium">
                       Iterations on {p.name}
                     </h2>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Each Plan starts with current project context. Its
-                      findings can become the next iteration’s context.
+                      Turn a direction into a plan, with this project as
+                      context.
                     </p>
                   </div>
                   <Button size="sm" onClick={() => setNewPlan(true)}>
@@ -572,102 +630,17 @@ export function ProjectDetail({
             )}
           </PageBody>
           {tab === "context" && (
-            <form
-              className="project-build-composer"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void trace();
-              }}
-            >
-              <Textarea
-                aria-label="What do you want to understand or build?"
-                placeholder="What do you want to understand or build? For example, how does the voice pipeline work in this codebase?"
-                value={intent}
-                maxLength={12000}
-                onChange={(e) => setIntent(e.target.value)}
-                rows={2}
-                disabled={creating || !!traceStatus}
-              />
-              <p className="my-2 text-xs text-muted-foreground">
-                Drawing a flowchart sends relevant source excerpts to Vox. Full
-                files stay on this device.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setAgentSetup(true)}
-                disabled={!!traceStatus}
-              >
-                <Settings2 className="size-3" />
-                {agentStatus?.authenticated
-                  ? "Gemini connected"
-                  : "Configure Gemini"}
-              </Button>
-              {traceStatus && (
-                <p
-                  role="status"
-                  className="my-2 flex items-center gap-2 text-xs"
-                >
-                  <Loader2 className="size-3 animate-spin" />
-                  {traceStatus}
-                </p>
-              )}
-              {responseAfter !== null &&
-                p.data.messages.at(-1)?.id !== responseAfter &&
-                !traceStatus &&
-                p.data.messages.at(-1)?.role === "assistant" &&
-                !p.data.messages.at(-1)?.flow && (
-                  <p className="my-2 text-xs text-muted-foreground">
-                    {p.data.messages.at(-1)?.body}
-                  </p>
-                )}
-              {!!traceLog.length && (
-                <details className="my-2 text-xs text-muted-foreground">
-                  <summary className="cursor-pointer">
-                    Investigation activity · {traceLog.length} steps
-                  </summary>
-                  <ol className="mt-2 max-h-32 space-y-1 overflow-auto">
-                    {traceLog.map((line, i) => (
-                      <li key={i}>{line}</li>
-                    ))}
-                  </ol>
-                </details>
-              )}
-              <div className="flex items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!!traceStatus}
-                  onClick={() => setTab("sources")}
-                >
-                  <Folder className="size-3.5" />
-                  Add files or folders
-                </Button>
-                {traceStatus ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => void cancelTrace()}
-                  >
-                    <Square className="size-3" />
-                    Stop
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={
-                      state.busy || creating || !!traceStatus || !intent.trim()
-                    }
-                  >
-                    Investigate and draw
-                  </Button>
-                )}
-              </div>
-            </form>
+            <InvestigationComposer
+              question={intent}
+              onChange={setIntent}
+              onSubmit={() => void trace()}
+              onSources={() => setTab("sources")}
+              onStop={() => void cancelTrace()}
+              status={traceStatus}
+              log={traceLog}
+              disabled={state.busy || creating}
+              sourceCount={p.data.sources.length}
+            />
           )}
         </div>
       </div>
@@ -929,28 +902,33 @@ export function ProjectCard({
   onOpen: () => void;
 }) {
   return (
-    <button
-      className="project-list-row group flex w-full items-center justify-between gap-6 border-b px-5 py-5 text-left transition-colors hover:bg-muted/25"
-      onClick={onOpen}
-    >
-      <div className="flex min-w-0 items-start gap-4">
-        <Folder className="mt-1 size-5 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
-          <h2 className="text-sm font-medium">{project.name}</h2>
-          <p className="mt-1.5 line-clamp-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-            {project.data.notes ||
-              "Add sources and describe what you want to build"}
-          </p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {project.data.sources.length} sources ·{" "}
-            {project.data.nodes.filter((n) => n.origin !== "extracted").length}{" "}
-            saved decisions
-          </p>
+    <button className="project-list-row group" onClick={onOpen}>
+      <div className="project-list-icon">
+        <Folder className="size-5" />
+      </div>
+      <div className="project-list-content">
+        <h2>{project.name}</h2>
+        <p>{project.data.notes || "Add sources, then explore your project."}</p>
+        <div className="project-list-meta">
+          <span>
+            {project.data.sources.length}{" "}
+            {project.data.sources.length === 1 ? "source" : "sources"}
+          </span>
+          <span>
+            {project.data.sources
+              .reduce((total, s) => total + s.files, 0)
+              .toLocaleString()}{" "}
+            files
+          </span>
+          <time>
+            {new Date(project.updated_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </time>
         </div>
       </div>
-      <time className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-        {new Date(project.updated_at).toLocaleDateString()}
-      </time>
+      <ChevronRight className="project-list-chevron size-4" />
     </button>
   );
 }

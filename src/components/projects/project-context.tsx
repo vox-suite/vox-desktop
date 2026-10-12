@@ -9,7 +9,7 @@ import {
   type Node,
   type Edge,
 } from "@xyflow/react";
-import { ArrowLeft, Folder, Search, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, Folder, Search, AlertCircle, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Project, ContextNode } from "@/features/projects/types";
@@ -44,10 +44,14 @@ export function ProjectContext({
   project,
   onSelect,
   onSource,
+  onAddSources,
+  investigating,
 }: {
   project: Project;
   onSelect: (n: ContextNode) => void;
   onSource: (id: string, path?: string) => void;
+  onAddSources: () => void;
+  investigating: boolean;
 }) {
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -145,6 +149,46 @@ export function ProjectContext({
     }
     return { nodes, edges };
   }, [project, sourceId, search]);
+  if (!graph.nodes.length && !search)
+    return (
+      <div className="project-empty-canvas">
+        <div className="project-empty-content">
+          <div className="project-empty-mark">
+            <Workflow className="size-6" />
+          </div>
+          <h2>
+            {investigating
+              ? "Following the code…"
+              : project.data.sources.length
+                ? "What would you like to understand?"
+                : "Start with your project."}
+          </h2>
+          <p>
+            {investigating
+              ? "Vox is checking files and call sites. Your diagram will appear here."
+              : project.data.sources.length
+                ? "Ask a question below. Vox will trace the code and draw the connections."
+                : "Add a folder or file, then ask Vox to map how it works."}
+          </p>
+          {project.data.sources.length ? (
+            <button className="project-ready-source" onClick={onAddSources}>
+              <Folder className="size-3.5" />
+              {project.data.sources
+                .map((s) => s.label)
+                .slice(0, 2)
+                .join(", ")}
+              <span className="project-status-dot" />
+              Sources added
+            </button>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={onAddSources}>
+              <Folder className="size-3.5" />
+              Add sources
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   return (
     <div className="relative h-full min-h-72">
       <div className="absolute left-4 right-4 top-4 z-10 flex items-center gap-2">
@@ -204,11 +248,11 @@ export function ProjectContext({
         <Background color="#33353a" gap={22} />
         <Controls showInteractive={false} />
       </ReactFlow>
-      {graph.nodes.length === 0 && (
-        <div className="pointer-events-none absolute bottom-16 left-6 right-6 text-center text-sm text-muted-foreground">
-          <FileText className="mx-auto mb-2 size-5" />
-          Add sources, then describe what you want to build below.
-        </div>
+
+      {!graph.nodes.length && search && (
+        <p className="pointer-events-none absolute inset-x-6 top-1/2 text-center text-sm text-muted-foreground">
+          No context matches “{search}”.
+        </p>
       )}
       <div className="absolute bottom-3 left-4 flex gap-3 text-[11px] text-muted-foreground pointer-events-none">
         <span>● Extracted structure</span>
