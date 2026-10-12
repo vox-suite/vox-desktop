@@ -9,6 +9,9 @@ import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
   projects: {
+    renderDiagram: (diagram) => invoke("project_render_diagram", { diagram }),
+    exportDiagram: (flow, format) =>
+      invoke("project_export_diagram", { flow, format }),
     agentStatus: () => invoke("project_agent_status"),
     configureAgent: (key) => invoke("project_agent_configure", { key }),
     trace: (projectId, requestId, question, context, onProgress) => {

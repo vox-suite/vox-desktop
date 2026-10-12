@@ -267,7 +267,7 @@ export function ProjectDetail({
               ].slice(-100),
             },
           },
-          `Traced runtime flow: ${result.flow.title}`,
+          `Created diagram: ${result.flow.title}`,
         ),
       );
       setIntent("");

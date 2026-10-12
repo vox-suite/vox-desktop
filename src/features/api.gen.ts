@@ -2401,6 +2401,7 @@ export interface components {
             text: string;
         };
         ProjectFlow: {
+            diagram?: unknown;
             edges: components["schemas"]["ProjectFlowEdge"][];
             gaps?: string[];
             nodes: components["schemas"]["ProjectFlowNode"][];

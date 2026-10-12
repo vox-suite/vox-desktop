@@ -27,7 +27,18 @@ export type ProjectSource = {
   fingerprint: string;
   indexed_at: string;
 };
+export type DiagramType =
+  "architecture" | "workflow" | "sequence" | "dataflow" | "lifecycle";
+export type DiagramIR = Record<string, unknown> & { diagram_type: DiagramType };
+export type RenderedDiagram = {
+  svg: string;
+  css: string;
+  width: number;
+  height: number;
+  receipt: Record<string, unknown>;
+};
 export type ProjectFlow = {
+  diagram?: DiagramIR | null;
   title: string;
   nodes: {
     id: string;
@@ -115,6 +126,11 @@ export type ProjectAgentResult = {
   request_id: string;
 };
 export interface ProjectLocalPort {
+  renderDiagram(diagram: DiagramIR): Promise<RenderedDiagram>;
+  exportDiagram(
+    flow: ProjectFlow,
+    format: "html" | "svg" | "json",
+  ): Promise<void>;
   agentStatus(): Promise<ProjectAgentStatus>;
   configureAgent(key: string): Promise<void>;
   trace(

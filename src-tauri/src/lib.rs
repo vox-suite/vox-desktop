@@ -134,6 +134,8 @@ pub fn run() {
             projects::project_local_sources,
             projects::project_index_source,
             projects::project_graph,
+            projects::diagram::project_render_diagram,
+            projects::diagram::project_export_diagram,
             projects::agent::project_agent_status,
             projects::agent::project_agent_configure,
             projects::agent::project_agent_trace,

@@ -37,6 +37,7 @@ import {
   connectionColor,
   type FlowCategory,
 } from "./flow-palette";
+import { DiagramCanvas } from "./diagram-canvas";
 import { Button } from "@/components/ui/button";
 import "@xyflow/react/dist/style.css";
 
@@ -147,7 +148,7 @@ function RoutedEdge({
 const nodeTypes = { flow: FlowCard, boundary: CodeBoundary };
 const edgeTypes = { routed: RoutedEdge };
 
-export function ProjectFlowCanvas({
+function RuntimeFlowCanvas({
   flow,
   onRead,
 }: {
@@ -414,5 +415,19 @@ export function ProjectFlowCanvas({
         </span>
       </div>
     </div>
+  );
+}
+
+export function ProjectFlowCanvas({
+  flow,
+  onRead,
+}: {
+  flow: ProjectFlow;
+  onRead: (citation: Citation) => void;
+}) {
+  return flow.diagram ? (
+    <DiagramCanvas flow={flow} onRead={onRead} />
+  ) : (
+    <RuntimeFlowCanvas flow={flow} onRead={onRead} />
   );
 }

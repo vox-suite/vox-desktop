@@ -12,6 +12,9 @@ function describeStatus(status: string) {
     search_text: "Searching the code…",
     graph_calls: "Tracing calls between components…",
     read_source: "Reading the implementation…",
+    diagram_capabilities: "Considering the useful building blocks…",
+    diagram_schema: "Preparing the diagram structure…",
+    preview_diagram: "Checking the diagram layout…",
     submit_diagram: "Checking the diagram and its references…",
   };
   return labels[tool[1]] ?? "Tracing the implementation…";
@@ -96,7 +99,7 @@ export function InvestigationComposer({
               disabled={disabled || !question.trim()}
             >
               <ArrowUp className="size-3.5" />
-              Draw flow
+              Draw diagram
             </Button>
           )}
         </div>
