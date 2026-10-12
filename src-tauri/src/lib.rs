@@ -48,6 +48,9 @@ async fn center_window(app: AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if projects::agent::serve_from_args() {
+        return;
+    }
     // Wrap in catch_unwind: dotenvy 0.15.7 panics on malformed .env files.
     let _ = std::panic::catch_unwind(|| {
         dotenvy::from_filename("../.env").ok();
@@ -131,7 +134,10 @@ pub fn run() {
             projects::project_local_sources,
             projects::project_index_source,
             projects::project_graph,
-            projects::project_retrieve,
+            projects::agent::project_agent_status,
+            projects::agent::project_agent_configure,
+            projects::agent::project_agent_trace,
+            projects::agent::project_agent_cancel,
             projects::project_read_source,
             projects::project_check_sources,
             projects::project_remove_source,

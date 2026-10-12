@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { LiveEvent, Platform } from "@/platform";
 
@@ -9,13 +9,22 @@ import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
   projects: {
-    retrieve: (projectId, query, sourceId, brief) =>
-      invoke("project_retrieve", {
+    agentStatus: () => invoke("project_agent_status"),
+    configureAgent: (key) => invoke("project_agent_configure", { key }),
+    trace: (projectId, requestId, question, context, onProgress) => {
+      const progress = new Channel<
+        import("@/features/projects/types").ProjectAgentProgress
+      >();
+      progress.onmessage = onProgress;
+      return invoke("project_agent_trace", {
         projectId,
-        query,
-        sourceId: sourceId ?? null,
-        brief: brief ?? false,
-      }),
+        requestId,
+        question,
+        context,
+        progress,
+      });
+    },
+    cancelTrace: (requestId) => invoke("project_agent_cancel", { requestId }),
     engineStatus: () => invoke("project_engine_status"),
     installEngine: () => invoke("project_install_engine"),
     pickSources: (projectId, kind, sourceId) =>

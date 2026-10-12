@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Folder,
@@ -8,6 +8,8 @@ import {
   Archive,
   Loader2,
   FileText,
+  Square,
+  Settings2,
 } from "lucide-react";
 import {
   PageContainer,
@@ -26,7 +28,12 @@ import {
 import { useProject } from "@/features/projects/use-project";
 import { replaceNode, activity } from "@/features/projects/context";
 import { projectsApi, localProjects } from "@/features/projects/api";
-import type { Citation, ContextNode, Project } from "@/features/projects/types";
+import type {
+  Citation,
+  ContextNode,
+  Project,
+  ProjectAgentStatus,
+} from "@/features/projects/types";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { desktopStore } from "@/features/desktop-control/store";
@@ -35,6 +42,7 @@ import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
 import { CodeExplorer, SourcePreview } from "./code-explorer";
+import { platform } from "@/platform";
 import { Input } from "@/components/ui/input";
 
 export function ProjectDetail({
@@ -56,9 +64,34 @@ export function ProjectDetail({
   const [newPlan, setNewPlan] = useState(false);
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
-  const [traceStatus, setTraceStatus] = useState("");
-  const [responseAfter, setResponseAfter] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [traceStatus, setTraceStatus] = useState("");
+  const [traceLog, setTraceLog] = useState<string[]>([]);
+  const [agentStatus, setAgentStatus] = useState<ProjectAgentStatus | null>(
+    null,
+  );
+  const [agentSetup, setAgentSetup] = useState(false);
+  const [agentKey, setAgentKey] = useState("");
+  const [agentSetupBusy, setAgentSetupBusy] = useState(false);
+  const traceRequest = useRef<string | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    if (platform().projects)
+      void localProjects()
+        .agentStatus()
+        .then(setAgentStatus)
+        .catch((e) => setError(String(e)));
+    return () => {
+      mounted.current = false;
+      const request = traceRequest.current;
+      if (request && platform().projects)
+        void localProjects()
+          .cancelTrace(request)
+          .catch(() => {});
+    };
+  }, []);
+  const [responseAfter, setResponseAfter] = useState<string | null>(null);
   const [plans, setPlans] = useState<Space[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -159,29 +192,92 @@ export function ProjectDetail({
     }
   };
   const trace = async () => {
-    if (!p || !intent.trim() || state.busy || traceStatus) return;
+    if (!p || !intent.trim() || state.busy || traceRequest.current) return;
     setError("");
     setResponseAfter(p.data.messages.at(-1)?.id ?? "");
-    setTraceStatus("Finding relevant source files…");
+    setTraceLog([]);
+    const requestId = crypto.randomUUID();
+    traceRequest.current = requestId;
+    setTraceStatus("Checking source freshness…");
     try {
-      const excerpts = await localProjects().retrieve(p.id, intent.trim());
-      if (!excerpts.length)
-        throw new Error(
-          "No relevant indexed code found. Refresh your sources or name the endpoint or function you want to trace.",
-        );
-      setTraceStatus(
-        `Tracing calls across ${new Set(excerpts.map((e) => e.citation.path)).size} files…`,
+      const status = await localProjects().agentStatus();
+      setAgentStatus(status);
+      if (!status.authenticated) {
+        setAgentSetup(true);
+        return;
+      }
+      const changes = await localProjects().changes(p.id);
+      for (const source of p.data.sources) {
+        if (changes[source.id]?.unavailable)
+          throw new Error(`Relink ${source.label} before investigating.`);
+        if (changes[source.id]?.files?.length) {
+          setTraceStatus(`Refreshing ${source.label} before investigation…`);
+          await state.index(source.id);
+        }
+      }
+      if (traceRequest.current !== requestId) return;
+      const context = p.data.messages
+        .filter((m) => m.flow)
+        .slice(-2)
+        .map((m) => JSON.stringify(m.flow))
+        .join("\n")
+        .slice(0, 20000);
+      const result = await localProjects().trace(
+        p.id,
+        requestId,
+        intent.trim(),
+        context,
+        (event) => {
+          if (!mounted.current || traceRequest.current !== requestId) return;
+          setTraceStatus(event.message);
+          setTraceLog((old) => [...old, event.message].slice(-40));
+        },
       );
-      await state.chat(
-        `Explain the actual implementation in this imported project and draw its runtime flowchart. This is a code explanation, not a plan. Request: ${intent.trim()}`,
-        excerpts,
+      if (!mounted.current || traceRequest.current !== requestId) return;
+      await state.save((current) =>
+        activity(
+          {
+            ...current,
+            data: {
+              ...current.data,
+              messages: [
+                ...current.data.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: "user",
+                  body: intent.trim(),
+                  at: new Date().toISOString(),
+                  proposals: [],
+                },
+                {
+                  id: crypto.randomUUID(),
+                  role: "assistant",
+                  body: result.reply,
+                  at: new Date().toISOString(),
+                  proposals: [],
+                  flow: result.flow,
+                },
+              ].slice(-100),
+            },
+          },
+          `Traced runtime flow: ${result.flow.title}`,
+        ),
       );
       setIntent("");
     } catch (e) {
-      setError(String(e));
+      if (mounted.current && traceRequest.current === requestId)
+        setError(String(e));
     } finally {
-      setTraceStatus("");
+      if (mounted.current) setTraceStatus("");
+      if (traceRequest.current === requestId) traceRequest.current = null;
     }
+  };
+  const cancelTrace = async () => {
+    const request = traceRequest.current;
+    if (!request) return;
+    traceRequest.current = null;
+    setTraceStatus("Stopping investigation…");
+    await localProjects().cancelTrace(request);
   };
   if (!p)
     return (
@@ -226,7 +322,7 @@ export function ProjectDetail({
             variant="ghost"
             size="icon-sm"
             aria-label="Back to projects"
-            disabled={!!importStatus}
+            disabled={!!importStatus || !!traceStatus}
             onClick={onBack}
           >
             <ArrowLeft className="size-4" />
@@ -262,7 +358,7 @@ export function ProjectDetail({
             size="icon-sm"
             title="Archive project"
             aria-label="Archive project"
-            disabled={state.busy}
+            disabled={state.busy || !!traceStatus}
             onClick={() => setPendingArchive(true)}
           >
             <Archive className="size-4" />
@@ -270,7 +366,7 @@ export function ProjectDetail({
           <Button
             variant="secondary"
             size="sm"
-            disabled={state.busy}
+            disabled={state.busy || !!traceStatus}
             onClick={() => setNewPlan(true)}
           >
             <Plus className="size-3.5" />
@@ -289,7 +385,7 @@ export function ProjectDetail({
               <button
                 key={t.id}
                 role="tab"
-                disabled={!!importStatus && tab !== t.id}
+                disabled={(!!importStatus || !!traceStatus) && tab !== t.id}
                 aria-selected={tab === t.id}
                 aria-controls={`project-${t.id}`}
                 className={`h-full border-b-2 text-xs ${tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
@@ -303,7 +399,7 @@ export function ProjectDetail({
                 variant="ghost"
                 size="sm"
                 className="ml-auto"
-                disabled={state.busy}
+                disabled={state.busy || !!traceStatus}
                 onClick={() =>
                   setEditing({
                     id: crypto.randomUUID(),
@@ -358,7 +454,7 @@ export function ProjectDetail({
                 <ProjectContext
                   project={p}
                   onSelect={(n) => {
-                    setEditing(n);
+                    if (!traceStatus) setEditing(n);
                   }}
                   onSource={(id) => setExplorer(id)}
                 />
@@ -447,7 +543,7 @@ export function ProjectDetail({
                           <Button
                             variant="ghost"
                             size="sm"
-                            disabled={state.busy}
+                            disabled={state.busy || !!traceStatus}
                             onClick={() =>
                               void run(async () => {
                                 const graph = await spacesApi.getSpace(s.id);
@@ -490,12 +586,24 @@ export function ProjectDetail({
                 maxLength={12000}
                 onChange={(e) => setIntent(e.target.value)}
                 rows={2}
-                disabled={creating}
+                disabled={creating || !!traceStatus}
               />
               <p className="my-2 text-xs text-muted-foreground">
                 Drawing a flowchart sends relevant source excerpts to Vox. Full
                 files stay on this device.
               </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setAgentSetup(true)}
+                disabled={!!traceStatus}
+              >
+                <Settings2 className="size-3" />
+                {agentStatus?.authenticated
+                  ? "Gemini connected"
+                  : "Configure Gemini"}
+              </Button>
               {traceStatus && (
                 <p
                   role="status"
@@ -514,25 +622,50 @@ export function ProjectDetail({
                     {p.data.messages.at(-1)?.body}
                   </p>
                 )}
+              {!!traceLog.length && (
+                <details className="my-2 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">
+                    Investigation activity · {traceLog.length} steps
+                  </summary>
+                  <ol className="mt-2 max-h-32 space-y-1 overflow-auto">
+                    {traceLog.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ol>
+                </details>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
+                  disabled={!!traceStatus}
                   onClick={() => setTab("sources")}
                 >
                   <Folder className="size-3.5" />
                   Add files or folders
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={
-                    state.busy || creating || !!traceStatus || !intent.trim()
-                  }
-                >
-                  {traceStatus ? "Tracing…" : "Draw flowchart"}
-                </Button>
+                {traceStatus ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void cancelTrace()}
+                  >
+                    <Square className="size-3" />
+                    Stop
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={
+                      state.busy || creating || !!traceStatus || !intent.trim()
+                    }
+                  >
+                    Investigate and draw
+                  </Button>
+                )}
               </div>
             </form>
           )}
@@ -599,6 +732,82 @@ export function ProjectDetail({
           onClose={() => setCitation(null)}
         />
       )}
+      <Dialog
+        open={agentSetup}
+        onOpenChange={(open) => {
+          if (!agentSetupBusy) {
+            setAgentSetup(open);
+            if (!open) setAgentKey("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gemini investigation engine</DialogTitle>
+            <DialogDescription>
+              Vox manages the local engine and uses its Gemini connection by
+              default. You can optionally supply your own API key. Relevant
+              source code is sent to Google during investigation.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            {agentStatus?.authenticated
+              ? `Connected through ${agentStatus.auth_method === "api-key" ? "your API key" : "Vox’s Gemini connection"}.`
+              : "Vox’s Gemini connection is used by default."}{" "}
+            The engine downloads automatically on first use.
+          </p>
+          <label className="grid gap-2 text-xs">
+            Gemini API key
+            <Input
+              type="password"
+              autoComplete="off"
+              value={agentKey}
+              onChange={(e) => setAgentKey(e.target.value)}
+              placeholder="Stored securely in the system keychain"
+            />
+          </label>
+          <Button
+            disabled={agentSetupBusy || !agentKey.trim()}
+            onClick={() => {
+              setAgentSetupBusy(true);
+              void localProjects()
+                .configureAgent(agentKey)
+                .then(() => localProjects().agentStatus())
+                .then((status) => {
+                  setAgentStatus(status);
+                  setAgentKey("");
+                  setAgentSetup(false);
+                })
+                .catch((e) => setError(String(e)))
+                .finally(() => setAgentSetupBusy(false));
+            }}
+          >
+            {agentSetupBusy ? "Saving…" : "Save connection"}
+          </Button>
+          {agentStatus?.auth_method === "api-key" && (
+            <Button
+              variant="ghost"
+              disabled={agentSetupBusy}
+              onClick={() => {
+                setAgentSetupBusy(true);
+                void localProjects()
+                  .configureAgent("")
+                  .then(() => localProjects().agentStatus())
+                  .then(setAgentStatus)
+                  .catch((e) => setError(String(e)))
+                  .finally(() => setAgentSetupBusy(false));
+              }}
+            >
+              Remove my key and use Vox
+            </Button>
+          )}
+          {error && (
+            <p role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={newPlan}
         onOpenChange={(open) => {

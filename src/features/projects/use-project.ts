@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { projectsApi, localProjects } from "./api";
-import type { Project, ProjectExcerpt, SourceChanges } from "./types";
+import type { Project, SourceChanges } from "./types";
 import { platform } from "@/platform";
 import { activity } from "./context";
 
@@ -131,25 +131,6 @@ export function useProject(id: string) {
       clearInterval(timer);
     };
   }, [id, save]);
-  const chat = useCallback(
-    async (message: string, excerpts: ProjectExcerpt[]) => {
-      if (!current.current || working.current)
-        throw new Error("Wait for the current change to finish");
-      working.current = true;
-      setBusy(true);
-      setError("");
-      try {
-        put(await projectsApi.chat(current.current, message, excerpts));
-      } catch (e) {
-        setError(String(e));
-        throw e;
-      } finally {
-        working.current = false;
-        if (alive.current) setBusy(false);
-      }
-    },
-    [put],
-  );
   const index = useCallback(
     async (sourceId: string) => {
       const result = await localProjects().index(id, sourceId);
@@ -244,5 +225,5 @@ export function useProject(id: string) {
     },
     [id, save],
   );
-  return { project, error, busy, changes, reload, save, chat, index };
+  return { project, error, busy, changes, reload, save, index };
 }

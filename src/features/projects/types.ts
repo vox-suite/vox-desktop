@@ -100,14 +100,31 @@ export type SourceChanges = Record<
   string,
   { files?: string[]; unavailable?: string }
 >;
-export type ProjectExcerpt = { citation: Citation; text: string };
+export type ProjectAgentStatus = {
+  engine: string;
+  release: string;
+  installed: boolean;
+  authenticated: boolean;
+  auth_method: string;
+};
+export type ProjectAgentProgress = { type: string; message: string };
+export type ProjectAgentResult = {
+  flow: ProjectFlow;
+  reply: string;
+  engine: string;
+  request_id: string;
+};
 export interface ProjectLocalPort {
-  retrieve(
+  agentStatus(): Promise<ProjectAgentStatus>;
+  configureAgent(key: string): Promise<void>;
+  trace(
     projectId: string,
-    query: string,
-    sourceId?: string,
-    brief?: boolean,
-  ): Promise<ProjectExcerpt[]>;
+    requestId: string,
+    question: string,
+    context: string,
+    progress: (event: ProjectAgentProgress) => void,
+  ): Promise<ProjectAgentResult>;
+  cancelTrace(requestId: string): Promise<void>;
   engineStatus(): Promise<{
     engine: string;
     version: string;

@@ -1,5 +1,5 @@
 import { platform } from "@/platform";
-import type { Project, ProjectData, ProjectExcerpt } from "./types";
+import type { Project, ProjectData } from "./types";
 export const projectsApi = {
   count: () =>
     platform().http.request<{ count: number; rev: string }>({
@@ -33,13 +33,6 @@ export const projectsApi = {
     platform().http.request<void>({
       method: "DELETE",
       path: `/v1/me/projects/${id}`,
-    }),
-  chat: (p: Project, message: string, excerpts: ProjectExcerpt[]) =>
-    platform().http.request<Project>({
-      method: "POST",
-      path: `/v1/me/projects/${p.id}/chat`,
-      body: { message, revision: p.revision, excerpts },
-      timeoutMs: 100000,
     }),
   attach: (projectId: string, plan: string) =>
     platform().http.request<void>({

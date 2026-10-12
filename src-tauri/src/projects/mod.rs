@@ -1,3 +1,7 @@
+pub mod agent;
+mod agent_gateway;
+mod agent_runtime;
+mod agent_tools;
 mod engine;
 mod graph;
 mod sources;
@@ -5,7 +9,7 @@ mod types;
 
 use crate::auth::AuthManager;
 use engine::{CodeGraph, CodeIndexEngine};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::{
     path::PathBuf,
     sync::{Arc, OnceLock},
@@ -273,55 +277,4 @@ pub async fn project_remove_source(
         std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
     }
     Ok(())
-}
-
-#[tauri::command]
-pub async fn project_retrieve(
-    project_id: String,
-    query: String,
-    source_id: Option<String>,
-    brief: bool,
-    auth: State<'_, AuthManager>,
-) -> Result<Value, String> {
-    let dir = dir(&auth, &project_id)?;
-    tokio::task::spawn_blocking(move || {
-        let all = sources::registry(&dir)?;
-        let mut excerpts = vec![];
-        let mut budget = 96000usize;
-        for source in all
-            .iter()
-            .filter(|s| source_id.as_ref().is_none_or(|id| id == &s.id))
-        {
-            if source.hashes.is_empty() {
-                continue;
-            }
-            let citations = if brief {
-                graph::brief(source)
-            } else {
-                graph::retrieve(&dir, source, &query)?
-            };
-            for mut citation in citations {
-                if excerpts.len() >= 32 || budget == 0 {
-                    break;
-                }
-                let text = sources::read(source, &citation)?;
-                let text = text.chars().take(budget.min(5000)).collect::<String>();
-                citation.end_line = citation.end_line.min(
-                    citation
-                        .start_line
-                        .saturating_add(text.lines().count().saturating_sub(1) as u32),
-                );
-                budget = budget.saturating_sub(text.chars().count());
-                if !text.is_empty() {
-                    excerpts.push(json!({"citation":citation,"text":text}));
-                }
-            }
-            if excerpts.len() >= 32 || budget == 0 {
-                break;
-            }
-        }
-        Ok(json!(excerpts))
-    })
-    .await
-    .map_err(|e| e.to_string())?
 }
