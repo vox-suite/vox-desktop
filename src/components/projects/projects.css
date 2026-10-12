@@ -448,7 +448,7 @@
   height: 100%;
   min-height: 280px;
   flex-direction: column;
-  background: #020617;
+  background: #111111;
 }
 .project-architecture-stage {
   position: relative;
@@ -529,7 +529,7 @@
   top: 10px;
   left: 14px;
   padding: 3px 6px;
-  background: #0f172a;
+  background: #111111;
   font-family: "Geist Mono", monospace;
   color: #94a3b8;
   font-size: 9px;
@@ -540,7 +540,7 @@
   padding: 2px 5px;
   border: 1px solid transparent;
   border-radius: 3px;
-  background: #020617f2;
+  background: #111111f2;
   color: #b7c8db;
   font-family: "Geist Mono", monospace;
   font-size: 9px;
@@ -559,8 +559,8 @@
   align-items: center;
   gap: 14px;
   padding: 12px 20px;
-  border-top: 1px solid #1e293b;
-  background: #0f172a;
+  border-top: 1px solid #222;
+  background: #111111;
   font-family: "Geist Mono", monospace;
   font-size: 10px;
   color: #94a3b8;
@@ -668,8 +668,8 @@
   color: #34d399;
 }
 .project-architecture .react-flow__controls button {
-  background: #142134;
-  border-color: #2b3d52;
+  background: #191919;
+  border-color: #292929;
   color: #c5d3e2;
 }
 @media (max-width: 600px) {

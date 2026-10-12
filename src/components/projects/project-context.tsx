@@ -224,6 +224,7 @@ export function ProjectContext({
         )}
       </div>
       <ReactFlow
+        proOptions={{ hideAttribution: true }}
         key={sourceId ?? "root"}
         nodes={graph.nodes}
         edges={graph.edges}
@@ -245,7 +246,7 @@ export function ProjectContext({
         }}
         colorMode="dark"
       >
-        <Background color="#33353a" gap={22} />
+        <Background bgColor="#111111" color="#33353a" gap={22} />
         <Controls showInteractive={false} />
       </ReactFlow>
 

@@ -298,6 +298,7 @@ export function ProjectFlowCanvas({
       <div className="project-architecture-stage">
         {layout ? (
           <ReactFlow
+            proOptions={{ hideAttribution: true }}
             key={flow.title + retry + flow.nodes.map((n) => n.id).join("|")}
             nodes={graph.nodes}
             edges={graph.edges}
@@ -318,7 +319,7 @@ export function ProjectFlowCanvas({
           >
             <Background
               variant={BackgroundVariant.Lines}
-              bgColor="#020617"
+              bgColor="#111111"
               color="#1e293b"
               gap={32}
               lineWidth={0.5}
