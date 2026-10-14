@@ -22,6 +22,7 @@ import type {
   GraphPage,
   LocalSource,
 } from "@/features/projects/types";
+import { token, useTheme } from "@/lib/theme";
 export function CodeExplorer({
   projectId,
   sourceId,
@@ -35,6 +36,7 @@ export function CodeExplorer({
   onClose: () => void;
   onRead: (c: Citation) => void;
 }) {
+  const theme = useTheme();
   const [path, setPath] = useState("");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -94,9 +96,9 @@ export function CodeExplorer({
     },
     style: {
       width: 225,
-      background: "#1b1d21",
-      border: "1px solid #3a3d43",
-      color: "#eee",
+      background: token("surface-accent"),
+      border: `1px solid ${token("border-strong")}`,
+      color: token("text"),
       borderRadius: 8,
     },
   }));
@@ -109,7 +111,7 @@ export function CodeExplorer({
       target: String(r.to),
       label:
         r.confidence === "extracted" ? r.kind : `${r.kind} (${r.confidence})`,
-      style: { stroke: r.confidence === "extracted" ? "#7d9cae" : "#be9d58" },
+      style: { stroke: token(r.confidence === "extracted" ? "slate" : "gold") },
       type: "smoothstep",
     }));
   return (
@@ -239,9 +241,9 @@ export function CodeExplorer({
                     );
                     if (symbol) onRead(symbol.citation);
                   }}
-                  colorMode="dark"
+                  colorMode={theme}
                 >
-                  <Background color="#35373a" />
+                  <Background color={token("border-strong")} />
                   <Controls showInteractive={false} />
                 </ReactFlow>
                 <p className="absolute bottom-2 left-3 text-[10px] text-muted-foreground">

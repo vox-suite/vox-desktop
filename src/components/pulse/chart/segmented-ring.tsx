@@ -1,3 +1,5 @@
+import { useChartPalette } from "./use-chart-palette";
+
 export function SegmentedRing({
   points,
   colors,
@@ -5,6 +7,7 @@ export function SegmentedRing({
   points: { label: string; value?: number | null }[];
   colors: string[];
 }) {
+  const palette = useChartPalette();
   if (points.some((p) => (p.value ?? 0) < 0)) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -69,16 +72,16 @@ export function SegmentedRing({
         x="130"
         y="117"
         textAnchor="middle"
-        fill="#eeeeeb"
+        fill={palette.label}
         fontSize="40"
         letterSpacing="-2"
       >
         {Math.round(((largest.value ?? 0) / total) * 100)}%
       </text>
-      <text x="130" y="140" textAnchor="middle" fill="#a0a6a2" fontSize="11">
+      <text x="130" y="140" textAnchor="middle" fill={palette.axis} fontSize="11">
         of plotted total
       </text>
-      <text x="130" y="158" textAnchor="middle" fill="#a0a6a2" fontSize="11">
+      <text x="130" y="158" textAnchor="middle" fill={palette.axis} fontSize="11">
         {largest.label.length > 24
           ? largest.label.slice(0, 23) + "…"
           : largest.label}

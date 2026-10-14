@@ -122,7 +122,7 @@
   background: var(--border);
 }
 .project-needs-review {
-  color: #d4be91;
+  color: var(--vox-gold);
 }
 .project-tabs {
   display: flex;
@@ -190,7 +190,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #96b8a3;
+  background: var(--vox-text-muted);
   flex-shrink: 0;
 }
 .project-composer-dock {
@@ -330,14 +330,14 @@
   cursor: pointer;
 }
 .project-import-notices {
-  border-left: 2px solid #ad9054;
+  border-left: 2px solid var(--vox-gold);
   padding: 12px 16px;
-  background: #ad90540a;
+  background: color-mix(in srgb, var(--vox-gold) 3.9%, transparent);
   border-radius: 0 6px 6px 0;
 }
 .project-import-notices summary {
   cursor: pointer;
-  color: #d4be91;
+  color: var(--vox-gold);
 }
 .project-import-notices li {
   padding: 5px 0;
@@ -359,15 +359,15 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #88adbf;
+  background: var(--vox-text-muted);
 }
 .project-origin.inferred {
-  background: #cfac61;
+  background: var(--vox-gold);
   transform: rotate(45deg);
   border-radius: 1px;
 }
 .project-origin.user {
-  background: #aeb8ae;
+  background: var(--vox-text-muted);
 }
 .project-flow-header {
   display: flex;
@@ -448,7 +448,7 @@
   height: 100%;
   min-height: 280px;
   flex-direction: column;
-  background: #111111;
+  background: var(--vox-surface-raised);
 }
 .project-architecture-stage {
   position: relative;
@@ -461,10 +461,10 @@
   padding: 9px 11px;
   border: 1px solid var(--node-color);
   border-radius: 5px;
-  background: color-mix(in srgb, var(--node-color) 8%, #0f172a);
+  background: color-mix(in srgb, var(--node-color) 8%, var(--vox-surface-accent));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--node-color) 12%, transparent);
   font-family: "Geist Mono", monospace;
-  color: #ffffff;
+  color: var(--vox-text);
 }
 .project-architecture-node.is-selected {
   outline: 2px solid var(--node-color);
@@ -483,10 +483,10 @@
   border-radius: 4px;
   font-size: 9px;
   line-height: 1.3;
-  background: #0f172a;
+  background: var(--vox-surface-accent);
 }
 .project-evidence-badge:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--vox-ink);
   outline-offset: 3px;
 }
 .project-architecture-node h3 {
@@ -501,7 +501,7 @@
   -webkit-box-orient: vertical;
 }
 .project-architecture-node p {
-  color: #94a3b8;
+  color: var(--vox-text-muted);
   font-size: 9px;
   margin-top: 4px;
   overflow: hidden;
@@ -519,9 +519,9 @@
 .project-code-boundary {
   width: 100%;
   height: 100%;
-  border: 1px dashed #475569;
+  border: 1px dashed var(--vox-text-dim);
   border-radius: 9px;
-  background: #94a3b808;
+  background: color-mix(in srgb, var(--vox-ink) 3.1%, transparent);
   pointer-events: none;
 }
 .project-code-boundary > span {
@@ -529,9 +529,9 @@
   top: 10px;
   left: 14px;
   padding: 3px 6px;
-  background: #111111;
+  background: var(--vox-surface-raised);
   font-family: "Geist Mono", monospace;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
   font-size: 9px;
 }
 .project-route-label {
@@ -540,8 +540,8 @@
   padding: 2px 5px;
   border: 1px solid transparent;
   border-radius: 3px;
-  background: #111111f2;
-  color: #b7c8db;
+  background: color-mix(in srgb, var(--vox-panel) 94.9%, transparent);
+  color: var(--vox-text-muted);
   font-family: "Geist Mono", monospace;
   font-size: 9px;
   max-width: 210px;
@@ -549,9 +549,9 @@
 }
 .project-route-label:hover,
 .project-route-label:focus-visible {
-  border-color: #637990;
+  border-color: var(--vox-text-dim);
   outline: none;
-  color: #fff;
+  color: var(--vox-text);
 }
 .project-flow-legend {
   display: flex;
@@ -559,11 +559,11 @@
   align-items: center;
   gap: 14px;
   padding: 12px 20px;
-  border-top: 1px solid #222;
-  background: #111111;
+  border-top: 1px solid var(--vox-border);
+  background: var(--vox-surface-raised);
   font-family: "Geist Mono", monospace;
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
 }
 .project-flow-legend > span {
   display: inline-flex;
@@ -583,13 +583,13 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 1px solid #26394d;
+  border: 1px solid var(--vox-border-strong);
   font-size: 9px;
 }
 .project-flow-line-key {
   margin-left: auto;
   font-size: 9px;
-  color: #8196af;
+  color: var(--vox-text-muted);
 }
 .project-layout-status {
   height: 100%;
@@ -598,7 +598,7 @@
   justify-content: center;
   gap: 9px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
 }
 .project-flow-inspector {
   position: absolute;
@@ -609,12 +609,12 @@
   max-width: calc(100% - 28px);
   max-height: calc(100% - 28px);
   overflow: auto;
-  border: 1px solid #35485d;
+  border: 1px solid var(--vox-border-strong);
   border-radius: 8px;
-  background: #101c2bf5;
+  background: color-mix(in srgb, var(--vox-panel) 96.1%, transparent);
   padding: 14px;
-  box-shadow: 0 8px 32px #0006;
-  color: #e1ebf6;
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--vox-shade) 40%, transparent);
+  color: var(--vox-text);
 }
 .project-inspector-heading {
   display: flex;
@@ -622,7 +622,7 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
 }
 .project-flow-inspector h3 {
   font-size: 14px;
@@ -632,16 +632,16 @@
 .project-flow-inspector > p {
   font-size: 12px;
   line-height: 1.7;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
 }
 .project-inspector-sources {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #26384d;
+  border-top: 1px solid var(--vox-border-strong);
 }
 .project-inspector-sources h4 {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--vox-text-muted);
   margin-bottom: 8px;
 }
 .project-inspector-sources button {
@@ -656,21 +656,21 @@
 .project-inspector-sources button svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #34d399;
+  color: var(--vox-mint);
 }
 .project-inspector-sources small {
   display: block;
   font-size: 10px;
   margin-top: 3px;
-  color: #8196af;
+  color: var(--vox-text-muted);
 }
 .project-inspector-sources button:hover {
-  color: #34d399;
+  color: var(--vox-mint);
 }
 .project-architecture .react-flow__controls button {
-  background: #191919;
-  border-color: #292929;
-  color: #c5d3e2;
+  background: var(--vox-surface-accent);
+  border-color: var(--vox-border);
+  color: var(--vox-text-muted);
 }
 @media (max-width: 600px) {
   .project-flow-legend {
@@ -688,16 +688,16 @@
 }
 
 .project-evidence-badge {
-  border-color: #34d399;
-  color: #34d399;
+  border-color: var(--vox-mint);
+  color: var(--vox-mint);
 }
 .project-evidence-badge[data-supported="false"] {
-  border-color: #64748b;
-  color: #94a3b8;
+  border-color: var(--vox-text-dim);
+  color: var(--vox-text-muted);
 }
 
 .project-diagram-scene {
-  background: #111;
+  background: var(--vox-surface-raised);
 }
 .project-diagram-kind {
   display: block;
@@ -713,6 +713,6 @@
   padding: 10px 20px;
   border-top: 1px solid var(--border);
   color: var(--muted-foreground);
-  background: #111;
+  background: var(--vox-surface-raised);
   font-size: 10px;
 }

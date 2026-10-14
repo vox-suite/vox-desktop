@@ -10,7 +10,7 @@ export function StatusPill({
 }) {
   if (!synced && !attention) {
     return (
-      <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+      <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         Not synced
       </span>
     );
@@ -20,8 +20,8 @@ export function StatusPill({
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
         attention
-          ? "bg-amber-300/15 text-amber-200"
-          : "bg-emerald-400/15 text-emerald-300",
+          ? "bg-warning/15 text-warning"
+          : "bg-success/15 text-success",
       )}
     >
       {attention ? (

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fade } from "@/lib/theme";
 
 export function BrandMark({
   brand,
@@ -24,8 +25,8 @@ export function BrandMark({
         className,
       )}
       style={{
-        background: `${brand.color}22`,
-        boxShadow: `inset 0 0 0 1px ${brand.color}44`,
+        background: fade(brand.color, 13),
+        boxShadow: `inset 0 0 0 1px ${fade(brand.color, 27)}`,
       }}
     >
       {brand.logo ? (

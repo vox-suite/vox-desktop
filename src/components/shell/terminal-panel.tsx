@@ -7,6 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { Terminal as TerminalIcon, X } from "lucide-react";
 import { desktopStore } from "@/features/desktop-control/store";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
+import { useVoxColors, withAlpha } from "@/lib/theme";
 
 const SHELL_NAME = /win/i.test(navigator.platform) ? "PowerShell" : "zsh";
 
@@ -19,6 +20,7 @@ export function TerminalPanel() {
   const term = useRef<Terminal | null>(null);
   const fit = useRef<FitAddon | null>(null);
   const [error, setError] = useState("");
+  const colors = useVoxColors();
 
   useEffect(() => {
     const t = new Terminal({
@@ -26,7 +28,6 @@ export function TerminalPanel() {
       cursorBlink: true,
       fontFamily: "ui-monospace, Menlo, Consolas, monospace",
       fontSize: 13,
-      theme: { background: "#00000000" },
     });
     const f = new FitAddon();
     t.loadAddon(f);
@@ -62,6 +63,17 @@ export function TerminalPanel() {
   }, []);
 
   useEffect(() => {
+    if (!term.current) return;
+    term.current.options.theme = {
+      background: withAlpha(colors.background, 0),
+      foreground: colors.text,
+      cursor: colors.text,
+      cursorAccent: colors.background,
+      selectionBackground: withAlpha(colors.sky, 0.3),
+    };
+  }, [colors]);
+
+  useEffect(() => {
     if (!terminalOpen) return;
     invoke("terminal_open")
       .then(() => {
@@ -77,10 +89,10 @@ export function TerminalPanel() {
     <section
       aria-label="Terminal"
       hidden={!terminalOpen}
-      className="pointer-events-auto absolute inset-0 z-30 flex flex-col border-l border-[#242426] bg-black/40"
+      className="pointer-events-auto absolute inset-0 z-30 flex flex-col border-l border-line bg-background/70"
     >
-      <header className="flex h-10 shrink-0 items-center justify-between border-b border-[#242426] bg-[#161719]/90 pl-3 pr-2">
-        <div className="flex items-center gap-2 rounded-md bg-white/[0.06] px-2.5 py-1 text-xs font-medium">
+      <header className="flex h-10 shrink-0 items-center justify-between border-b border-line bg-panel/90 pl-3 pr-2">
+        <div className="flex items-center gap-2 rounded-md bg-ink/[0.06] px-2.5 py-1 text-xs font-medium">
           <TerminalIcon size={13} className="text-muted-foreground" />
           <span>Terminal</span>
           <span className="text-muted-foreground">·</span>
@@ -89,13 +101,13 @@ export function TerminalPanel() {
         <button
           type="button"
           aria-label="Close terminal"
-          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-white/10 hover:text-foreground"
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-ink/10 hover:text-foreground"
           onClick={() => desktopStore.patch({ terminalOpen: false })}
         >
           <X size={15} />
         </button>
       </header>
-      {error && <p className="text-xs text-red-300">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div ref={host} className="min-h-0 flex-1" />
     </section>
   );

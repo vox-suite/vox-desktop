@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { BrandMark } from "./brand-mark";
 import { StatusPill } from "./status-pill";
 import type { BrandConfig, Connection, Connector } from "./types";
+import { fade } from "@/lib/theme";
 
 export function AppCard({
   app,
@@ -26,13 +27,13 @@ export function AppCard({
   return (
     <article
       style={{ "--brand": brand.color } as React.CSSProperties}
-      className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0e0f12] p-5 transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--brand)_55%,black)]"
+      className="relative flex h-full min-h-64 flex-col overflow-hidden rounded-xl border border-ink/10 bg-surface p-5 transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--brand)_55%,black)]"
     >
       <div
         aria-hidden
         className="pointer-events-none absolute -right-[101px] -top-[101px] size-72 rounded-full opacity-20"
         style={{
-          background: `radial-gradient(circle, ${brand.color} 0%, ${brand.color}55 35%, transparent 70%)`,
+          background: `radial-gradient(circle, ${brand.color} 0%, ${fade(brand.color, 33)} 35%, transparent 70%)`,
         }}
       />
       <div className="relative flex items-start justify-between gap-3">

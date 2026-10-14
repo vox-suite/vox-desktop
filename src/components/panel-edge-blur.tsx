@@ -72,7 +72,7 @@ export function PanelEdgeBlur({
   return createPortal(
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed z-20 bg-black/5 backdrop-blur-sm"
+      className="pointer-events-none fixed z-20 bg-shade/5 backdrop-blur-sm"
       style={{
         width,
         top: rect.top,

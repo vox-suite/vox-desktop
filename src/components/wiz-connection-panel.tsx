@@ -53,7 +53,7 @@ export function WizConnectionPanel({
 
   if (!port) {
     return (
-      <p className="rounded-lg bg-white/[0.04] p-3 text-sm text-muted-foreground">
+      <p className="rounded-lg bg-ink/[0.04] p-3 text-sm text-muted-foreground">
         WiZ local control is available in the Vox desktop app. Open it on the
         same Wi-Fi network as your Philips WiZ lights.
       </p>
@@ -71,7 +71,7 @@ export function WizConnectionPanel({
       {error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-400/10 p-3 text-sm text-red-200"
+          className="rounded-lg bg-danger/10 p-3 text-sm text-danger"
         >
           {error}
         </p>
@@ -82,7 +82,7 @@ export function WizConnectionPanel({
         </p>
       )}
       {!status.enabled && (
-        <label className="flex items-start gap-3 rounded-lg border border-white/10 p-3.5 text-sm">
+        <label className="flex items-start gap-3 rounded-lg border border-ink/10 p-3.5 text-sm">
           <Checkbox
             checked={consent}
             disabled={busy}
@@ -159,7 +159,7 @@ export function WizConnectionPanel({
       {status.devices.map((device) => (
         <div
           key={device.id}
-          className="space-y-3 rounded-lg border border-white/10 p-3"
+          className="space-y-3 rounded-lg border border-ink/10 p-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -196,7 +196,7 @@ export function WizConnectionPanel({
                     [device.id]: Number(event.target.value),
                   }))
                 }
-                className="min-w-0 flex-1 accent-purple-400"
+                className="min-w-0 flex-1 accent-violet"
               />
               <span className="text-xs tabular-nums">
                 {brightness[device.id] ?? device.brightness}%

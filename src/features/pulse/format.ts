@@ -1,3 +1,4 @@
+import type { VoxColor } from "@/lib/theme";
 const SYMBOLS: Record<string, string> = {
   INR: "₹",
   USD: "$",
@@ -5,22 +6,11 @@ const SYMBOLS: Record<string, string> = {
   GBP: "£",
 };
 
-export const SERIES_COLORS = [
-  "#3ecf8e",
-  "#f5b83d",
-  "#6ea8fe",
-  "#ff5a67",
-  "#c084fc",
-  "#22d3ee",
-];
+/** Chart series hues, as design-system tokens (resolve with `useChartPalette`). */
+export const SERIES_TOKENS = ["mint", "gold", "sky", "danger", "violet", "cyan"] as const satisfies readonly VoxColor[];
 
-export const CHART_COLORS = [
-  "#3ecf8e",
-  "#a2aaa4",
-  "#77b6a1",
-  "#6b766e",
-  "#d4dad6",
-];
+/** Single-metric ramp: the mint accent, then neutrals. */
+export const CHART_TOKENS = ["mint", "text-muted", "teal", "text-dim", "primary"] as const satisfies readonly VoxColor[];
 
 const MONTHS = [
   "Jan",

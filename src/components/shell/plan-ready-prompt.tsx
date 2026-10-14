@@ -17,7 +17,7 @@ export function PlanReadyPrompt({
   return (
     <div
       role="status"
-      className="fixed bottom-5 right-5 z-50 w-80 rounded-2xl border border-[#242426] bg-[#161719]/95 p-4 shadow-[0_16px_64px_#0009] backdrop-blur-xl"
+      className="fixed bottom-5 right-5 z-50 w-80 rounded-2xl border border-line bg-panel/95 p-4 shadow-float backdrop-blur-xl"
     >
       <button
         type="button"
@@ -28,7 +28,7 @@ export function PlanReadyPrompt({
         <X className="size-4" />
       </button>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Flag className="size-3.5 text-[#f5b83d]" />
+        <Flag className="size-3.5 text-gold" />
         Plan ready
       </div>
       <p className="mt-2 text-sm font-medium">{plan.title || "Your Space"}</p>
@@ -38,7 +38,7 @@ export function PlanReadyPrompt({
       <div className="mt-3 flex gap-2">
         <Button
           size="sm"
-          className="h-8 rounded-full bg-[#f5b83d] px-3 text-xs text-black hover:bg-[#f8c75e]"
+          className="h-8 rounded-full bg-gold px-3 text-xs text-on-accent hover:bg-gold/85"
           onClick={onTellMe}
         >
           Tell me

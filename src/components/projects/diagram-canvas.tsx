@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import "@xyflow/react/dist/style.css";
+import { useTheme } from "@/lib/theme";
 
 type SceneData = {
   rendered: RenderedDiagram;
@@ -40,7 +41,7 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
     const style = document.createElement("style");
     style.textContent =
       data.rendered.css +
-      ":host{--canvas:#111111;--panel:#111111;--mask:#111111;background:#111111;display:block}svg{display:block;width:100%;height:100%;font-family:'Geist Mono',monospace}svg [data-node-id]{cursor:pointer}svg [data-node-id]:focus{outline:2px solid #22d3ee;outline-offset:3px}svg [data-edge-from]{cursor:pointer}svg [data-edge-from]:focus{outline:1px solid #34d399}";
+      ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised);background:var(--vox-surface-raised);display:block}svg{display:block;width:100%;height:100%;font-family:'Geist Mono',monospace}svg [data-node-id]{cursor:pointer}svg [data-node-id]:focus{outline:2px solid var(--vox-cyan);outline-offset:3px}svg [data-edge-from]{cursor:pointer}svg [data-edge-from]:focus{outline:1px solid var(--vox-mint)}";
     root.replaceChildren(style);
     const template = document.createElement("template");
     template.innerHTML = svg;
@@ -98,6 +99,7 @@ export function DiagramCanvas({
   flow: ProjectFlow;
   onRead: (citation: Citation) => void;
 }) {
+  const theme = useTheme();
   const [result, setResult] = useState<{
     flow: ProjectFlow;
     rendered?: RenderedDiagram;
@@ -261,7 +263,7 @@ export function DiagramCanvas({
             minZoom={0.1}
             maxZoom={3}
             proOptions={{ hideAttribution: true }}
-            colorMode="dark"
+            colorMode={theme}
             onPaneClick={() => setSelected(null)}
           >
             <Controls showInteractive={false} />

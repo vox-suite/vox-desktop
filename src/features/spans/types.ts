@@ -34,11 +34,6 @@ export type SpanDaySummary = {
   count: number;
   categories: SpanCategoryCount[];
 };
-export type SpanDays = {
-  revision: number;
-  unchanged: boolean;
-  days: SpanDaySummary[];
-};
 export type SpanDayPage = {
   revision: number;
   items: Span[];

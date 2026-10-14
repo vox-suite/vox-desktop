@@ -4,6 +4,7 @@
 import { useEffect, useRef, type HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
+import { maskAlpha, readToken } from "@/lib/theme";
 
 export type LiveWaveformProps = HTMLAttributes<HTMLDivElement> & {
   audioLevel?: number;
@@ -441,7 +442,7 @@ export const LiveWaveform = ({
           const style = getComputedStyle(canvas);
           // Try to get the computed color value directly
           const color = style.color;
-          return color || "#000";
+          return color || readToken("text");
         })();
 
       const step = barWidth + barGap;
@@ -508,12 +509,12 @@ export const LiveWaveform = ({
           // destination-out: removes destination where source alpha is high
           // We want: fade edges out, keep center solid
           // Left edge: start opaque (1) = remove, fade to transparent (0) = keep
-          gradient.addColorStop(0, "rgba(255,255,255,1)");
-          gradient.addColorStop(fadePercent, "rgba(255,255,255,0)");
+          gradient.addColorStop(0, maskAlpha(1));
+          gradient.addColorStop(fadePercent, maskAlpha(0));
           // Center stays transparent = keep everything
-          gradient.addColorStop(1 - fadePercent, "rgba(255,255,255,0)");
+          gradient.addColorStop(1 - fadePercent, maskAlpha(0));
           // Right edge: fade from transparent (0) = keep to opaque (1) = remove
-          gradient.addColorStop(1, "rgba(255,255,255,1)");
+          gradient.addColorStop(1, maskAlpha(1));
 
           gradientCacheRef.current = gradient;
           lastWidthRef.current = rect.width;

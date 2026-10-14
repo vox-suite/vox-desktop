@@ -28,6 +28,7 @@ import { TakeoutSection } from "./takeout-section";
 import { PlaystationNpsso } from "./playstation-npsso";
 import { MAPS_IMPORT, YOUTUBE_IMPORT } from "./takeout-configs";
 import type { BrandConfig, Connection, Connector } from "./types";
+import { fade, fadeMask } from "@/lib/theme";
 
 const request = <T,>(path: string, body?: unknown) =>
   platform().http.request<T>({
@@ -147,7 +148,7 @@ export function AppDetailSheet({
         side="right"
         overlay={false}
         onInteractOutside={outsideGuard}
-        className="vox-scroll w-full overflow-y-auto border-white/10 bg-[#0c0d10] sm:max-w-lg"
+        className="vox-scroll w-full overflow-y-auto border-ink/10 bg-surface sm:max-w-lg"
       >
         {openApp && openBrand && (
           <div className="relative isolate flex min-h-full shrink-0 flex-col gap-7 px-8 pb-12 pt-9">
@@ -155,16 +156,13 @@ export function AppDetailSheet({
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"
               style={{
-                maskImage:
-                  "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
-                WebkitMaskImage:
-                  "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
+                ...fadeMask(40),
               }}
             >
               <div
                 className="absolute inset-0"
                 style={{
-                  background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${openBrand.color}88 0%, ${openBrand.color}3d 40%, ${openBrand.color}14 62%, transparent 85%)`,
+                  background: `radial-gradient(ellipse 100% 85% at 100% 0%, ${fade(openBrand.color, 53)} 0%, ${fade(openBrand.color, 24)} 40%, ${fade(openBrand.color, 8)} 62%, transparent 85%)`,
                 }}
               />
             </div>
@@ -175,10 +173,7 @@ export function AppDetailSheet({
                 opacity: 0.05,
                 filter: "brightness(0.4) contrast(1.3)",
                 backgroundSize: "130px 130px",
-                maskImage:
-                  "linear-gradient(to bottom, #000 0%, #000 45%, rgba(0,0,0,0.35) 100%)",
-                WebkitMaskImage:
-                  "linear-gradient(to bottom, #000 0%, #000 45%, rgba(0,0,0,0.35) 100%)",
+                ...fadeMask(45, 0.35),
               }}
             />
             <SheetHeader className="space-y-0 p-0">
@@ -203,7 +198,7 @@ export function AppDetailSheet({
             {message && (
               <StatusMessage
                 message={message}
-                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm"
+                className="flex items-center gap-2 rounded-lg border border-ink/10 bg-ink/[0.04] px-3 py-2.5 text-sm"
               />
             )}
 
@@ -215,7 +210,7 @@ export function AppDetailSheet({
             ) : (
               <>
                 {!openApp.available && openApp.id !== "youtube" && (
-                  <p className="rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-muted-foreground">
+                  <p className="rounded-lg bg-ink/[0.04] px-3 py-2 text-sm text-muted-foreground">
                     {openApp.id === "spotify" && !spotifyRegistered
                       ? "This server needs an update to support Spotify linking."
                       : "Not configured on this server."}
@@ -264,7 +259,7 @@ export function AppDetailSheet({
                   </p>
                 )}
                 {personalError && (
-                  <p role="status" className="text-sm text-amber-200">
+                  <p role="status" className="text-sm text-warning">
                     {personalError}
                   </p>
                 )}
@@ -277,7 +272,7 @@ export function AppDetailSheet({
                         .map((item, index) => (
                           <li
                             key={item.id ?? index}
-                            className="rounded-lg bg-white/[0.04] px-3 py-2"
+                            className="rounded-lg bg-ink/[0.04] px-3 py-2"
                           >
                             {item.snippet?.title ?? item.name ?? "Untitled"}
                           </li>
@@ -293,8 +288,8 @@ export function AppDetailSheet({
 
                 {openAccount && (
                   <div className="space-y-3">
-                    <dl className="grid gap-px overflow-hidden rounded-lg border border-white/10 bg-white/10 text-sm">
-                      <div className="bg-[#0c0d10] p-3.5">
+                    <dl className="grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10 text-sm">
+                      <div className="bg-surface p-3.5">
                         <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           Account
                         </dt>
@@ -302,7 +297,7 @@ export function AppDetailSheet({
                           {openAccount.account_display_id || "Connected account"}
                         </dd>
                       </div>
-                      <div className="bg-[#0c0d10] p-3.5">
+                      <div className="bg-surface p-3.5">
                         <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           Last synced
                         </dt>
@@ -318,7 +313,7 @@ export function AppDetailSheet({
                     {openAccount.failure_code && (
                       <p
                         role="status"
-                        className="flex items-center gap-2 rounded-lg bg-amber-300/10 px-3 py-2 text-sm text-amber-100"
+                        className="flex items-center gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning"
                       >
                         <AlertTriangle className="size-4 shrink-0" />
                         {openAccount.failure_code === "reconnect_required" ||
@@ -337,7 +332,7 @@ export function AppDetailSheet({
                         .map((key) => (
                           <label
                             key={key}
-                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3.5 py-3 text-sm transition hover:border-white/20"
+                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-ink/10 bg-ink/[0.03] px-3.5 py-3 text-sm transition hover:border-ink/20"
                           >
                             <Checkbox
                               checked={openAccount[key]}
@@ -411,7 +406,7 @@ export function AppDetailSheet({
                   <PlaystationNpsso npsso={npsso} setNpsso={setNpsso} />
                 )}
 
-                {(openApp.id === "swiggy" || openApp.id === "zomato") && (
+                {openApp.id === "swiggy" && (
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     {openApp.available
                       ? `Authorize your ${openApp.name} account in your browser. Vox reads real orders and renews access when the provider supports it. If authorization expires, reconnect here.`
@@ -425,14 +420,14 @@ export function AppDetailSheet({
                       className={cn(
                         "flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 text-sm transition",
                         consent
-                          ? "border-emerald-400/30 bg-emerald-400/[0.06]"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/20",
+                          ? "border-success/30 bg-success/[0.06]"
+                          : "border-ink/10 bg-ink/[0.03] hover:border-ink/20",
                       )}
                     >
                       <ShieldCheck
                         className={cn(
                           "mt-0.5 size-5 shrink-0",
-                          consent ? "text-emerald-300" : "text-muted-foreground",
+                          consent ? "text-success" : "text-muted-foreground",
                         )}
                       />
                       <span className="flex-1 leading-relaxed text-foreground/90">

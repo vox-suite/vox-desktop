@@ -31,13 +31,14 @@ import type {
   SpaceMessage,
   SpaceNode,
 } from "@/features/spaces/types";
+import { alpha, token, type VoxColor } from "@/lib/theme";
 
 const nodeTypes = { spaceNode: SpaceWorkflowNode };
 const edgeTypes = { flow: FlowEdge };
-const STATE_ACCENT: Record<string, string> = {
-  ideating: "#2dd4bf",
-  planned: "#f472b6",
-  committed: "#4ade80",
+const STATE_ACCENT: Record<string, VoxColor> = {
+  ideating: "teal",
+  planned: "pink",
+  committed: "mint",
 };
 const FIT_OPTIONS = { padding: 0.15, minZoom: 1, maxZoom: 1 };
 
@@ -173,8 +174,8 @@ function SpaceCanvasInner({
           target: e.to_node,
           type: "flow",
           data: {
-            from: source ? nodeAccent(source) : "#9aa0aa",
-            to: target ? nodeAccent(target) : "#9aa0aa",
+            from: source ? nodeAccent(source) : token("slate"),
+            to: target ? nodeAccent(target) : token("slate"),
             flowing:
               nodeStateMap.get(e.from_node) === "running" ||
               nodeStateMap.get(e.to_node) === "running",
@@ -247,8 +248,8 @@ function SpaceCanvasInner({
   };
   const running = graph.space.run_state === "running";
   const shaderAccent = running
-    ? "#f5b83d"
-    : (STATE_ACCENT[graph.space.state] ?? "#6ea8ff");
+    ? "gold"
+    : (STATE_ACCENT[graph.space.state] ?? "sky");
 
   return (
     <PageContainer className="spaces-workbench flex-row">
@@ -323,14 +324,14 @@ function SpaceCanvasInner({
               position="bottom-right"
               nodeColor={(node) => {
                 const spaceNode = (node.data as { node?: SpaceNode })?.node;
-                return spaceNode ? nodeAccent(spaceNode) : "#777";
+                return spaceNode ? nodeAccent(spaceNode) : token("slate");
               }}
               nodeStrokeColor="transparent"
               nodeBorderRadius={6}
               pannable
               zoomable
               ariaLabel="Plan overview — drag to pan, scroll to zoom"
-              maskColor="rgba(0, 0, 0, 0.55)"
+              maskColor={alpha("shade", 55)}
             />
           </ReactFlow>
           <div className="space-vignette" />

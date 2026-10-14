@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { tintStyle, type TintStyle } from "@/lib/theme";
 import tokens from "@/features/pulse/schema-tokens.gen.json";
 
 export type Oklch = { l: number; c: number; h: number };
@@ -61,31 +62,16 @@ const ICON_COMPONENTS: Record<string, LucideIcon> = {
   "laptop": Laptop,
 };
 
-function oklchCss({ l, c, h }: Oklch, lOverride?: number, alpha?: number): string {
-  const lightness = Math.round((lOverride ?? l) * 100);
-  return alpha === undefined
-    ? `oklch(${lightness}% ${c} ${h})`
-    : `oklch(${lightness}% ${c} ${h} / ${alpha})`;
+function oklchCss({ l, c, h }: Oklch): string {
+  return `oklch(${Math.round(l * 100)}% ${c} ${h})`;
 }
 
-export type SchemaCategoryStyle = {
-  bg: string;
-  border: string;
-  dot: string;
-  text: string;
-  subtext: string;
-};
+export type SchemaCategoryStyle = TintStyle;
 
 /** `token` is the 0-23 index from `data_schemas.color_token`. */
 export function schemaColorStyle(token: number): SchemaCategoryStyle {
   const t = COLOR_TOKENS[token] ?? COLOR_TOKENS[0];
-  return {
-    bg: oklchCss(t, 0.22, 0.9),
-    border: oklchCss(t, undefined, 0.35),
-    dot: oklchCss(t),
-    text: "#ffffff",
-    subtext: oklchCss(t, undefined, 0.75),
-  };
+  return tintStyle(oklchCss(t));
 }
 
 /** `token` is the 0-23 index from `data_schemas.icon_token`. */

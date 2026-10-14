@@ -1,6 +1,7 @@
 import { Bike } from "lucide-react";
 import swiggyLogo from "@/assets/brands/swiggy.svg";
 import type { ConnectorBrand } from "./types";
+import { brandToken } from "@/lib/theme";
 
 export const swiggy = {
   id: "swiggy",
@@ -8,7 +9,7 @@ export const swiggy = {
     icon: Bike,
     logo: swiggyLogo,
     bare: true,
-    color: "#fc8019",
+    color: brandToken("swiggy"),
     tagline: "Food orders and delivery status",
   } satisfies ConnectorBrand,
   descriptor: {

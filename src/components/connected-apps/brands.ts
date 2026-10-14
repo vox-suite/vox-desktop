@@ -16,66 +16,65 @@ import youtubeLogo from "@/assets/brands/youtube.svg";
 import googleMapsLogo from "@/assets/brands/google-maps.svg";
 import wizLogo from "@/assets/brands/wiz.svg";
 import { swiggy } from "@/connectors/swiggy";
-import { zomato } from "@/connectors/zomato";
 import { platform } from "@/platform";
 import type { BrandConfig, Connector } from "./types";
+import { brandToken, token } from "@/lib/theme";
 
 export const BRANDS: Record<string, BrandConfig> = {
   gmail: {
     icon: Mail,
     logo: gmailLogo,
     bare: true,
-    color: "#ea4335",
+    color: brandToken("gmail"),
     tagline: "Connected account",
   },
   google_calendar: {
     icon: CalendarDays,
     logo: googleCalendarLogo,
     bare: true,
-    color: "#3c90ff",
+    color: brandToken("google-calendar"),
     tagline: "Calendar events on your timeline",
   },
   playstation: {
     icon: Gamepad2,
     logo: playstationLogo,
-    color: "#0070d1",
+    color: brandToken("playstation"),
     tagline: "Gaming sessions and playtime",
   },
   swiggy: swiggy.brand,
-  zomato: zomato.brand,
   spotify: {
     icon: Music2,
     logo: spotifyLogo,
     bare: true,
-    color: "#1db954",
+    color: brandToken("spotify"),
     tagline: "Music and recently played tracks",
   },
   youtube: {
     icon: Youtube,
     logo: youtubeLogo,
     bare: true,
-    color: "#ff0033",
+    color: brandToken("youtube"),
     tagline: "Playlists, likes, and subscriptions",
   },
   maps_timeline: {
     icon: MapPin,
     logo: googleMapsLogo,
     bare: true,
-    color: "#34a853",
+    color: brandToken("google-maps"),
     tagline: "Places you've visited",
   },
   wiz: {
     icon: Lightbulb,
     logo: wizLogo,
     bare: true,
-    color: "#a970ff",
+    color: brandToken("wiz"),
     tagline: "Local Wi-Fi lights and brightness",
   },
 };
 
 export const FALLBACK_BRAND: BrandConfig = {
   icon: Plug,
-  color: "#a78bfa",
+  color: token("violet"),
   tagline: "Connected account",
 };
 
@@ -99,7 +98,6 @@ export const KNOWN_CONNECTORS: Connector[] = [
     available: true,
   },
   swiggy.descriptor,
-  zomato.descriptor,
   {
     id: "maps_timeline",
     name: "Google Maps Timeline",

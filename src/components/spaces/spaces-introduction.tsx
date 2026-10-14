@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { alpha, token } from "@/lib/theme";
 
 const CX = 280;
 const T = 10;
 const GAP = 118;
-const LINE = "#9aa3ae";
-const FAINT = "#3a4048";
-const YELLOW = "#f5b83d";
-const RED = "#ff5a67";
+const LINE = alpha("ink", 62);
+const FAINT = token("border-strong");
+const YELLOW = token("gold");
+const RED = token("danger");
 
 type Layer = {
   id: string;
@@ -52,11 +53,9 @@ const LAYERS: Layer[] = [
 
 const cyOf = (i: number) => 76 + i * GAP;
 
-const AMBER_HEX = "#f5b83d";
-const BASE: [number, number, number] = [154, 163, 174];
-const AMBER: [number, number, number] = [245, 184, 61];
-const mix = (g: number, from = BASE) =>
-  `rgb(${from.map((c, k) => Math.round(c + (AMBER[k] - c) * g)).join(",")})`;
+const AMBER_HEX = token("gold");
+const mix = (g: number, from = LINE) =>
+  `color-mix(in srgb, ${AMBER_HEX} ${Math.round(g * 100)}%, ${from})`;
 
 function useClock() {
   const [t, setT] = useState(0);
@@ -80,10 +79,10 @@ function Plate({ cy, w, g }: { cy: number; w: number; g: number }) {
   const h = w / 2;
   return (
     <g
-      fill="#0a0b0c"
-      stroke={mix(g)}
+     
+     
       strokeWidth={0.8 + 0.6 * g}
-      strokeLinejoin="round"
+      strokeLinejoin="round" style={{ fill: token("surface"), stroke: mix(g) }}
     >
       <path
         d={`M${CX - w},${cy} L${CX - w},${cy + T} L${CX},${cy + h + T} L${CX + w},${cy + T} L${CX + w},${cy} L${CX},${cy + h} Z`}
@@ -93,8 +92,7 @@ function Plate({ cy, w, g }: { cy: number; w: number; g: number }) {
         d={`M${CX},${cy - h} L${CX + w},${cy} L${CX},${cy + h} L${CX - w},${cy} Z`}
       />
       <path
-        d={`M${CX},${cy - h + 9} L${CX + w - 18},${cy} L${CX},${cy + h - 9} L${CX - w + 18},${cy} Z`}
-        stroke={FAINT}
+        d={`M${CX},${cy - h + 9} L${CX + w - 18},${cy} L${CX},${cy + h - 9} L${CX - w + 18},${cy} Z`} style={{ stroke: FAINT }}
       />
     </g>
   );
@@ -118,9 +116,9 @@ function Ring({
       rx={rx}
       ry={rx / 2}
       fill="none"
-      stroke={stroke}
+     
       strokeWidth="0.8"
-      strokeDasharray={dash}
+      strokeDasharray={dash} style={{ stroke: stroke }}
     />
   );
 }
@@ -133,10 +131,10 @@ function Vision({ cy, w }: { cy: number; w: number }) {
       <Ring cy={cy} rx={w * 0.14} />
       <path
         d={`M${CX - w * 0.6},${cy} H${CX + w * 0.6} M${CX},${cy - w * 0.3} V${cy + w * 0.3}`}
-        stroke={FAINT}
-        strokeWidth="0.8"
+       
+        strokeWidth="0.8" style={{ stroke: FAINT }}
       />
-      <path d={`M${CX},${cy - 9} l9,9 l-9,9 l-9,-9 Z`} fill={YELLOW} />
+      <path d={`M${CX},${cy - 9} l9,9 l-9,9 l-9,-9 Z`} style={{ fill: YELLOW }} />
     </g>
   );
 }
@@ -158,14 +156,13 @@ function Research({ cy, w }: { cy: number; w: number }) {
             y1={cy}
             x2={d.x}
             y2={d.y}
-            stroke={FAINT}
-            strokeWidth="0.7"
+           
+            strokeWidth="0.7" style={{ stroke: FAINT }}
           />
           <circle
             cx={d.x}
             cy={d.y}
-            r={i % 4 === 0 ? 2.6 : 1.8}
-            fill={i === 3 ? RED : LINE}
+            r={i % 4 === 0 ? 2.6 : 1.8} style={{ fill: i === 3 ? RED : LINE }}
           />
         </g>
       ))}
@@ -178,17 +175,16 @@ function Context({ cy, w }: { cy: number; w: number }) {
   const cube = (x: number, y: number) =>
     `M${x},${y - 5} L${x + 10},${y} L${x},${y + 5} L${x - 10},${y} Z M${x - 10},${y} V${y + 9} L${x},${y + 14} L${x + 10},${y + 9} V${y} M${x},${y + 5} V${y + 14}`;
   return (
-    <g fill="none" stroke={LINE} strokeWidth="0.8">
+    <g fill="none" strokeWidth="0.8" style={{ stroke: LINE }}>
       <path
         d={`M${CX - rx},${cy - 14} V${cy + 14} A${rx},${rx / 2} 0 0 0 ${CX + rx},${cy + 14} V${cy - 14}`}
       />
       <path
-        d={`M${CX - rx},${cy} A${rx},${rx / 2} 0 0 0 ${CX + rx},${cy}`}
-        stroke={FAINT}
+        d={`M${CX - rx},${cy} A${rx},${rx / 2} 0 0 0 ${CX + rx},${cy}`} style={{ stroke: FAINT }}
       />
       <Ring cy={cy - 14} rx={rx} />
-      <path d={cube(CX - w * 0.5, cy - 2)} stroke={FAINT} />
-      <path d={cube(CX + w * 0.5, cy - 6)} stroke={FAINT} />
+      <path d={cube(CX - w * 0.5, cy - 2)} style={{ stroke: FAINT }} />
+      <path d={cube(CX + w * 0.5, cy - 6)} style={{ stroke: FAINT }} />
     </g>
   );
 }
@@ -196,17 +192,17 @@ function Context({ cy, w }: { cy: number; w: number }) {
 function Plan({ cy }: { cy: number }) {
   return (
     <g fill="none" strokeWidth="0.8">
-      <path d={`M${CX},${cy + 6} V${cy - 30}`} stroke={LINE} />
+      <path d={`M${CX},${cy + 6} V${cy - 30}`} style={{ stroke: LINE }} />
       <path
         d={`M${CX},${cy - 30} L${CX + 20},${cy - 23} L${CX},${cy - 16} Z`}
-        fill={YELLOW}
-        stroke="none"
+       
+        stroke="none" style={{ fill: YELLOW }}
       />
       {[0, 1, 2].map((k) => {
         const x = CX - 26 - k * 9;
         const y = cy - 2 + k * 4.5;
         return (
-          <g key={k} stroke={k === 0 ? LINE : FAINT}>
+          <g key={k} style={{ stroke: k === 0 ? LINE : FAINT }}>
             <path d={`M${x - 12},${y - 6} l6,3 l6,-3 l-6,-3 Z`} />
             <path d={`M${x},${y} l${34 - k * 6},${(34 - k * 6) / 2}`} />
           </g>
@@ -230,7 +226,7 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
       />
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 items-center px-12 py-12">
         <div className="relative z-10 flex max-w-md flex-col items-start text-left">
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
+          <span className="rounded-full border border-ink/10 bg-ink/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
             SPACES
           </span>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -271,16 +267,16 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                 <path
                   d="M0 0 L10 5 L0 10"
                   fill="none"
-                  stroke="#fff"
-                  strokeWidth="1.4"
+                 
+                  strokeWidth="1.4" style={{ stroke: token("ink") }}
                 />
               </marker>
             </defs>
             <g
-              stroke={FAINT}
+             
               strokeWidth="0.7"
               strokeDasharray="3 4"
-              fill="none"
+              fill="none" style={{ stroke: FAINT }}
             >
               <path
                 d={`M${CX},${cyOf(0) - LAYERS[0].w / 2} V${cyOf(3) + LAYERS[3].w / 2 + T}`}
@@ -312,12 +308,12 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                     <g key={`${i}${sign}${n}`} opacity={Math.sin(Math.PI * u)}>
                       <path
                         d={`M${lx(tail)},${ly(tail)} L${lx(u)},${ly(u)}`}
-                        stroke={AMBER_HEX}
+                       
                         strokeWidth="1.2"
                         strokeLinecap="round"
-                        opacity="0.5"
+                        opacity="0.5" style={{ stroke: AMBER_HEX }}
                       />
-                      <circle cx={lx(u)} cy={ly(u)} r="2" fill={AMBER_HEX} />
+                      <circle cx={lx(u)} cy={ly(u)} r="2" style={{ fill: AMBER_HEX }} />
                     </g>
                   );
                 }),
@@ -341,31 +337,31 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
                   <path
                     d={`M${vx},${cy} L${vx + (left ? -26 : 26)},${cy - 26} H${ex}`}
                     fill="none"
-                    stroke={FAINT}
-                    strokeWidth="0.8"
+                   
+                    strokeWidth="0.8" style={{ stroke: FAINT }}
                   />
-                  <circle cx={vx} cy={cy} r="2" fill={mix(glow(i))} />
+                  <circle cx={vx} cy={cy} r="2" style={{ fill: mix(glow(i)) }} />
                   <g textAnchor={left ? "start" : "end"}>
                     <text
                       x={ex}
                       y={cy - 58}
-                      fill={mix(glow(i), [138, 146, 156])}
+                     
                       fontSize="8"
-                      letterSpacing="1.5"
+                      letterSpacing="1.5" style={{ fill: mix(glow(i), token("text-muted")) }}
                     >
                       {layer.id}
                     </text>
                     <text
                       x={ex}
                       y={cy - 45}
-                      fill="#e8eaed"
+                     
                       fontSize="11"
                       fontFamily="Inter, sans-serif"
-                      fontWeight="500"
+                      fontWeight="500" style={{ fill: alpha("ink", 90) }}
                     >
                       {layer.title}
                     </text>
-                    <text x={ex} y={cy - 33} fill="#7a838e" fontSize="8">
+                    <text x={ex} y={cy - 33} fontSize="8" style={{ fill: token("text-dim") }}>
                       {layer.note}
                     </text>
                   </g>
@@ -377,9 +373,9 @@ export function SpacesIntroduction({ onCreate }: { onCreate: () => void }) {
               pathLength="1"
               d={`M${CX + 36},${cyOf(3) - 8} C${CX + 170},${cyOf(3) - 70} ${CX + 170},${cyOf(1) + 10} ${CX + 20},${cyOf(0) + 12}`}
               fill="none"
-              stroke="#fff"
+             
               strokeWidth="1.2"
-              markerEnd="url(#spaces-arrow)"
+              markerEnd="url(#spaces-arrow)" style={{ stroke: token("ink") }}
             />
           </svg>
         </div>

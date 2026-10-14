@@ -32,7 +32,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
-  CHART_COLORS,
   clipText,
   formatTotal,
   friendlyDate,
@@ -49,6 +48,7 @@ import {
   MultiSeriesChart,
   MultiSeriesLegend,
 } from "./chart/multi-series-chart";
+import { useChartPalette } from "./chart/use-chart-palette";
 
 export { PulseChartSkeleton } from "./chart/chart-skeleton";
 
@@ -71,6 +71,7 @@ export function PulseChartCard({
   footerAction?: ReactNode;
   compact?: boolean;
 }) {
+  const palette = useChartPalette();
   const [active, setActive] = useState<string | null>(null);
   const allPoints = result?.points ?? [];
   const points = allPoints;
@@ -112,7 +113,7 @@ export function PulseChartCard({
     result?.total ??
     (observed.reduce((sum, p) => sum + (p.value ?? 0), 0) || null);
   const headline = categorical ? largest : latest;
-  const chartConfig = { value: { label: title, color: CHART_COLORS[0] } };
+  const chartConfig = { value: { label: title, color: palette.chart[0] } };
 
   const tooltip = (
     <ChartTooltip
@@ -136,10 +137,10 @@ export function PulseChartCard({
 
   const axes = (
     <>
-      <CartesianGrid stroke="#1f1f1f" vertical={false} strokeDasharray="3 5" />
+      <CartesianGrid stroke={palette.grid} vertical={false} strokeDasharray="3 5" />
       <XAxis
         dataKey="label"
-        tick={{ fontSize: 10, fill: "#a0a6a2" }}
+        tick={{ fontSize: 10, fill: palette.axis }}
         axisLine={false}
         tickLine={false}
         tickFormatter={(v) => friendlyDate(v)}
@@ -147,7 +148,7 @@ export function PulseChartCard({
       />
       <YAxis
         width={40}
-        tick={{ fontSize: 10, fill: "#a0a6a2" }}
+        tick={{ fontSize: 10, fill: palette.axis }}
         axisLine={false}
         tickLine={false}
       />
@@ -234,7 +235,7 @@ export function PulseChartCard({
               {headline.value?.toLocaleString(undefined, {
                 maximumFractionDigits: 2,
               })}{" "}
-              <span className="text-[#d4dad6]">
+              <span className="text-foreground/85">
                 {headline.value === 1 && result?.unit === "events"
                   ? "event"
                   : result?.unit}
@@ -287,7 +288,7 @@ export function PulseChartCard({
             <div className="flex flex-col items-center justify-center text-center plan-y-2 py-4">
               <p className="font-mono text-5xl tracking-tight">
                 {formatTotal(statValue, result?.unit ?? "").text}
-                <span className="ml-2 text-xl text-[#d4dad6]">
+                <span className="ml-2 text-xl text-foreground/85">
                   {formatTotal(statValue, result?.unit ?? "").unit}
                 </span>
               </p>
@@ -298,7 +299,7 @@ export function PulseChartCard({
               )}
             </div>
           ) : definition.chart_type === "pie" ? (
-            <SegmentedRing points={observed} colors={CHART_COLORS} />
+            <SegmentedRing points={observed} colors={palette.chart} />
           ) : (
             <ChartContainer
               config={chartConfig}
@@ -310,7 +311,7 @@ export function PulseChartCard({
                   <Line
                     type="monotone"
                     dataKey="value"
-                    stroke={CHART_COLORS[0]}
+                    stroke={palette.chart[0]}
                     strokeWidth={1}
                     dot={false}
                     connectNulls={false}
@@ -323,8 +324,8 @@ export function PulseChartCard({
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke={CHART_COLORS[0]}
-                    fill={CHART_COLORS[0]}
+                    stroke={palette.chart[0]}
+                    fill={palette.chart[0]}
                     fillOpacity={0.12}
                     connectNulls={false}
                     isAnimationActive={false}
@@ -343,13 +344,13 @@ export function PulseChartCard({
                   {categorical ? (
                     <>
                       <CartesianGrid
-                        stroke="#1f1f1f"
+                        stroke={palette.grid}
                         horizontal={false}
                         strokeDasharray="3 5"
                       />
                       <XAxis
                         type="number"
-                        tick={{ fontSize: 10, fill: "#a0a6a2" }}
+                        tick={{ fontSize: 10, fill: palette.axis }}
                         axisLine={false}
                         tickLine={false}
                       />
@@ -358,7 +359,7 @@ export function PulseChartCard({
                         dataKey="label"
                         width={110}
                         tickFormatter={(v) => clipText(v)}
-                        tick={{ fontSize: 10, fill: "#a0a6a2" }}
+                        tick={{ fontSize: 10, fill: palette.axis }}
                         axisLine={false}
                         tickLine={false}
                       />
@@ -369,7 +370,7 @@ export function PulseChartCard({
                   )}
                   <Bar
                     dataKey="value"
-                    fill={CHART_COLORS[0]}
+                    fill={palette.chart[0]}
                     shape={(p: object & { payload?: { label?: string } }) => (
                       <HairlineBar
                         {...p}
@@ -390,7 +391,7 @@ export function PulseChartCard({
         {!compact && !multiSeries && categorical && observed.length > 0 && (
           <ChartLegend
             points={observed}
-            colors={CHART_COLORS}
+            colors={palette.chart}
             unit={result?.unit}
           />
         )}

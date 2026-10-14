@@ -41,9 +41,6 @@
         },
         {
           "url": "https://mcp.swiggy.com/auth/authorize?*"
-        },
-        {
-          "url": "https://mcp-server.zomato.com/authorize?*"
         }
       ]
     },

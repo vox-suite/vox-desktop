@@ -102,7 +102,7 @@ export function ContextEditor({
         <div className="space-y-1">
           {node.citations.map((c, i) => (
             <button
-              className="block text-left text-xs text-sky-300 hover:underline"
+              className="block text-left text-xs text-sky hover:underline"
               key={i}
               onClick={() => onRead(c)}
             >

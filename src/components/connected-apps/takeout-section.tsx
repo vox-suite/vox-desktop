@@ -39,7 +39,7 @@ export function TakeoutSection({
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+    <div className="space-y-3 rounded-xl border border-ink/10 bg-ink/[0.02] p-4">
       <h3 className="text-sm font-medium">{cfg.title}</h3>
       <p className="text-sm leading-relaxed text-muted-foreground">
         {cfg.blurb}
@@ -138,7 +138,7 @@ export function TakeoutSection({
         {cfg.button}
       </Button>
       {importedAccount && (
-        <div className="space-y-2 border-t border-white/10 pt-3">
+        <div className="space-y-2 border-t border-ink/10 pt-3">
           <p className="text-xs text-muted-foreground">
             Synced
             {importedAccount.last_synced_at

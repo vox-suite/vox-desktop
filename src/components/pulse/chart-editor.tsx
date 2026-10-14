@@ -8,7 +8,8 @@ import type {
   PulseResult,
 } from "@/features/pulse/discovery-types";
 import { LatestRequest } from "@/features/pulse/utils";
-import { SERIES_COLORS } from "@/features/pulse/format";
+import { SERIES_TOKENS } from "@/features/pulse/format";
+import { token } from "@/lib/theme";
 import { PulseChartCard } from "./chart-card";
 const selectClass =
   "h-9 rounded-md border border-input bg-background px-2 text-xs";
@@ -244,7 +245,7 @@ export function ChartEditor({
                     <i
                       className="size-2 rounded-full"
                       style={{
-                        background: SERIES_COLORS[i % SERIES_COLORS.length],
+                        background: token(SERIES_TOKENS[i % SERIES_TOKENS.length]),
                       }}
                     />
                     {item?.title ?? "Measurement"}

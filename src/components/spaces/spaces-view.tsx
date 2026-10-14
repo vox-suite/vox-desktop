@@ -32,6 +32,7 @@ import { useSpaces } from "@/hooks/use-spaces";
 import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
 import { SpacesIntroduction } from "./spaces-introduction";
+import { token } from "@/lib/theme";
 
 export function SpacesView() {
   const { spaces, loading, error, reload, create, drop } = useSpaces();
@@ -103,7 +104,7 @@ export function SpacesView() {
     setShowCreateDialog(true);
   };
   const stateDot = (state: string, running: boolean) =>
-    running ? "#ff5a67" : state === "committed" ? "#cfe3f1" : "#f5b83d";
+    token(running ? "danger" : state === "committed" ? "text-muted" : "gold");
 
   return (
     <PageContainer>

@@ -34,28 +34,28 @@ export const STATUSES: {
     value: "planned",
     label: "Planned",
     icon: CalendarClock,
-    tone: "text-sky-300",
+    tone: "text-sky",
   },
   {
     value: "active",
     label: "In progress",
     icon: Activity,
-    tone: "text-amber-300",
+    tone: "text-warning",
   },
   {
     value: "waiting_user",
     label: "Waiting for you",
     icon: Hourglass,
-    tone: "text-violet-300",
+    tone: "text-violet",
   },
   {
     value: "done",
     label: "Done",
     icon: CheckCircle2,
-    tone: "text-emerald-300",
+    tone: "text-success",
   },
-  { value: "failed", label: "Failed", icon: XCircle, tone: "text-red-400" },
-  { value: "cancelled", label: "Cancelled", icon: Ban, tone: "text-zinc-400" },
+  { value: "failed", label: "Failed", icon: XCircle, tone: "text-danger" },
+  { value: "cancelled", label: "Cancelled", icon: Ban, tone: "text-dim" },
 ];
 
 export const CATEGORIES: { value: string; label: string; icon: Icon }[] = [
@@ -87,5 +87,4 @@ export const SOURCE_LABELS: Record<string, string> = {
   youtube: "YouTube",
   google_maps: "Google Maps",
   swiggy: "Swiggy",
-  zomato: "Zomato",
 };

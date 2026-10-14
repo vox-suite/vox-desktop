@@ -54,14 +54,14 @@ export function GmailHistorySection() {
     } catch (error) { if (mounted.current) setMessage(`${imported} imported. ${String(error)}`); }
     finally { if (mounted.current) setBusy(false); }
   };
-  return <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+  return <div className="space-y-3 rounded-xl border border-ink/10 bg-ink/[0.02] p-4">
     <h3 className="text-sm font-medium">Import previous emails</h3>
     <p className="text-sm text-muted-foreground">Live sync starts at connection time. When you request history, Vox reads and classifies those emails on the server. Select messages to add them to your timeline; PDFs are also processed on the server.</p>
     <div className="grid grid-cols-2 gap-2"><label className="text-xs">From<Input type="date" value={startDate} disabled={busy} onChange={event => setStartDate(event.target.value)} /></label>
       <label className="text-xs">Before<Input type="date" value={endDate} disabled={busy} onChange={event => setEndDate(event.target.value)} /></label></div>
     <Button variant="outline" disabled={busy} onClick={() => void scan()}>Review historical emails</Button>
     {message && <p role="status" className="text-xs text-muted-foreground">{message}</p>}
-    {page?.candidates.map(candidate => <div key={candidate.message_id} className="space-y-2 rounded-lg border border-white/10 p-3">
+    {page?.candidates.map(candidate => <div key={candidate.message_id} className="space-y-2 rounded-lg border border-ink/10 p-3">
       <div className="flex items-start gap-2"><Checkbox disabled={busy} checked={selected.has(candidate.message_id)} onCheckedChange={checked => setSelected(previous => { const next = new Set(previous); if (checked) next.add(candidate.message_id); else next.delete(candidate.message_id); return next; })} />
         <div className="min-w-0"><p className="text-sm">{candidate.subject ?? "Email"}</p><p className="break-all text-xs text-muted-foreground">{candidate.from}</p></div></div>
       <p className="text-xs text-muted-foreground">{candidate.uncertainty ? "Needs correction. " : ""}{candidate.reason}</p>

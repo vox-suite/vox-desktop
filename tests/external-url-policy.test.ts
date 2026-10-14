@@ -9,7 +9,6 @@ test("Takeout and supported account authorization links can open", () => {
     "https://accounts.google.com/o/oauth2/v2/auth?client_id=fixture",
     "https://accounts.spotify.com/authorize?state=fixture",
     "https://mcp.swiggy.com/auth/authorize?state=fixture",
-    "https://mcp-server.zomato.com/authorize?state=fixture",
     "https://www.playstation.com",
     "https://ca.account.sony.com/api/v1/ssocookie",
   ])
@@ -50,7 +49,6 @@ test("Native opener capability permits Takeout and provider login endpoints", ()
     "https://takeout.google.com/",
     "https://accounts.spotify.com/authorize?*",
     "https://mcp.swiggy.com/auth/authorize?*",
-    "https://mcp-server.zomato.com/authorize?*",
   ])
     assert.ok(entries.includes(url), url);
 });

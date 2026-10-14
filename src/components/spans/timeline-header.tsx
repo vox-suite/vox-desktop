@@ -56,7 +56,7 @@ export function TimelineHeader({
               type="button"
               aria-label="Select date range"
               title="Select date range"
-              className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-violet-300"
+              className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg border border-border bg-card shadow-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-violet"
             >
               <span className="font-mono text-[8.5px] font-bold uppercase tracking-wider text-destructive leading-none">
                 {anchor.toLocaleDateString(undefined, { month: "short" })}

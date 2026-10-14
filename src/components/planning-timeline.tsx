@@ -3,7 +3,7 @@ import { CalendarX, LoaderCircle } from "lucide-react";
 import { SpanInfoTooltip } from "@/components/span-info-tooltip";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
-import type { DayFrontier } from "@/hooks/use-span-days";
+import type { TimelineFrontier } from "@/hooks/use-timeline-days";
 import {
   displayTitle,
   formatAmount,
@@ -41,7 +41,7 @@ export function PlanningTimeline({
   onSelect: (span: Span) => void;
   loading: boolean;
   unavailable?: boolean;
-  frontiers?: DayFrontier[];
+  frontiers?: TimelineFrontier[];
   onLoadMore?: (day: string) => void;
   dayWidth?: number;
   hourly?: boolean;
@@ -246,7 +246,7 @@ export function PlanningTimeline({
               <div
                 key={`day-${day.getTime()}`}
                 aria-hidden="true"
-                className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
+                className="pointer-events-none absolute bottom-0 top-8 w-px bg-line"
                 style={{ left: leadingSpace + (day.getTime() - start) * scale }}
               />
             ))}
@@ -258,7 +258,7 @@ export function PlanningTimeline({
                 <div
                   key={`week-${dayIndex}`}
                   aria-hidden="true"
-                  className="pointer-events-none absolute bottom-0 top-8 w-px bg-[#242424]"
+                  className="pointer-events-none absolute bottom-0 top-8 w-px bg-line"
                   style={{
                     left: leadingSpace + (boundary - start) * scale,
                   }}
@@ -270,10 +270,10 @@ export function PlanningTimeline({
               className="pointer-events-none absolute bottom-0 top-0 z-10"
               style={{ left: leadingSpace + nowLeft }}
             >
-              <span className="absolute top-0 -translate-x-1/2 rounded-md bg-[#7f1d1d] px-2 py-1 text-xs text-white">
+              <span className="absolute top-0 -translate-x-1/2 rounded-md bg-crimson px-2 py-1 text-xs text-on-accent">
                 Now
               </span>
-              <div className="absolute bottom-0 top-9 w-px bg-[#7f1d1d]" />
+              <div className="absolute bottom-0 top-9 w-px bg-crimson" />
             </div>
           )}
           {items.map(({ span, from, to, left, barWidth, lane }) => {

@@ -74,7 +74,7 @@ export const SpaceWorkflowNode = memo(function SpaceWorkflowNode({
         <div
           ref={scroller}
           onScroll={measure}
-          className="nowheel nopan nodrag plan-workflow-scroll"
+          className="nowheel nopan nodrag space-workflow-scroll"
         >
           <h3 className="text-base font-medium leading-snug">{node.title}</h3>
           <div className="mt-3">

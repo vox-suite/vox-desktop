@@ -1,5 +1,6 @@
 import type { maplibregl } from "@/lib/maplibre";
 import { BUILDINGS_LAYER, extrusionBeforeId } from "@/lib/map-style";
+import { readToken } from "@/lib/theme";
 
 export const HIGHLIGHT_SOURCE = "vox-highlight-source";
 export const HIGHLIGHT_LAYER = "vox-highlight-layer";
@@ -19,7 +20,7 @@ function ensureHighlightLayer(map: maplibregl.Map) {
       source: HIGHLIGHT_SOURCE,
       type: "fill-extrusion",
       paint: {
-        "fill-extrusion-color": "#ff3b30",
+        "fill-extrusion-color": readToken("danger"),
         "fill-extrusion-height": [
           "interpolate",
           ["linear"],

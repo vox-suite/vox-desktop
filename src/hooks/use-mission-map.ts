@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { resolveDeviceLocation } from "@/lib/location";
-import { createSceneLayer } from "@/lib/map-scene";
+import { applySceneTheme, createSceneLayer } from "@/lib/map-scene";
 import { subscribeMapScene } from "@/lib/scene-source";
 import { ensure3dBuildings, ensureMissionControlLook } from "@/lib/map-style";
 import { maplibregl, workerReady } from "@/lib/maplibre";
+import { useTheme } from "@/lib/theme";
 
 const FALLBACK = { lng: 80.2707, lat: 13.0827 };
 const STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
@@ -48,6 +49,14 @@ export function useMissionMap(reaction: {
     null,
   );
   const unsubScene = useRef<(() => void) | null>(null);
+  const theme = useTheme();
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    ensureMissionControlLook(map);
+    applySceneTheme(map);
+  }, [theme, mapReady]);
 
   useEffect(() => {
     if (!mapNode.current || mapRef.current) return;

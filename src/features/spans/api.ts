@@ -5,7 +5,6 @@ import type {
   NewSpan,
   Span,
   SpanDayPage,
-  SpanDays,
   SpanPatch,
   SpanQuery,
 } from "@/features/spans/types";
@@ -17,38 +16,6 @@ function localDayRange(fromDay: string, toDay: string) {
   const to = new Date(`${toDay}T00:00:00`);
   to.setDate(to.getDate() + 1);
   return { from: from.toISOString(), to: to.toISOString() };
-}
-
-function legacyDays(
-  fromDay: string,
-  toDay: string,
-  collectionId?: string,
-): Promise<SpanDays> {
-  return spansApi
-    .getSpans({ ...localDayRange(fromDay, toDay), collectionId })
-    .then((spans) => {
-      const byDay = new Map<string, Map<string, number>>();
-      for (const span of spans) {
-        if (!span.start_at) continue;
-        const d = new Date(span.start_at);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const cats = byDay.get(key) ?? new Map<string, number>();
-        cats.set(span.category, (cats.get(span.category) ?? 0) + 1);
-        byDay.set(key, cats);
-      }
-      return {
-        revision: 0,
-        unchanged: false,
-        days: [...byDay].map(([day, cats]) => ({
-          day,
-          count: [...cats.values()].reduce((a, b) => a + b, 0),
-          categories: [...cats].map(([category, count]) => ({
-            category,
-            count,
-          })),
-        })),
-      };
-    });
 }
 
 export const spansApi = {
@@ -65,29 +32,6 @@ export const spansApi = {
       body,
     });
   },
-  getDays: (
-    fromDay: string,
-    toDay: string,
-    timezone: string,
-    opts: { collectionId?: string; ifRevision?: number } = {},
-  ): Promise<SpanDays> =>
-    platform()
-      .http.request<SpanDays>({
-        method: "POST",
-        path: "/v1/spans/days",
-        body: {
-          from_day: fromDay,
-          to_day: toDay,
-          timezone,
-          collection_id: opts.collectionId ?? null,
-          if_revision: opts.ifRevision ?? null,
-        },
-      })
-      .catch((err: unknown) =>
-        NOT_DEPLOYED.test(String(err))
-          ? legacyDays(fromDay, toDay, opts.collectionId)
-          : Promise.reject(err),
-      ),
   getDayPage: (
     day: string,
     timezone: string,

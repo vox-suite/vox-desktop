@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Project, ContextNode } from "@/features/projects/types";
 import "@xyflow/react/dist/style.css";
+import { token, useTheme } from "@/lib/theme";
 
 type ContextCardData = {
   title: string;
@@ -29,7 +30,7 @@ function ContextCard({ data, selected }: NodeProps<Node<ContextCardData>>) {
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className={`project-origin ${data.origin}`} />
         {data.kind}
-        {data.stale && <AlertCircle className="size-3 text-amber-400" />}
+        {data.stale && <AlertCircle className="size-3 text-warning" />}
       </div>
       <strong className="mt-2 block text-sm font-medium">{data.title}</strong>
       <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
@@ -53,6 +54,7 @@ export function ProjectContext({
   onAddSources: () => void;
   investigating: boolean;
 }) {
+  const theme = useTheme();
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const graph = useMemo(() => {
@@ -125,7 +127,7 @@ export function ProjectContext({
         source: rootId,
         target: n.id,
         type: "smoothstep",
-        style: { stroke: "#44464b", strokeWidth: 1 },
+        style: { stroke: token("border-strong"), strokeWidth: 1 },
         label: sourceId ? "contains" : "context",
       });
     }
@@ -244,9 +246,9 @@ export function ProjectContext({
           const context = project.data.nodes.find((c) => c.id === n.id);
           if (context) onSelect(context);
         }}
-        colorMode="dark"
+        colorMode={theme}
       >
-        <Background bgColor="#111111" color="#33353a" gap={22} />
+        <Background bgColor={token("surface-raised")} color={token("border-strong")} gap={22} />
         <Controls showInteractive={false} />
       </ReactFlow>
 

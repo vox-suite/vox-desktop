@@ -31,7 +31,7 @@ export function AuthLayout({
         <div className="flex flex-col items-center gap-2">
           <h1 className="flex items-center gap-2 font-heading text-3xl font-semibold">
             {title}
-            <Badge variant="secondary" className="h-auto rounded-full bg-[#3a1418] px-2 py-[3px] font-mono text-[10px] font-normal uppercase tracking-[1px] text-[#e6e6e6]">{badge}</Badge>
+            <Badge variant="secondary" className="h-auto rounded-full bg-coral/20 px-2 py-[3px] font-mono text-[10px] font-normal uppercase tracking-[1px] text-foreground">{badge}</Badge>
           </h1>
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>

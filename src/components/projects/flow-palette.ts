@@ -7,14 +7,16 @@ import {
   ArrowLeftRight,
   ExternalLink,
 } from "lucide-react";
+import { token } from "@/lib/theme";
+
 export const FLOW_PALETTE = {
-  frontend: { label: "Frontend", color: "#22d3ee", icon: Monitor },
-  backend: { label: "Backend", color: "#34d399", icon: Server },
-  database: { label: "Database", color: "#a78bfa", icon: Database },
-  cloud: { label: "Cloud", color: "#fbbf24", icon: Cloud },
-  security: { label: "Security", color: "#fb7185", icon: Shield },
-  messagebus: { label: "Message bus", color: "#fb923c", icon: ArrowLeftRight },
-  external: { label: "External", color: "#94a3b8", icon: ExternalLink },
+  frontend: { label: "Frontend", color: token("cyan"), icon: Monitor },
+  backend: { label: "Backend", color: token("mint"), icon: Server },
+  database: { label: "Database", color: token("violet"), icon: Database },
+  cloud: { label: "Cloud", color: token("gold"), icon: Cloud },
+  security: { label: "Security", color: token("pink"), icon: Shield },
+  messagebus: { label: "Message bus", color: token("orange"), icon: ArrowLeftRight },
+  external: { label: "External", color: token("slate"), icon: ExternalLink },
 };
 export type FlowCategory = keyof typeof FLOW_PALETTE;
 const LEGACY_CATEGORIES: Record<string, FlowCategory> = {
@@ -55,8 +57,8 @@ export function connectionColor(
   to: string,
   focused: boolean,
 ) {
-  if (evidence !== "observed") return "#64748b";
+  if (evidence !== "observed") return token("text-dim");
   if (flowCategory(from) === "security" || flowCategory(to) === "security")
     return FLOW_PALETTE.security.color;
-  return focused ? FLOW_PALETTE.backend.color : "#64748b";
+  return focused ? FLOW_PALETTE.backend.color : token("text-dim");
 }

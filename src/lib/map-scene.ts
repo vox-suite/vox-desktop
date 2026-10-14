@@ -1,6 +1,7 @@
-import { setHighlights } from "@/lib/map-highlight";
+import { HIGHLIGHT_LAYER, setHighlights } from "@/lib/map-highlight";
 import { extrusionBeforeId } from "@/lib/map-style";
 import type { maplibregl } from "@/lib/maplibre";
+import { readToken, type VoxColor } from "@/lib/theme";
 
 export type PinKind = "place" | "task" | "spend";
 
@@ -113,7 +114,7 @@ function ensureLayers(map: maplibregl.Map) {
       type: "fill-extrusion",
       source: COLUMN_SOURCE,
       paint: {
-        "fill-extrusion-color": "#ff6363",
+        "fill-extrusion-color": readToken("coral"),
         "fill-extrusion-height": ["get", "h"],
         "fill-extrusion-base": 0,
         "fill-extrusion-opacity": 0.85,
@@ -126,7 +127,7 @@ function ensureLayers(map: maplibregl.Map) {
     type: "line",
     source: ARC_SOURCE,
     layout: { "line-cap": "round" },
-    paint: { "line-color": "#ff6363", "line-width": 2.5, "line-opacity": 0.9 },
+    paint: { "line-color": readToken("coral"), "line-width": 2.5, "line-opacity": 0.9 },
   });
   map.addLayer({
     id: "vox-scene-pin-halo",
@@ -134,7 +135,7 @@ function ensureLayers(map: maplibregl.Map) {
     source: PIN_SOURCE,
     paint: {
       "circle-radius": 14,
-      "circle-color": ["get", "color"],
+      "circle-color": pinColor(),
       "circle-opacity": 0.25,
       "circle-pitch-alignment": "map",
     },
@@ -145,9 +146,9 @@ function ensureLayers(map: maplibregl.Map) {
     source: PIN_SOURCE,
     paint: {
       "circle-radius": 6,
-      "circle-color": ["get", "color"],
+      "circle-color": pinColor(),
       "circle-stroke-width": 2,
-      "circle-stroke-color": "#ffffff",
+      "circle-stroke-color": readToken("ink"),
       "circle-pitch-alignment": "map",
     },
   });
@@ -164,18 +165,41 @@ function ensureLayers(map: maplibregl.Map) {
       "text-allow-overlap": true,
     },
     paint: {
-      "text-color": "#ffffff",
-      "text-halo-color": "#050607",
+      "text-color": readToken("text"),
+      "text-halo-color": readToken("background"),
       "text-halo-width": 1.5,
     },
   });
 }
 
-const PIN_COLORS: Record<string, string> = {
-  place: "#4cc9f0",
-  task: "#ffd166",
-  spend: "#ff6363",
-};
+const PIN_COLORS = { place: "sky", task: "gold", spend: "coral" } as const satisfies Record<string, VoxColor>;
+
+/** MapLibre expression choosing a pin's color by kind, resolved from the current theme. */
+function pinColor(): maplibregl.ExpressionSpecification {
+  return [
+    "match",
+    ["get", "kind"],
+    "task",
+    readToken(PIN_COLORS.task),
+    "spend",
+    readToken(PIN_COLORS.spend),
+    readToken(PIN_COLORS.place),
+  ];
+}
+
+/** Re-applies the scene layers' colors after a theme change. */
+export function applySceneTheme(map: maplibregl.Map) {
+  if (!map.getLayer("vox-scene-pin-dot")) return;
+  map.setPaintProperty("vox-scene-columns", "fill-extrusion-color", readToken("coral"));
+  map.setPaintProperty("vox-scene-arcs", "line-color", readToken("coral"));
+  map.setPaintProperty("vox-scene-pin-halo", "circle-color", pinColor());
+  map.setPaintProperty("vox-scene-pin-dot", "circle-color", pinColor());
+  map.setPaintProperty("vox-scene-pin-dot", "circle-stroke-color", readToken("ink"));
+  map.setPaintProperty("vox-scene-pin-label", "text-color", readToken("text"));
+  map.setPaintProperty("vox-scene-pin-label", "text-halo-color", readToken("background"));
+  if (map.getLayer(HIGHLIGHT_LAYER))
+    map.setPaintProperty(HIGHLIGHT_LAYER, "fill-extrusion-color", readToken("danger"));
+}
 
 export function createSceneLayer(
   map: maplibregl.Map,
@@ -246,7 +270,7 @@ export function createSceneLayer(
           properties: {
             id: p.id,
             label: p.state ? `${p.label ?? ""} · ${p.state}` : (p.label ?? ""),
-            color: PIN_COLORS[p.kind] ?? PIN_COLORS.place,
+            kind: p.kind,
             state: p.state ?? "",
           },
           geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },

@@ -40,6 +40,7 @@ import {
 import { DiagramCanvas } from "./diagram-canvas";
 import { Button } from "@/components/ui/button";
 import "@xyflow/react/dist/style.css";
+import { token, useTheme } from "@/lib/theme";
 
 type Selection = {
   id?: string;
@@ -155,6 +156,7 @@ function RuntimeFlowCanvas({
   flow: ProjectFlow;
   onRead: (citation: Citation) => void;
 }) {
+  const theme = useTheme();
   const [result, setResult] = useState<{
     flow: ProjectFlow;
     layout?: FlowLayout;
@@ -311,7 +313,7 @@ function RuntimeFlowCanvas({
             maxZoom={2}
             nodesDraggable={false}
             nodesConnectable={false}
-            colorMode="dark"
+            colorMode={theme}
             onNodeClick={(_, node) => {
               if (node.type === "flow") inspect(node.data as FlowData);
             }}
@@ -320,8 +322,8 @@ function RuntimeFlowCanvas({
           >
             <Background
               variant={BackgroundVariant.Lines}
-              bgColor="#111111"
-              color="#1e293b"
+              bgColor={token("surface-raised")}
+              color={token("border")}
               gap={32}
               lineWidth={0.5}
             />

@@ -2,7 +2,7 @@
 
 > Midnight command center, coral neon. Unified design guidelines for Vox Web and Vox Desktop applications.
 
-**Theme:** Dark (`#040506` canvas base)
+**Theme:** Dark (`#040506` canvas base) and Light (`#f6f3ee` canvas base), chosen in the sidebar (Auto follows the OS). All colors come from `vox-shared/theme/tokens.json` via `--vox-*` variables and Tailwind utilities (`bg-surface`, `text-coral`, `border-ink/10`, …); canvas, map and chart code reads them with `useVoxColors()` from `@/lib/theme`. Never write literal colors in components.
 
 ---
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { monthGridDays, startOfDay } from "@/lib/span-layout";
 import { categoryColor } from "@/lib/span-format";
-import { dayKey } from "@/features/spans/day-store";
+import { dayKey } from "@/features/timeline/day-store";
 import type { SpanDaySummary } from "@/features/spans/types";
 import { cn } from "@/lib/utils";
 

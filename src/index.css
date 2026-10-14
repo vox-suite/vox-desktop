@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Geist+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Reem+Kufi:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Geist+Mono:wght@300;400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap");
 @import "tailwindcss";
 
 @import "tw-animate-css";
@@ -60,17 +60,17 @@ a,
 .sign-in-glow {
   background: radial-gradient(
     ellipse 86vh 71vh at 12vh 9vh,
-    rgba(255, 99, 99, 0.55) 0%,
-    rgba(255, 99, 99, 0.526) 10%,
-    rgba(255, 99, 99, 0.461) 20%,
-    rgba(255, 99, 99, 0.373) 30%,
-    rgba(255, 99, 99, 0.275) 40%,
-    rgba(255, 99, 99, 0.181) 50%,
-    rgba(255, 99, 99, 0.103) 60%,
-    rgba(255, 99, 99, 0.047) 70%,
-    rgba(255, 99, 99, 0.015) 80%,
-    rgba(255, 99, 99, 0.002) 90%,
-    rgba(255, 99, 99, 0) 100%
+    color-mix(in srgb, var(--vox-coral) 55%, transparent) 0%,
+    color-mix(in srgb, var(--vox-coral) 52.6%, transparent) 10%,
+    color-mix(in srgb, var(--vox-coral) 46.1%, transparent) 20%,
+    color-mix(in srgb, var(--vox-coral) 37.3%, transparent) 30%,
+    color-mix(in srgb, var(--vox-coral) 27.5%, transparent) 40%,
+    color-mix(in srgb, var(--vox-coral) 18.1%, transparent) 50%,
+    color-mix(in srgb, var(--vox-coral) 10.3%, transparent) 60%,
+    color-mix(in srgb, var(--vox-coral) 4.7%, transparent) 70%,
+    color-mix(in srgb, var(--vox-coral) 1.5%, transparent) 80%,
+    color-mix(in srgb, var(--vox-coral) 0.2%, transparent) 90%,
+    color-mix(in srgb, var(--vox-coral) 0%, transparent) 100%
   );
 }
 
@@ -84,12 +84,6 @@ a,
 /* Full-bleed grain for widget cards — same generator as .sign-in-noise but
    unmasked (covers the whole card, not just one corner) and dimmer (the
    masked, soft-light version read as too bright/white on the widgets). */
-.widget-noise {
-  opacity: 0.12;
-  mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-}
 
 /* Mission-control map chrome */
 .vox-map-host,
@@ -98,7 +92,7 @@ a,
 .vox-map-host .maplibregl-canvas {
   width: 100% !important;
   height: 100% !important;
-  background: #0b0c0e !important;
+  background: var(--vox-map) !important;
 }
 
 .vox-map-host .maplibregl-canvas {
@@ -108,65 +102,16 @@ a,
 /* Full-bleed film grain over the map (sign-in uses a corner-masked grain).
    soft-light barely shows on the map's near-black base, so this blends with
    screen instead — that's what makes the speckle visible on dark pixels. */
-.vox-map-noise {
-  opacity: 0.09;
-  mix-blend-mode: screen;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
-}
 
 /* Cinematic edge darkening so the 3D map reads like mission-control footage
    instead of a flat map view. */
-.vox-map-vignette {
-  background: radial-gradient(
-    ellipse 78% 70% at 50% 46%,
-    transparent 45%,
-    rgba(4, 5, 6, 0.35) 78%,
-    rgba(4, 5, 6, 0.72) 100%
-  );
-}
 
 /* Tilt-shift style lens blur: the mask keeps the center crisp and only
    blurs the corners/edges, so the map reads like a miniature/HUD shot. */
-.vox-map-corner-blur {
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-  -webkit-mask-image: radial-gradient(
-    ellipse 72% 66% at 50% 46%,
-    transparent 48%,
-    #000 94%
-  );
-  mask-image: radial-gradient(
-    ellipse 72% 66% at 50% 46%,
-    transparent 48%,
-    #000 94%
-  );
-}
-
-@keyframes vox-wave {
-  0%,
-  100% {
-    height: 6px;
-    opacity: 0.55;
-  }
-  50% {
-    height: 20px;
-    opacity: 1;
-  }
-}
-
-.vox-wave-bar {
-  height: 6px;
-  animation: vox-wave 1.15s ease-in-out infinite;
-}
-
-.vox-wave-bar--active {
-  animation-duration: 0.55s;
-}
 
 .maplibregl-ctrl-group {
-  background: rgba(0, 0, 0, 0.82) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: color-mix(in srgb, var(--vox-panel) 82%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 18%, transparent) !important;
   box-shadow: none !important;
   border-radius: 4px !important;
 }
@@ -178,8 +123,8 @@ a,
 }
 
 .maplibregl-ctrl-attrib {
-  background: rgba(0, 0, 0, 0.55) !important;
-  color: rgba(255, 255, 255, 0.45) !important;
+  background: color-mix(in srgb, var(--vox-panel) 55%, transparent) !important;
+  color: color-mix(in srgb, var(--vox-ink) 45%, transparent) !important;
   font-size: 10px !important;
 }
 
@@ -204,13 +149,13 @@ a,
 .vox-hud-marker__pin {
   width: 10px;
   height: 10px;
-  background: #fff;
-  border: 1px solid #050607;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+  background: var(--vox-ink);
+  border: 1px solid var(--vox-background);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--vox-ink) 35%, transparent);
 }
 
 .vox-hud-marker--active .vox-hud-marker__pin {
-  box-shadow: 0 0 10px 2px rgba(255, 99, 99, 0.55);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--vox-coral) 55%, transparent);
 }
 
 .vox-hud-marker--speaking .vox-hud-marker__pin {
@@ -219,25 +164,25 @@ a,
 
 @keyframes vox-pin-pulse {
   from {
-    box-shadow: 0 0 0 0 rgba(255, 99, 99, 0.7);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--vox-coral) 70%, transparent);
   }
   to {
-    box-shadow: 0 0 0 26px rgba(255, 99, 99, 0);
+    box-shadow: 0 0 0 26px color-mix(in srgb, var(--vox-coral) 0%, transparent);
   }
 }
 
 .vox-hud-marker__stem {
   width: 1px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--vox-ink) 85%, transparent);
 }
 
 .vox-hud-marker__label {
   max-width: 160px;
   padding: 3px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: #000;
-  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 35%, transparent);
+  background: var(--vox-background);
+  color: var(--vox-text);
   font-family: "Geist Mono", ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -245,10 +190,6 @@ a,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.font-reem {
-  font-family: "Reem Kufi", sans-serif;
 }
 
 /* Slim translucent scrollbar: transparent track, soft dark thumb. */
@@ -260,13 +201,13 @@ a,
   background: transparent;
 }
 .vox-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--vox-ink) 9%, transparent);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 .vox-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--vox-ink) 18%, transparent);
   background-clip: padding-box;
 }
 
@@ -288,15 +229,15 @@ a,
   border: 0;
   background: none;
   cursor: pointer;
-  color: white;
+  color: var(--vox-text);
 }
 .vox-hud-marker__target .vox-hud-marker__label {
   position: absolute;
   left: 18px;
   text-transform: none;
-  border-color: #ffffff25;
+  border-color: color-mix(in srgb, var(--vox-ink) 14.5%, transparent);
   border-radius: 5px;
-  background: #111318e8;
+  background: color-mix(in srgb, var(--vox-panel) 91%, transparent);
   letter-spacing: 0;
 }
 .vox-location-card {
@@ -307,11 +248,11 @@ a,
   transform: translateX(-50%);
   width: 272px;
   padding: 16px;
-  border: 1px solid #242426;
+  border: 1px solid var(--vox-border);
   border-radius: 20px;
-  background: #161719e6;
-  color: #eee;
-  box-shadow: 0 16px 64px #0009;
+  background: color-mix(in srgb, var(--vox-panel) 90.2%, transparent);
+  color: var(--vox-text);
+  box-shadow: 0 16px 64px color-mix(in srgb, var(--vox-shade) 60%, transparent);
   backdrop-filter: blur(30px);
   font-family: Inter, sans-serif;
 }
@@ -324,9 +265,9 @@ a,
   height: 10px;
   margin-top: -5px;
   transform: translateX(-50%) rotate(45deg);
-  border: solid #242426;
+  border: solid var(--vox-border);
   border-width: 0 1px 1px 0;
-  background: #161719;
+  background: var(--vox-panel);
 }
 .vox-location-card::after {
   content: "";
@@ -347,19 +288,19 @@ a,
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.12em;
-  color: #969ba5;
+  color: var(--vox-text-muted);
 }
 .vox-location-card__eyebrow i {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: #4ade80;
-  box-shadow: 0 0 0 0 #4ade8099;
+  background: var(--vox-mint);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--vox-mint) 60%, transparent);
   animation: vox-live-dot 2s ease-out infinite;
 }
 @keyframes vox-live-dot {
   to {
-    box-shadow: 0 0 0 7px #4ade8000;
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--vox-mint) 0%, transparent);
   }
 }
 .vox-location-card__title {
@@ -373,7 +314,7 @@ a,
 .vox-location-card__source {
   margin: 6px 0 0;
   font-size: 11px;
-  color: #989da7;
+  color: var(--vox-text-muted);
 }
 .vox-location-card dl {
   display: grid;
@@ -382,16 +323,16 @@ a,
 }
 .vox-location-card dl div {
   padding: 8px 10px;
-  border: 1px solid #ffffff0d;
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 5.1%, transparent);
   border-radius: 12px;
-  background: #ffffff0a;
+  background: color-mix(in srgb, var(--vox-ink) 3.9%, transparent);
 }
 .vox-location-card dt {
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #8d939e;
+  color: var(--vox-text-muted);
 }
 .vox-location-card dd {
   font-family: "Geist Mono", monospace;

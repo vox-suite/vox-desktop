@@ -12,15 +12,13 @@ import {
 } from "recharts";
 import { ChartContainer } from "@/components/ui/chart";
 import {
-  SERIES_COLORS,
   clipText,
   formatTotal,
   friendlyDate,
 } from "@/features/pulse";
+import { useChartPalette } from "./use-chart-palette";
 import type { PulseSeries } from "@/features/pulse/discovery-types";
 import { seriesMode } from "@/features/pulse/series";
-
-const axisTick = { fontSize: 10, fill: "#a0a6a2" };
 
 export function MultiSeriesChart({
   series,
@@ -29,6 +27,8 @@ export function MultiSeriesChart({
   series: PulseSeries[];
   type: "line" | "area" | "bar";
 }) {
+  const palette = useChartPalette();
+  const axisTick = { fontSize: 10, fill: palette.axis };
   const mode = seriesMode(series);
   const units = [...new Set(series.map((s) => s.unit))];
   const peaks = series.map((s) =>
@@ -53,12 +53,12 @@ export function MultiSeriesChart({
   const config = Object.fromEntries(
     series.map((s, i) => [
       `s${i}`,
-      { label: s.title, color: SERIES_COLORS[i % SERIES_COLORS.length] },
+      { label: s.title, color: palette.seriesAt(i) },
     ]),
   );
   const common = (
     <>
-      <CartesianGrid stroke="#1f1f1f" vertical={false} strokeDasharray="3 5" />
+      <CartesianGrid stroke={palette.grid} vertical={false} strokeDasharray="3 5" />
       <XAxis
         dataKey="label"
         tick={axisTick}
@@ -86,7 +86,7 @@ export function MultiSeriesChart({
         />
       )}
       <Tooltip
-        cursor={{ stroke: "#2a2a2a" }}
+        cursor={{ stroke: palette.cursor }}
         content={({ active, label, payload }) => {
           if (!active || !payload?.length) return null;
           return (
@@ -101,7 +101,7 @@ export function MultiSeriesChart({
                     <i
                       className="size-2 rounded-full"
                       style={{
-                        background: SERIES_COLORS[i % SERIES_COLORS.length],
+                        background: palette.seriesAt(i),
                       }}
                     />
                     <span className="text-muted-foreground">
@@ -121,7 +121,7 @@ export function MultiSeriesChart({
       />
     </>
   );
-  const color = (i: number) => SERIES_COLORS[i % SERIES_COLORS.length];
+  const color = palette.seriesAt;
   return (
     <ChartContainer config={config} className="aspect-auto h-full w-full">
       {type === "bar" ? (
@@ -178,6 +178,7 @@ export function MultiSeriesChart({
 }
 
 export function MultiSeriesLegend({ series }: { series: PulseSeries[] }) {
+  const palette = useChartPalette();
   const mode = seriesMode(series);
   return (
     <>
@@ -190,7 +191,7 @@ export function MultiSeriesLegend({ series }: { series: PulseSeries[] }) {
           return (
             <div className="pulse-legend-row" key={s.measurement_id}>
               <i
-                style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
+                style={{ background: palette.seriesAt(i) }}
               />
               <span>{s.title}</span>
               <b>

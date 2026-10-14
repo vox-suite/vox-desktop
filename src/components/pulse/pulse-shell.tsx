@@ -6,6 +6,7 @@ import {
 import type { ReactNode } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import "./pulse.css";
+import { alpha } from "@/lib/theme";
 
 export function PulseShell({
   header,
@@ -31,7 +32,7 @@ export function PulseShell({
           className="pointer-events-none absolute inset-x-0 top-0 h-96"
           style={{
             background:
-              "radial-gradient(ellipse 70% 100% at 100% 0%, #3ecf8e55 0%, #3ecf8e22 40%, #3ecf8e0a 65%, transparent 85%)",
+              `radial-gradient(ellipse 70% 100% at 100% 0%, ${alpha("mint", 33)} 0%, ${alpha("mint", 13)} 40%, ${alpha("mint", 4)} 65%, transparent 85%)`,
           }}
         />
       )}

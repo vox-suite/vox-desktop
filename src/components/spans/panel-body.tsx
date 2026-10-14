@@ -60,6 +60,7 @@ import {
 import { formatDate, formatDuration } from "./span-date-utils";
 import { DateTimeField } from "./datetime-field";
 import { PanelRow } from "./panel-row";
+import { fadeMask } from "@/lib/theme";
 
 export function PanelBody({
   initial,
@@ -190,23 +191,20 @@ export function PanelBody({
             referrerPolicy="no-referrer"
             className="absolute inset-0 size-full scale-110 object-cover opacity-15 blur-xl"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0c0d10]/75 via-[#0c0d10]/85 to-[#0c0d10]/95" />
+          <div className="absolute inset-0 bg-gradient-to-b from-surface/75 via-surface/85 to-surface/95" />
         </div>
       ) : span.source !== "spotify" ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"
           style={{
-            maskImage:
-              "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)",
+            ...fadeMask(40),
           }}
         >
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(ellipse 75% 70% at 34px 38px, ${style.dot}40 0%, ${style.dot}1f 35%, ${style.dot}0a 60%, transparent 85%)`,
+              background: `radial-gradient(ellipse 75% 70% at 34px 38px, color-mix(in srgb, ${style.dot} 25%, transparent) 0%, color-mix(in srgb, ${style.dot} 12%, transparent) 35%, color-mix(in srgb, ${style.dot} 4%, transparent) 60%, transparent 85%)`,
             }}
           />
         </div>
@@ -218,10 +216,7 @@ export function PanelBody({
           opacity: 0.05,
           filter: "brightness(0.4) contrast(1.3)",
           backgroundSize: "130px 130px",
-          maskImage:
-            "linear-gradient(to bottom, #000 0%, #000 60%, rgba(0,0,0,0.4) 100%)",
-          WebkitMaskImage:
-            "linear-gradient(to bottom, #000 0%, #000 60%, rgba(0,0,0,0.4) 100%)",
+          ...fadeMask(60, 0.4),
         }}
       />
 
@@ -257,7 +252,7 @@ export function PanelBody({
                         setEditingTitle(false);
                       }
                     }}
-                    className="h-7 bg-white/[0.04] font-heading text-base"
+                    className="h-7 bg-ink/[0.04] font-heading text-base"
                   />
                   <Button
                     size="icon-sm"
@@ -341,7 +336,7 @@ export function PanelBody({
             value={span.status}
             onValueChange={(v) => v && void save({ status: v as SpanStatus })}
           >
-            <SelectTrigger className="h-8 w-full border-transparent bg-transparent px-2 hover:bg-white/[0.05]">
+            <SelectTrigger className="h-8 w-full border-transparent bg-transparent px-2 hover:bg-ink/[0.05]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -363,7 +358,7 @@ export function PanelBody({
             value={span.category}
             onValueChange={(v) => v && void save({ category: v })}
           >
-            <SelectTrigger className="h-8 w-full border-transparent bg-transparent px-2 capitalize hover:bg-white/[0.05]">
+            <SelectTrigger className="h-8 w-full border-transparent bg-transparent px-2 capitalize hover:bg-ink/[0.05]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -426,7 +421,7 @@ export function PanelBody({
             disabled={busy}
             onChange={(e) => setNotes(e.target.value)}
             onBlur={() => notes !== span.notes && void save({ notes })}
-            className="min-h-0 resize-none border-transparent bg-transparent px-2 py-1 hover:bg-white/[0.05] focus-visible:bg-white/[0.05]"
+            className="min-h-0 resize-none border-transparent bg-transparent px-2 py-1 hover:bg-ink/[0.05] focus-visible:bg-ink/[0.05]"
           />
         </PanelRow>
 
@@ -445,8 +440,8 @@ export function PanelBody({
                     className={cn(
                       "rounded-full border px-2.5 py-0.5 text-xs transition",
                       on
-                        ? "border-white/30 bg-white/10 text-foreground"
-                        : "border-white/10 text-muted-foreground hover:text-foreground",
+                        ? "border-ink/30 bg-ink/10 text-foreground"
+                        : "border-ink/10 text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {c.name}

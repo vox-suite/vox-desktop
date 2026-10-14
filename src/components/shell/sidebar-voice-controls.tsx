@@ -44,7 +44,7 @@ export type SidebarVoiceProps = {
 
 type ChatMessage = { id: number; text: string; state: "sent" | "failed" };
 const iconButton =
-  "flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-foreground focus-visible:outline-2 focus-visible:outline-violet-300 disabled:opacity-40";
+  "flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-ink/10 hover:text-foreground focus-visible:outline-2 focus-visible:outline-violet disabled:opacity-40";
 
 export function SidebarVoiceControls({
   isActive,
@@ -108,7 +108,7 @@ export function SidebarVoiceControls({
     <Popover open={open} onOpenChange={setOpen}>
       <SidebarMenu>
         <SidebarMenuItem>
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-2 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
+          <div className="overflow-hidden rounded-xl border border-ink/10 bg-ink/[0.04] p-2 group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-0">
             <div className="flex items-center gap-2 group-data-[collapsible=icon]:flex-col">
               <button
                 type="button"
@@ -118,9 +118,9 @@ export function SidebarVoiceControls({
                   setMessageError("");
                   onToggleCall();
                 }}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left disabled:cursor-default focus-visible:outline-2 focus-visible:outline-violet-300 group-data-[collapsible=icon]:flex-none"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left disabled:cursor-default focus-visible:outline-2 focus-visible:outline-violet group-data-[collapsible=icon]:flex-none"
               >
-                <span className="flex size-7 shrink-0 items-center justify-center text-violet-200">
+                <span className="flex size-7 shrink-0 items-center justify-center text-violet">
                   <VoxStatusLogo animateIdle size={24} state={orbState} />
                 </span>
                 <span
@@ -227,7 +227,7 @@ export function SidebarVoiceControls({
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <div
-                  className="min-w-0 flex-1 text-violet-200/70 group-data-[collapsible=icon]:hidden"
+                  className="min-w-0 flex-1 text-violet/70 group-data-[collapsible=icon]:hidden"
                   aria-label={
                     muted ? "Microphone muted" : "Live microphone level"
                   }
@@ -253,7 +253,7 @@ export function SidebarVoiceControls({
                   title="End session"
                   disabled={connecting}
                   onClick={onToggleCall}
-                  className={`${iconButton} bg-red-300/10 text-red-200 hover:bg-red-300/20 hover:text-red-100`}
+                  className={`${iconButton} bg-danger/10 text-danger hover:bg-danger/20 hover:text-danger`}
                 >
                   <PhoneOff size={14} />
                 </button>
@@ -262,7 +262,7 @@ export function SidebarVoiceControls({
             {failure && (
               <p
                 role="alert"
-                className="mt-2 text-[11px] text-red-300 group-data-[collapsible=icon]:sr-only"
+                className="mt-2 text-[11px] text-danger group-data-[collapsible=icon]:sr-only"
               >
                 {failure}
               </p>
@@ -276,9 +276,9 @@ export function SidebarVoiceControls({
         sideOffset={16}
         collisionPadding={16}
         aria-label="Vox chat"
-        className="w-[360px] max-w-[calc(100vw-32px)] gap-0 overflow-hidden rounded-2xl border border-[#242426] bg-[#161719]/90 p-0 text-foreground shadow-[0_16px_64px_#0008] ring-0 backdrop-blur-[30px]"
+        className="w-[360px] max-w-[calc(100vw-32px)] gap-0 overflow-hidden rounded-2xl border border-line bg-panel/90 p-0 text-foreground shadow-float ring-0 backdrop-blur-[30px]"
       >
-        <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-ink/10 px-4 py-3">
           <VoxStatusLogo animateIdle size={24} state={orbState} />
           <div className="flex-1">
             <h2 className="text-sm font-medium">Chat with Vox</h2>
@@ -302,7 +302,7 @@ export function SidebarVoiceControls({
                 title="What would you like to do?"
                 description="Type to Vox while keeping your workspace in view."
                 icon={
-                  <span className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-white/20">
+                  <span className="flex size-12 items-center justify-center rounded-full border-2 border-dashed border-ink/20">
                     <MessageCircle size={20} />
                   </span>
                 }
@@ -316,7 +316,7 @@ export function SidebarVoiceControls({
                   >
                     <p>{item.text}</p>
                     <span
-                      className={`text-[10px] ${item.state === "failed" ? "text-red-300" : "text-muted-foreground"}`}
+                      className={`text-[10px] ${item.state === "failed" ? "text-danger" : "text-muted-foreground"}`}
                     >
                       {item.state === "failed" ? "Not sent" : "Sent to Vox"}
                     </span>
@@ -327,14 +327,14 @@ export function SidebarVoiceControls({
           </ConversationContent>
           <ConversationScrollButton aria-label="Scroll to latest message" />
         </Conversation>
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-ink/10 p-3">
           {failure && (
-            <p role="alert" className="mb-2 text-xs text-red-300">
+            <p role="alert" className="mb-2 text-xs text-danger">
               {failure}
             </p>
           )}
           <form
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 focus-within:border-violet-300/40"
+            className="flex items-center gap-2 rounded-xl border border-ink/10 bg-ink/[0.04] px-3 focus-within:border-violet/40"
             onSubmit={async (event) => {
               event.preventDefault();
               if (!message.trim() || sending || !isActive) return;

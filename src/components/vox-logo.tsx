@@ -7,6 +7,7 @@ import {
 } from "thinking-orbs";
 import { STATIC_ORB_DOTS } from "@/components/vox-logo-dots";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
 
 export type VoxOrbVisualState = "idle" | "connecting" | "active" | "error";
 
@@ -188,7 +189,7 @@ function HiResThinkingOrb({
 export function VoxLogo({
   animated = false,
   size = 28,
-  theme = "dark",
+  theme = "auto",
   state = "idle",
   speed = 1,
   className,
@@ -200,6 +201,7 @@ export function VoxLogo({
   speed?: number;
   className?: string;
 }) {
+  const appTheme = useTheme();
   if (!animated) {
     return <VoxOrbSvg size={size} className={className} />;
   }
@@ -207,7 +209,7 @@ export function VoxLogo({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center text-mist",
+        "inline-flex shrink-0 items-center justify-center text-foreground",
         className,
       )}
       style={{ width: size, height: size }}
@@ -216,7 +218,7 @@ export function VoxLogo({
       <HiResThinkingOrb
         state={toThinkingState(state)}
         displaySize={size}
-        theme={theme}
+        theme={theme === "auto" ? appTheme : theme}
         speed={speed}
       />
     </span>

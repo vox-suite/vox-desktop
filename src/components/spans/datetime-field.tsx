@@ -57,7 +57,7 @@ export function DateTimeField({
           disabled={disabled}
           className={cn(
             "group -mx-2 flex w-[calc(100%+1rem)] items-center gap-2 rounded-md px-2 py-1 text-left transition",
-            !disabled && "hover:bg-white/[0.05]",
+            !disabled && "hover:bg-ink/[0.05]",
           )}
         >
           {shown ? (
@@ -80,7 +80,7 @@ export function DateTimeField({
           onSelect={setDay}
           defaultMonth={day}
         />
-        <div className="flex items-center gap-2 bg-white/[0.03] p-3">
+        <div className="flex items-center gap-2 bg-ink/[0.03] p-3">
           <Clock className="size-3.5 shrink-0 text-muted-foreground" />
           <Input
             type="time"

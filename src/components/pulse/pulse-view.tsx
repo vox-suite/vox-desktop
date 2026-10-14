@@ -50,7 +50,7 @@ export function PulseView() {
         <>
           <div className="flex items-center gap-3.5">
             <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
-              <Activity className="size-[18px] text-[#3ecf8e]" />
+              <Activity className="size-[18px] text-mint" />
             </span>
             <div className="leading-tight">
               <h1 className="text-base font-semibold tracking-tight">Insights</h1>

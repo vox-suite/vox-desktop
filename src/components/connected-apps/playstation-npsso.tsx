@@ -26,20 +26,20 @@ export function PlaystationNpsso({
           className="h-11 rounded-lg"
         />
       </label>
-      <details className="group rounded-lg border border-white/10 bg-white/[0.02] text-sm">
+      <details className="group rounded-lg border border-ink/10 bg-ink/[0.02] text-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-foreground/90">
           How do I get this token?
           <span className="text-muted-foreground transition group-open:rotate-45">
             +
           </span>
         </summary>
-        <div className="space-y-3 border-t border-white/10 px-4 py-4 leading-relaxed text-muted-foreground">
+        <div className="space-y-3 border-t border-ink/10 px-4 py-4 leading-relaxed text-muted-foreground">
           <ol className="list-decimal space-y-2 pl-5">
             <li>
               Sign in to your PlayStation account at{" "}
               <button
                 type="button"
-                className="text-[#4da3ff] underline underline-offset-2 hover:text-[#7bbcff]"
+                className="text-sky underline underline-offset-2 hover:text-sky/80"
                 onClick={() =>
                   void platform().browser?.openExternal("https://www.playstation.com")
                 }
@@ -53,7 +53,7 @@ export function PlaystationNpsso({
             </li>
             <li>
               Copy the 64-character value after{" "}
-              <code className="rounded bg-white/10 px-1 py-0.5 text-foreground/90">
+              <code className="rounded bg-ink/10 px-1 py-0.5 text-foreground/90">
                 npsso
               </code>{" "}
               and paste it above.

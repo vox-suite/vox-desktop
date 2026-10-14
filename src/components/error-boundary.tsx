@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<
         </p>
         <button
           type="button"
-          className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           onClick={() => window.location.reload()}
         >
           Reload Vox

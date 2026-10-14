@@ -8,7 +8,10 @@ import {
   Workflow,
   Folder,
   LogOut,
+  Monitor,
+  Moon,
   Plug,
+  Sun,
   Terminal,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -37,6 +40,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { windowControls } from "@/lib/tauri";
+import { setThemePref, useThemePref, type ThemePref } from "@/lib/theme";
 import { desktopStore } from "@/features/desktop-control/store";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
 import {
@@ -65,6 +69,12 @@ const NAV_ITEMS = [
   { id: "updates", label: "Updates", icon: Bell },
 ] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
 
+const THEMES = [
+  { pref: "auto", label: "Auto", icon: Monitor },
+  { pref: "light", label: "Light", icon: Sun },
+  { pref: "dark", label: "Dark", icon: Moon },
+] as const satisfies readonly { pref: ThemePref; label: string; icon: unknown }[];
+
 const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";
 
 export function AppSidebar({
@@ -87,6 +97,9 @@ export function AppSidebar({
   const context = useDesktopContext();
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
   const [imgError, setImgError] = useState(false);
+  const themePref = useThemePref();
+  const themeIndex = THEMES.findIndex((t) => t.pref === themePref);
+  const theme = THEMES[themeIndex];
   const displayName =
     (userName || accountLabel).replace(/@.*/, "").trim() || "User";
   const initials =
@@ -130,7 +143,7 @@ export function AppSidebar({
       onMouseLeave={() => {
         dragOrigin.current = null;
       }}
-      className="z-30 p-0 group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:relative [&_[data-sidebar=sidebar]]:isolate [&_[data-sidebar=sidebar]]:rounded-none [&_[data-sidebar=sidebar]]:bg-[#161719]/90 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-[#242426] [&_[data-sidebar=sidebar]]:backdrop-blur-[30px]"
+      className="z-30 p-0 group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:relative [&_[data-sidebar=sidebar]]:isolate [&_[data-sidebar=sidebar]]:rounded-none [&_[data-sidebar=sidebar]]:bg-panel/90 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-line [&_[data-sidebar=sidebar]]:backdrop-blur-[30px]"
     >
       <SidebarHeader className="gap-2 px-4 pb-3 pt-3 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
@@ -160,7 +173,7 @@ export function AppSidebar({
         </span>
       </SidebarHeader>
 
-      <div className="mx-4 border-t border-white/5 group-data-[collapsible=icon]:mx-2" />
+      <div className="mx-4 border-t border-ink/5 group-data-[collapsible=icon]:mx-2" />
 
       <SidebarContent>
         <SidebarGroup className="px-3 pt-2 group-data-[collapsible=icon]:px-2">
@@ -175,7 +188,7 @@ export function AppSidebar({
                     isActive={activeTab === item.id}
                     tooltip={item.label}
                     onClick={() => onTabChange(item.id)}
-                    className="h-8 rounded-lg px-3 text-[13px] text-muted-foreground data-[active=true]:bg-white/[0.08] data-[active=true]:text-foreground [&>svg]:size-4"
+                    className="h-8 rounded-lg px-3 text-[13px] text-muted-foreground data-[active=true]:bg-ink/[0.08] data-[active=true]:text-foreground [&>svg]:size-4"
                   >
                     <item.icon />
                     <span>{item.label}</span>
@@ -218,8 +231,18 @@ export function AppSidebar({
               <span>Connected Apps</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip={`Theme: ${theme.label}`}
+              aria-label={`Theme: ${theme.label}. Change theme`}
+              onClick={() => setThemePref(THEMES[(themeIndex + 1) % THEMES.length].pref)}
+            >
+              <theme.icon />
+              <span>Theme: {theme.label}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
-        <div className="mt-1 flex items-center gap-1 border-t border-white/5 pt-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+        <div className="mt-1 flex items-center gap-1 border-t border-ink/5 pt-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
           <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
             <SidebarMenuItem>
               <DropdownMenu>
@@ -258,7 +281,7 @@ export function AppSidebar({
                   align="end"
                   sideOffset={16}
                   collisionPadding={16}
-                  className="w-56 rounded-2xl p-1.5 border border-[#242426] bg-[#161719]/90 shadow-[0_16px_64px_#0008] ring-0 backdrop-blur-[30px]"
+                  className="w-56 rounded-2xl p-1.5 border border-line bg-panel/90 shadow-float ring-0 backdrop-blur-[30px]"
                 >
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                     Vox Desktop · v{__APP_VERSION__}

@@ -1,71 +1,38 @@
 .spaces-workbench {
-  --background: #000000;
-  --card: #0a0a0a;
-  --foreground: #f2f2f2;
-  --muted: #242424;
-  --muted-foreground: #a3a3a3;
-  --border: #222;
-  --ring: #8696a8;
-  --primary: #e8eef5;
-  --primary-foreground: #000000;
-  --accent: #262626;
+  --background: var(--vox-background);
+  --card: var(--vox-surface);
+  --foreground: var(--vox-text);
+  --muted: var(--vox-border);
+  --muted-foreground: var(--vox-text-muted);
+  --border: var(--vox-border);
+  --ring: var(--vox-text-muted);
+  --primary: var(--vox-primary);
+  --primary-foreground: var(--vox-on-primary);
+  --accent: var(--vox-surface-accent);
   color: var(--foreground);
   background: var(--background);
 }
 .spaces-workbench > div > header {
-  background: #111111;
+  background: var(--vox-surface-raised);
 }
 .spaces-workbench .react-flow {
-  background: #111111;
+  background: var(--vox-surface-raised);
 }
 .spaces-workbench .react-flow__edge-path {
-  filter: drop-shadow(0 0 4px #cfe3f155);
-}
-.space-node {
-  isolation: isolate;
-  background: linear-gradient(145deg, #202020, #141414);
-  box-shadow: 0 8px 24px #0006;
-  border-color: #383838;
-}
-.space-node::before,
-.space-node::after {
-  content: "";
-  position: absolute;
-  inset: -6px 5px 6px -5px;
-  z-index: -1;
-  border: 1px solid #383838;
-  border-radius: 12px;
-  pointer-events: none;
-}
-.space-node::after {
-  inset: -11px 10px 11px -10px;
-  border-color: #262626;
-}
-.space-node-selected {
-  border-color: #cfe3f1;
-  background: linear-gradient(145deg, #242424, #191919);
-  box-shadow: 0 0 24px #cfe3f130;
-}
-.space-node .react-flow__handle {
-  background: #cfe3f1 !important;
-  border-color: #383838 !important;
-}
-.space-node .react-flow__handle-top,
-.space-node .react-flow__handle-bottom {
-  visibility: hidden;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--vox-ink) 27.3%, transparent));
 }
 .spaces-workbench .react-flow__controls {
   overflow: hidden;
   border-radius: 10px;
-  box-shadow: 0 4px 18px #0006;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--vox-shade) 40%, transparent);
 }
 .spaces-workbench .react-flow__controls-button {
-  background: #191919;
-  border-color: #343434;
-  fill: #dddddd;
+  background: var(--vox-surface-accent);
+  border-color: var(--vox-border-strong);
+  fill: var(--vox-text);
 }
 .spaces-workbench .react-flow__controls-button:hover {
-  background: #292929;
+  background: var(--vox-border);
 }
 @media (prefers-reduced-motion: reduce) {
   .spaces-workbench *,
@@ -80,22 +47,22 @@
   overflow: hidden;
   border-radius: 22px;
   padding: 8px;
-  background: #171717f2 !important;
-  border: 1px solid #383838 !important;
+  background: color-mix(in srgb, var(--vox-panel) 94.9%, transparent) !important;
+  border: 1px solid var(--vox-border-strong) !important;
   box-shadow:
-    0 12px 36px #0008,
-    inset 0 1px 0 #ffffff0d;
+    0 12px 36px color-mix(in srgb, var(--vox-shade) 53.3%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--vox-ink) 5.1%, transparent);
   margin: 20px;
 }
 .spaces-workbench .react-flow__minimap svg {
   border-radius: 15px;
 }
 .spaces-workbench .react-flow__minimap-mask {
-  stroke: #ef8eab;
+  stroke: var(--vox-pink);
   stroke-width: 1.5;
 }
 .spaces-workbench .react-flow__controls {
-  border: 1px solid #343434;
+  border: 1px solid var(--vox-border-strong);
   border-radius: 16px;
   padding: 4px;
 }
@@ -103,51 +70,15 @@
   border: 0;
   border-radius: 10px;
 }
-.space-node {
-  border-radius: 16px;
-  padding: 18px;
-}
-.space-node::before,
-.space-node::after {
-  border-radius: 16px;
-}
-.space-node-selected::before {
-  border-color: #9a526b;
-}
-.space-node-selected h3 {
-  color: #f2f2f2;
-}
 .spaces-workbench .react-flow__attribution {
-  background: #191919;
-  color: #999999;
+  background: var(--vox-surface-accent);
+  color: var(--vox-text-muted);
   border-radius: 6px 0 0;
-}
-
-.spaces-chat-dock {
-  position: absolute;
-  top: 76px;
-  right: 16px;
-  bottom: 16px;
-  z-index: 20;
-  width: 320px;
-  overflow: hidden;
-  border: 1px solid #333;
-  border-radius: 18px;
-  box-shadow: 0 16px 48px #0008;
-}
-.spaces-chat-dock > div {
-  border-left: 0;
-  width: 100%;
 }
 .spaces-workbench .react-flow__controls {
   display: flex;
   flex-direction: row;
   margin: 20px;
-}
-@media (max-width: 767px) {
-  .spaces-chat-dock {
-    width: auto;
-  }
 }
 
 @media (min-width: 768px) {
@@ -155,158 +86,11 @@
     width: 100% !important;
   }
 }
-.space-orbits {
-  pointer-events: none;
-}
-.space-radial-node {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 240px;
-  min-height: 56px;
-  padding: 8px 12px;
-  color: #ddd;
-  cursor: pointer;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-}
-.space-radial-node h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.space-radial-kind {
-  display: block;
-  color: #777;
-  font-size: 14px;
-  margin-bottom: 3px;
-}
-.space-radial-dot {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #e9819e;
-  box-shadow: 0 0 8px #e9819e33;
-}
-.space-radial-node:hover,
-.space-radial-node.is-selected {
-  background: #141414;
-  border-color: #444;
-}
-.space-radial-node.is-selected {
-  border-color: #d87794;
-}
-.space-radial-goal {
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  border: 1px solid #4b4b4b;
-  background: radial-gradient(circle at 35% 30%, #252525, #080808 70%);
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-  padding: 28px;
-  box-shadow:
-    0 0 0 8px #000,
-    0 0 0 9px #222,
-    inset 0 0 28px #ffffff08;
-}
-.space-radial-goal h3 {
-  font-size: 24px;
-  font-weight: 500;
-}
-.space-radial-goal .space-radial-kind {
-  margin-bottom: 8px;
-}
-.space-radial-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 5px;
-  color: #aaa;
-  font-size: 10px;
-}
-.space-radial-node.state-rejected {
-  opacity: 0.4;
-}
-.space-radial-node.state-rejected h3 {
-  text-decoration: line-through;
-}
-.space-radial-node.state-stale .space-radial-dot {
-  background: #888;
-}
-.space-radial-node .react-flow__handle {
-  width: 3px;
-  height: 3px;
-  opacity: 0;
-}
 .spaces-workbench .react-flow__node-orbit {
   pointer-events: none !important;
 }
 /* Compact constellation: readable objects, quiet spatial guides. */
-.space-radial-node {
-  width: 220px;
-  min-height: 88px;
-  padding: 14px;
-  border: 1px solid #343434;
-  border-radius: 12px;
-  background: #151515;
-  gap: 12px;
-  box-shadow: 0 8px 24px #0005;
-}
-.space-radial-node h3 {
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.35;
-}
-.space-radial-kind {
-  font-size: 11px;
-  color: #969696;
-  text-transform: capitalize;
-}
-.space-radial-label {
-  min-width: 0;
-}
-.space-radial-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #3b3b3b;
-  border-radius: 9px;
-  color: #e2e2e2;
-}
-.space-radial-summary {
-  margin-top: 6px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: #999;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.space-radial-goal {
-  width: 180px;
-  height: 180px;
-  padding: 24px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #303030, #0e0e0e 75%);
-}
-.space-radial-goal h3 {
-  font-size: 20px;
-}
-.space-radial-node.is-selected .space-radial-icon {
-  color: #cfe3f1;
-  border-color: #5a6b7c;
-}
+
 .spaces-workbench .react-flow__edge-path {
   filter: none;
 }
@@ -321,19 +105,6 @@
   width: 100%;
   height: 100%;
 }
-.space-radial-icon {
-  position: relative;
-}
-.space-radial-icon::after {
-  content: "";
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  right: -2px;
-  top: -2px;
-  background: #ee87a1;
-  border-radius: 50%;
-}
 
 @property --angle {
   syntax: "<angle>";
@@ -341,7 +112,7 @@
   inherits: false;
 }
 .space-workflow-node {
-  --accent: #9aa0aa;
+  --accent: var(--vox-text-muted);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -351,9 +122,9 @@
   max-height: 360px;
   padding: 10px 10px 26px;
   border-radius: 22px;
-  background: #0e0e11;
-  color: #f2f2f3;
-  box-shadow: 0 16px 36px -14px #000c;
+  background: var(--vox-surface-raised);
+  color: var(--vox-text);
+  box-shadow: 0 16px 36px -14px color-mix(in srgb, var(--vox-shade) 80%, transparent);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   animation: space-node-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -368,8 +139,8 @@
   background: linear-gradient(
     155deg,
     color-mix(in srgb, var(--accent) 75%, transparent),
-    rgba(255, 255, 255, 0.05) 38%,
-    rgba(255, 255, 255, 0.02) 62%,
+    color-mix(in srgb, var(--vox-ink) 5%, transparent) 38%,
+    color-mix(in srgb, var(--vox-ink) 2%, transparent) 62%,
     color-mix(in srgb, var(--accent) 40%, transparent)
   );
   -webkit-mask:
@@ -448,29 +219,29 @@
   border-radius: 999px;
   font-size: 10.5px;
   letter-spacing: 0.02em;
-  color: #a7a7ae;
-  background: rgba(255, 255, 255, 0.045);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  color: var(--vox-text-muted);
+  background: color-mix(in srgb, var(--vox-ink) 4.5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vox-ink) 7%, transparent);
 }
 .space-node-chip i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #6b6b73;
+  background: var(--vox-text-dim);
 }
 .space-node-chip[data-status="done"] i {
-  background: #4ade80;
+  background: var(--vox-mint);
 }
 .space-node-chip[data-status="running"] {
-  color: #f5d48a;
+  color: var(--vox-gold);
 }
 .space-node-chip[data-status="running"] i {
-  background: #f5b83d;
+  background: var(--vox-gold);
   animation: space-dot 1.1s ease-in-out infinite;
 }
 .space-node-chip[data-status="failed"] i,
 .space-node-chip[data-status="rejected"] i {
-  background: #ff5a67;
+  background: var(--vox-coral);
 }
 @keyframes space-dot {
   50% {
@@ -486,10 +257,10 @@
   flex-direction: column;
   overflow: hidden;
   z-index: 1;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 6%, transparent);
   border-radius: 14px;
-  background: linear-gradient(180deg, #1e1e22, #19191c);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, var(--vox-border), var(--vox-surface-accent));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--vox-ink) 4%, transparent);
 }
 .space-workflow-scroll {
   min-height: 0;
@@ -512,12 +283,12 @@
 }
 .space-workflow-fade.top {
   top: 0;
-  background: linear-gradient(to bottom, #1c1c1f, transparent);
+  background: linear-gradient(to bottom, var(--vox-surface-accent), transparent);
   mask-image: linear-gradient(to bottom, #000 30%, transparent);
 }
 .space-workflow-fade.bottom {
   bottom: 0;
-  background: linear-gradient(to top, #1c1c1f, transparent);
+  background: linear-gradient(to top, var(--vox-surface-accent), transparent);
   mask-image: linear-gradient(to top, #000 30%, transparent);
 }
 .space-workflow-fade.is-on {
@@ -542,7 +313,6 @@
   pointer-events: none;
 }
 
-
 .spaces-flow {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
@@ -561,7 +331,7 @@
 }
 
 .spaces-dots {
-  background-image: radial-gradient(#ffffff17 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in srgb, var(--vox-ink) 9%, transparent) 1px, transparent 1px);
   background-size: 16px 16px;
   mask-image: linear-gradient(to top left, black, transparent 85%);
 }
@@ -580,7 +350,6 @@
   }
 }
 
-
 .spaces-workbench .react-flow {
   background: transparent;
 }
@@ -589,10 +358,10 @@
 }
 .spaces-workbench .react-flow__controls {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 9%, transparent);
   border-radius: 14px;
-  background: rgba(16, 16, 19, 0.72);
-  box-shadow: 0 12px 30px -8px #000b;
+  background: color-mix(in srgb, var(--vox-panel) 72%, transparent);
+  box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--vox-shade) 73.3%, transparent);
   backdrop-filter: blur(14px);
 }
 .spaces-workbench .react-flow__controls-button {
@@ -600,18 +369,18 @@
   height: 30px;
   border: 0;
   background: transparent;
-  fill: #b5b5bc;
+  fill: var(--vox-text-muted);
   transition: background 0.15s;
 }
 .spaces-workbench .react-flow__controls-button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--vox-ink) 8%, transparent);
 }
 .spaces-workbench .react-flow__minimap {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid color-mix(in srgb, var(--vox-ink) 9%, transparent);
   border-radius: 14px;
-  background: rgba(16, 16, 19, 0.72);
-  box-shadow: 0 12px 30px -8px #000b;
+  background: color-mix(in srgb, var(--vox-panel) 72%, transparent);
+  box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--vox-shade) 73.3%, transparent);
   backdrop-filter: blur(14px);
 }
 .spaces-workbench .react-flow__attribution {
@@ -635,8 +404,8 @@
   inset: 0;
   z-index: 3;
   background:
-    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.035), transparent 55%),
-    radial-gradient(90% 90% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.5));
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--vox-ink) 3.5%, transparent), transparent 55%),
+    radial-gradient(90% 90% at 50% 50%, transparent 55%, color-mix(in srgb, var(--vox-panel) 50%, transparent));
 }
 .space-composer-shell {
   position: relative;
@@ -650,9 +419,9 @@
   padding: 1px;
   background: linear-gradient(
     140deg,
-    rgba(255, 255, 255, 0.22),
-    rgba(255, 255, 255, 0.04) 40%,
-    rgba(255, 255, 255, 0.1)
+    color-mix(in srgb, var(--vox-ink) 22%, transparent),
+    color-mix(in srgb, var(--vox-ink) 4%, transparent) 40%,
+    color-mix(in srgb, var(--vox-ink) 10%, transparent)
   );
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -665,7 +434,7 @@
   background: conic-gradient(
     from var(--angle),
     transparent 0 55%,
-    #f5b83d 85%,
+    var(--vox-gold) 85%,
     transparent 100%
   );
   animation: space-node-spin 2.2s linear infinite;
@@ -675,8 +444,8 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff8, transparent 40%),
-    conic-gradient(from 0deg, #2dd4bf, #a78bfa, #f472b6, #f5b83d, #2dd4bf);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--vox-ink) 53.3%, transparent), transparent 40%),
+    conic-gradient(from 0deg, var(--vox-teal), var(--vox-violet), var(--vox-pink), var(--vox-gold), var(--vox-teal));
   animation: space-orb 3.4s linear infinite;
 }
 @keyframes space-orb {

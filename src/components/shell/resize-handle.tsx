@@ -78,7 +78,7 @@ export function ResizeHandle() {
       aria-label="Resize sidebar"
       onPointerDown={onPointerDown}
       onMouseDown={(e) => e.stopPropagation()}
-      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 hover:after:bg-[#5a1a1e] active:after:bg-[#5a1a1e]"
+      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 hover:after:bg-coral/40 active:after:bg-coral/40"
     />
   );
 }

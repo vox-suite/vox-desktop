@@ -40,22 +40,22 @@ export function FlowEdge({
           x2={targetX + 0.01}
           y2={targetY}
         >
-          <stop offset="0" stopColor={from} />
-          <stop offset="1" stopColor={to} />
+          <stop offset="0" style={{ stopColor: from }} />
+          <stop offset="1" style={{ stopColor: to }} />
         </linearGradient>
       </defs>
       <path
         d={path}
         fill="none"
-        stroke={`url(#${gradient})`}
+       
         strokeWidth={active ? 2 : 1.3}
         strokeOpacity={active ? 0.95 : 0.55}
         strokeLinecap="round"
-        className={flowing ? "space-edge-line is-flowing" : "space-edge-line"}
+        className={flowing ? "space-edge-line is-flowing" : "space-edge-line"} style={{ stroke: `url(#${gradient})` }}
       />
       {flowing &&
         [0, 1, 2].map((i) => (
-          <circle key={i} r="2.4" fill={to} className="space-edge-particle">
+          <circle key={i} r="2.4" className="space-edge-particle" style={{ fill: to }}>
             <animateMotion
               dur="2.6s"
               begin={`${i * 0.86}s`}
@@ -68,8 +68,8 @@ export function FlowEdge({
         cx={targetX}
         cy={targetY}
         r="2.6"
-        fill={to}
-        opacity={dim ? 0.2 : 0.9}
+       
+        opacity={dim ? 0.2 : 0.9} style={{ fill: to }}
       />
     </g>
   );

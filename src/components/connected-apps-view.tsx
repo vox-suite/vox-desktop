@@ -319,7 +319,7 @@ export function ConnectedAppsView() {
             <div
               role="radiogroup"
               aria-label="Filter by status"
-              className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1"
+              className="flex items-center gap-1 rounded-lg border border-ink/[0.06] bg-ink/[0.02] p-1"
             >
               {(
                 [
@@ -340,7 +340,7 @@ export function ConnectedAppsView() {
                   className={cn(
                     "flex h-8 items-center gap-1.5 rounded-md px-3 text-sm transition",
                     statusFilter === value
-                      ? "bg-white/[0.08] text-foreground/80"
+                      ? "bg-ink/[0.08] text-foreground/80"
                       : "text-muted-foreground/60 hover:text-foreground/80",
                   )}
                 >
@@ -361,11 +361,11 @@ export function ConnectedAppsView() {
 
             <div
               className={cn(
-                "group flex h-11 min-w-[240px] flex-1 items-center gap-2.5 rounded-lg border bg-white/[0.02] pl-4 pr-2 transition",
-                "border-white/[0.06] focus-within:border-[#ff6363]/50 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_0_4px_rgba(255,99,99,0.12)]",
+                "group flex h-11 min-w-[240px] flex-1 items-center gap-2.5 rounded-lg border bg-ink/[0.02] pl-4 pr-2 transition",
+                "border-ink/[0.06] focus-within:border-coral/50 focus-within:bg-ink/[0.05] focus-within:ring-4 focus-within:ring-coral/12",
               )}
             >
-              <Search className="size-4 shrink-0 text-muted-foreground/50 transition group-focus-within:text-[#ff8a8a]" />
+              <Search className="size-4 shrink-0 text-muted-foreground/50 transition group-focus-within:text-coral-soft" />
               <input
                 ref={searchInput}
                 value={query}
@@ -395,12 +395,12 @@ export function ConnectedAppsView() {
                     setQuery("");
                     searchInput.current?.focus();
                   }}
-                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-ink/10 hover:text-foreground"
                 >
                   <X className="size-4" />
                 </button>
               ) : (
-                <kbd className="mr-1 hidden shrink-0 rounded-md border border-white/[0.06] bg-transparent px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground/50 group-focus-within:hidden sm:block">
+                <kbd className="mr-1 hidden shrink-0 rounded-md border border-ink/[0.06] bg-transparent px-1.5 py-0.5 font-sans text-[11px] text-muted-foreground/50 group-focus-within:hidden sm:block">
                   ⌘K
                 </kbd>
               )}
@@ -410,13 +410,13 @@ export function ConnectedAppsView() {
           {message && !openApp && (
             <StatusMessage
               message={message}
-              className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm"
+              className="flex items-center gap-2 rounded-lg border border-ink/10 bg-ink/[0.04] px-4 py-3 text-sm"
             />
           )}
 
           {pending && (
-            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-4">
-              <Loader2 className="size-5 animate-spin text-amber-200" />
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-warning/25 bg-warning/[0.06] p-4">
+              <Loader2 className="size-5 animate-spin text-warning" />
               <p className="min-w-0 flex-1 text-sm text-foreground/90">
                 Finish authorization in your browser, then return here. Vox will
                 recover your setup automatically.
@@ -442,27 +442,27 @@ export function ConnectedAppsView() {
               {Array.from({ length: 6 }, (_, i) => (
                 <div
                   key={i}
-                  className="flex h-full min-h-64 flex-col rounded-xl border border-white/10 bg-[#0e0f12] p-5"
+                  className="flex h-full min-h-64 flex-col rounded-xl border border-ink/10 bg-surface p-5"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-2/3 bg-white/10" />
-                      <Skeleton className="h-3 w-1/2 bg-white/[0.06]" />
+                      <Skeleton className="h-5 w-2/3 bg-ink/10" />
+                      <Skeleton className="h-3 w-1/2 bg-ink/[0.06]" />
                     </div>
-                    <Skeleton className="size-11 rounded-lg bg-white/10" />
+                    <Skeleton className="size-11 rounded-lg bg-ink/10" />
                   </div>
-                  <Skeleton className="mt-3 h-4 w-24 rounded-full bg-white/[0.06]" />
+                  <Skeleton className="mt-3 h-4 w-24 rounded-full bg-ink/[0.06]" />
                   <div className="mt-3 space-y-2">
-                    <Skeleton className="h-3.5 w-full bg-white/[0.06]" />
-                    <Skeleton className="h-3.5 w-4/5 bg-white/[0.06]" />
+                    <Skeleton className="h-3.5 w-full bg-ink/[0.06]" />
+                    <Skeleton className="h-3.5 w-4/5 bg-ink/[0.06]" />
                   </div>
-                  <Skeleton className="mt-4 h-10 w-full rounded-lg bg-white/10" />
+                  <Skeleton className="mt-4 h-10 w-full rounded-lg bg-ink/10" />
                 </div>
               ))}
             </div>
           ) : loadError ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center">
-              <CircleAlert className="size-6 text-[#ff8a8a]" />
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-ink/10 bg-ink/[0.03] px-6 py-12 text-center">
+              <CircleAlert className="size-6 text-coral-soft" />
               <p className="text-sm text-muted-foreground">
                 Connected apps are unavailable right now.
               </p>
@@ -471,7 +471,7 @@ export function ConnectedAppsView() {
               </Button>
             </div>
           ) : filtered.length === 0 ? (
-            <p className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center text-sm text-muted-foreground">
+            <p className="rounded-xl border border-ink/10 bg-ink/[0.03] px-6 py-12 text-center text-sm text-muted-foreground">
               {q
                 ? `No apps match "${query.trim()}".`
                 : statusFilter === "connected"

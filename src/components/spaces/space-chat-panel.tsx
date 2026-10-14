@@ -43,7 +43,7 @@ export function SpaceChatPanel({
   };
   return (
     <div className="space-composer-shell" data-busy={sending}>
-      <div className="space-composer rounded-[20px] bg-[#101013]/85 text-foreground shadow-[0_24px_70px_-14px_#000] backdrop-blur-2xl">
+      <div className="space-composer rounded-[20px] bg-panel/85 text-foreground shadow-float backdrop-blur-2xl">
         <div className="flex items-center gap-2 px-3 pt-2">
           <MessageSquare className="size-3 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
@@ -67,9 +67,9 @@ export function SpaceChatPanel({
           </Button>
         </div>
         {expanded && (
-          <div className="max-h-[40vh] overflow-auto border-b border-white/10 p-3">
+          <div className="max-h-[40vh] overflow-auto border-b border-ink/10 p-3">
             {selectedNode && (
-              <div className="mb-3 rounded-lg border border-white/10 p-3">
+              <div className="mb-3 rounded-lg border border-ink/10 p-3">
                 <h3 className="text-xs font-medium">Selected node</h3>
                 <Input
                   key={`${selectedNode.id}-${selectedNode.version}-title`}
@@ -99,7 +99,7 @@ export function SpaceChatPanel({
               </div>
             )}
             {selectedNode && history.length > 0 && (
-              <div className="mb-3 rounded-lg border border-white/10 p-3">
+              <div className="mb-3 rounded-lg border border-ink/10 p-3">
                 <h3 className="text-xs font-medium">Earlier versions</h3>
                 {history.map((old) => (
                   <div key={old.id} className="mt-2 flex items-start gap-2">
@@ -160,7 +160,7 @@ export function SpaceChatPanel({
                 ? "Ask this agent or share input…"
                 : "Share your vision or next instruction…"
             }
-            className="max-h-28 min-h-12 resize-none rounded-xl border-0 bg-white/[0.04] text-xs focus-visible:ring-1 focus-visible:ring-white/20"
+            className="max-h-28 min-h-12 resize-none rounded-xl border-0 bg-ink/[0.04] text-xs focus-visible:ring-1 focus-visible:ring-ink/20"
             onKeyDown={(e) => {
               if (
                 e.key === "Enter" &&

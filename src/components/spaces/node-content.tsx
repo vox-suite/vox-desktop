@@ -27,8 +27,8 @@ function labelIcon(label: string) {
 
 function labelTone(label: string) {
   const l = label.toLowerCase();
-  if (/^pros?$/.test(l)) return "text-emerald-400";
-  if (/^cons?$/.test(l)) return "text-rose-400";
+  if (/^pros?$/.test(l)) return "text-success";
+  if (/^cons?$/.test(l)) return "text-danger";
   return "text-muted-foreground";
 }
 
@@ -39,7 +39,7 @@ function Rich({ text }: { text: string }) {
         i % 2 ? (
           <span
             key={i}
-            className="whitespace-nowrap rounded-md bg-white/[0.07] px-1.5 py-px font-medium text-foreground"
+            className="whitespace-nowrap rounded-md bg-ink/[0.07] px-1.5 py-px font-medium text-foreground"
           >
             {part}
           </span>
@@ -91,10 +91,10 @@ export function NodeContent({ blocks }: { blocks: Block[] }) {
               <span className="text-[11px] font-medium uppercase tracking-wider text-foreground">
                 {block.label}
               </span>
-              <ol className="ml-1.5 flex flex-col border-l border-white/10">
+              <ol className="ml-1.5 flex flex-col border-l border-ink/10">
                 {block.steps.map((step, i) => (
                   <li key={i} className="relative pb-2.5 pl-4 last:pb-0">
-                    <span className="absolute -left-[0.5px] top-[9px] size-1.5 -translate-x-1/2 rounded-full bg-white/40" />
+                    <span className="absolute -left-[0.5px] top-[9px] size-1.5 -translate-x-1/2 rounded-full bg-ink/40" />
                     <Rich text={step} />
                   </li>
                 ))}

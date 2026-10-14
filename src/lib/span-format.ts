@@ -1,185 +1,50 @@
 import { addDays, startOfDay } from "@/lib/span-layout";
 import type { Span } from "@/features/spans/types";
 import { schemaColorStyle } from "@/lib/schema-tokens";
+import { tintStyle, token, type TintStyle, type VoxColor } from "@/lib/theme";
 
-export type CategoryStyle = {
-  bg: string;
-  border: string;
-  dot: string;
-  text: string;
-  subtext: string;
-};
+export type CategoryStyle = TintStyle;
+
+const tint = (hue: VoxColor): CategoryStyle => tintStyle(token(hue));
 
 const CATEGORY_STYLES: Record<string, CategoryStyle> = {
   // Meetings / Calls (Deep Indigo / Violet)
-  meeting: {
-    bg: "rgba(35, 25, 72, 0.88)",
-    border: "rgba(139, 92, 246, 0.35)",
-    dot: "#a78bfa",
-    text: "#ffffff",
-    subtext: "rgba(196, 181, 253, 0.75)",
-  },
-  call: {
-    bg: "rgba(35, 25, 72, 0.88)",
-    border: "rgba(139, 92, 246, 0.35)",
-    dot: "#a78bfa",
-    text: "#ffffff",
-    subtext: "rgba(196, 181, 253, 0.75)",
-  },
-  reminder: {
-    bg: "rgba(35, 25, 72, 0.88)",
-    border: "rgba(139, 92, 246, 0.35)",
-    dot: "#a78bfa",
-    text: "#ffffff",
-    subtext: "rgba(196, 181, 253, 0.75)",
-  },
+  meeting: tint("violet"),
+  call: tint("violet"),
+  reminder: tint("violet"),
 
   // Focus work & Commute & Travel (Deep Cobalt / Navy)
-  commute: {
-    bg: "rgba(20, 38, 70, 0.88)",
-    border: "rgba(59, 130, 246, 0.35)",
-    dot: "#60a5fa",
-    text: "#ffffff",
-    subtext: "rgba(147, 197, 253, 0.75)",
-  },
-  travel: {
-    bg: "rgba(20, 38, 70, 0.88)",
-    border: "rgba(59, 130, 246, 0.35)",
-    dot: "#60a5fa",
-    text: "#ffffff",
-    subtext: "rgba(147, 197, 253, 0.75)",
-  },
-  driving: {
-    bg: "rgba(20, 38, 70, 0.88)",
-    border: "rgba(59, 130, 246, 0.35)",
-    dot: "#60a5fa",
-    text: "#ffffff",
-    subtext: "rgba(147, 197, 253, 0.75)",
-  },
+  commute: tint("sky"),
+  travel: tint("sky"),
+  driving: tint("sky"),
 
   // Cycling & Outdoor (Forest / Emerald Green)
-  cycling: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
-  ride: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
-  running: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
-  walking: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
+  cycling: tint("mint"),
+  ride: tint("mint"),
+  running: tint("mint"),
+  walking: tint("mint"),
 
   // Social / Visits / Appointments (Deep Plum / Wine)
-  visit: {
-    bg: "rgba(60, 20, 38, 0.88)",
-    border: "rgba(244, 63, 94, 0.35)",
-    dot: "#fb7185",
-    text: "#ffffff",
-    subtext: "rgba(253, 164, 175, 0.75)",
-  },
-  appointment: {
-    bg: "rgba(60, 20, 38, 0.88)",
-    border: "rgba(244, 63, 94, 0.35)",
-    dot: "#fb7185",
-    text: "#ffffff",
-    subtext: "rgba(253, 164, 175, 0.75)",
-  },
+  visit: tint("pink"),
+  appointment: tint("pink"),
 
   // Expenses & payments (Emerald); deliveries stay Warm Amber / Ochre
-  expense: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
-  payment: {
-    bg: "rgba(13, 48, 30, 0.88)",
-    border: "rgba(16, 185, 129, 0.35)",
-    dot: "#34d399",
-    text: "#ffffff",
-    subtext: "rgba(110, 231, 183, 0.75)",
-  },
-  delivery: {
-    bg: "rgba(58, 32, 10, 0.88)",
-    border: "rgba(245, 158, 11, 0.35)",
-    dot: "#fbbf24",
-    text: "#ffffff",
-    subtext: "rgba(253, 230, 138, 0.75)",
-  },
+  expense: tint("mint"),
+  payment: tint("mint"),
+  delivery: tint("gold"),
 
   // Food & Meals (Warm Terracotta / Burnt Orange)
-  meal: {
-    bg: "rgba(56, 26, 14, 0.88)",
-    border: "rgba(249, 115, 22, 0.35)",
-    dot: "#fb923c",
-    text: "#ffffff",
-    subtext: "rgba(254, 215, 170, 0.75)",
-  },
-  food: {
-    bg: "rgba(56, 26, 14, 0.88)",
-    border: "rgba(249, 115, 22, 0.35)",
-    dot: "#fb923c",
-    text: "#ffffff",
-    subtext: "rgba(254, 215, 170, 0.75)",
-  },
-  dining: {
-    bg: "rgba(56, 26, 14, 0.88)",
-    border: "rgba(249, 115, 22, 0.35)",
-    dot: "#fb923c",
-    text: "#ffffff",
-    subtext: "rgba(254, 215, 170, 0.75)",
-  },
-  food_delivery: {
-    bg: "rgba(56, 26, 14, 0.88)",
-    border: "rgba(249, 115, 22, 0.35)",
-    dot: "#fb923c",
-    text: "#ffffff",
-    subtext: "rgba(254, 215, 170, 0.75)",
-  },
+  meal: tint("orange"),
+  food: tint("orange"),
+  dining: tint("orange"),
+  food_delivery: tint("orange"),
 
   // PS5 Gaming (Deep Violet / Neon Purple)
-  game: {
-    bg: "rgba(42, 18, 76, 0.88)",
-    border: "rgba(168, 85, 247, 0.38)",
-    dot: "#c084fc",
-    text: "#ffffff",
-    subtext: "rgba(233, 213, 255, 0.75)",
-  },
-  gaming: {
-    bg: "rgba(42, 18, 76, 0.88)",
-    border: "rgba(168, 85, 247, 0.38)",
-    dot: "#c084fc",
-    text: "#ffffff",
-    subtext: "rgba(233, 213, 255, 0.75)",
-  },
+  game: tint("violet"),
+  gaming: tint("violet"),
 
   // Tasks / Standups (Dark Zinc / Slate)
-  todo: {
-    bg: "rgba(24, 26, 32, 0.9)",
-    border: "rgba(148, 163, 184, 0.25)",
-    dot: "#94a3b8",
-    text: "#ffffff",
-    subtext: "rgba(203, 213, 225, 0.75)",
-  },
+  todo: tint("slate"),
 };
 
 /**
@@ -197,63 +62,21 @@ export function categoryStyle(
   }
   const known = CATEGORY_STYLES[category.toLowerCase()];
   if (known) return known;
-  return {
-    bg: "rgba(26, 30, 42, 0.88)",
-    border: "rgba(100, 116, 139, 0.3)",
-    dot: "#94a3b8",
-    text: "#ffffff",
-    subtext: "rgba(255, 255, 255, 0.65)",
-  };
+  return tint("slate");
 }
 
-const SPOTIFY_STYLE: CategoryStyle = {
-  bg: "rgba(10, 42, 24, 0.9)",
-  border: "rgba(29, 185, 84, 0.45)",
-  dot: "#1db954",
-  text: "#ffffff",
-  subtext: "rgba(134, 239, 172, 0.75)",
-};
+const SPOTIFY_STYLE: CategoryStyle = tint("mint");
 
-const PLAYSTATION_STYLE: CategoryStyle = {
-  bg: "rgba(8, 30, 66, 0.9)",
-  border: "rgba(0, 112, 209, 0.5)",
-  dot: "#0070d1",
-  text: "#ffffff",
-  subtext: "rgba(147, 197, 253, 0.8)",
-};
+const PLAYSTATION_STYLE: CategoryStyle = tint("sky");
 
-const MAPS_STYLE: CategoryStyle = {
-  bg: "rgba(12, 40, 30, 0.9)",
-  border: "rgba(52, 168, 83, 0.45)",
-  dot: "#34a853",
-  text: "#ffffff",
-  subtext: "rgba(167, 243, 208, 0.8)",
-};
+const MAPS_STYLE: CategoryStyle = tint("success");
 
-const YOUTUBE_STYLE: CategoryStyle = {
-  bg: "rgba(58, 10, 16, 0.9)",
-  border: "rgba(255, 0, 51, 0.45)",
-  dot: "#ff0033",
-  text: "#ffffff",
-  subtext: "rgba(252, 165, 165, 0.8)",
-};
+const YOUTUBE_STYLE: CategoryStyle = tint("danger");
 
-const MONEY_STYLE: CategoryStyle = {
-  bg: "rgba(13, 48, 30, 0.88)",
-  border: "rgba(16, 185, 129, 0.4)",
-  dot: "#34d399",
-  text: "#ffffff",
-  subtext: "rgba(110, 231, 183, 0.75)",
-};
+const MONEY_STYLE: CategoryStyle = tint("mint");
 
 // Subscriptions are tracked on their own, so they keep their warm amber.
-const SUBSCRIPTION_STYLE: CategoryStyle = {
-  bg: "rgba(58, 32, 10, 0.88)",
-  border: "rgba(245, 158, 11, 0.4)",
-  dot: "#fbbf24",
-  text: "#ffffff",
-  subtext: "rgba(253, 230, 138, 0.75)",
-};
+const SUBSCRIPTION_STYLE: CategoryStyle = tint("gold");
 
 const SUBSCRIPTION_RE = /subscri|recurring|renewal|membership/i;
 const FINANCE_RE =

@@ -65,15 +65,15 @@ export function SpaceCanvasHeader({
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
                 isCommitted
-                  ? "bg-white/[0.06] text-muted-foreground"
-                  : "bg-[#f5b83d]/15 text-[#f5d48a]"
+                  ? "bg-ink/[0.06] text-muted-foreground"
+                  : "bg-gold/15 text-gold"
               }`}
             >
               {graph.space.state}
             </span>
             {running && (
-              <span className="flex items-center gap-1.5 text-[10px] font-mono text-[#f5d48a]">
-                <span className="size-1.5 animate-pulse rounded-full bg-[#f5b83d]" />
+              <span className="flex items-center gap-1.5 text-[10px] font-mono text-gold">
+                <span className="size-1.5 animate-pulse rounded-full bg-gold" />
                 live
               </span>
             )}
@@ -90,7 +90,7 @@ export function SpaceCanvasHeader({
                 {Array.from({ length: segments }, (_, i) => (
                   <span
                     key={i}
-                    className={`h-1 w-3.5 rounded-full ${i < filled ? "bg-[#4ade80]" : "bg-white/10"}`}
+                    className={`h-1 w-3.5 rounded-full ${i < filled ? "bg-mint" : "bg-ink/10"}`}
                   />
                 ))}
               </div>
@@ -146,7 +146,7 @@ export function SpaceCanvasHeader({
           <MessageSquare className="size-4" />
         </Button>
         {isCommitted ? (
-          <div className="flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-1.5 rounded-xl bg-ink/[0.06] px-3 py-1.5 text-xs font-medium text-muted-foreground">
             <CheckCircle2 className="size-4" />
             <span className="hidden sm:inline">Committed to Timeline</span>
             <span className="sm:hidden">Committed</span>
@@ -156,7 +156,7 @@ export function SpaceCanvasHeader({
             onClick={onOpenCommitDialog}
             disabled={committing || !canCommit}
             size="sm"
-            className="gap-1.5 rounded-xl bg-[#f5b83d] text-xs font-medium text-black hover:bg-[#f8c75e] disabled:bg-white/10 disabled:text-muted-foreground"
+            className="gap-1.5 rounded-xl bg-gold text-xs font-medium text-on-accent hover:bg-gold/85 disabled:bg-ink/10 disabled:text-muted-foreground"
           >
             {committing ? (
               <RotateCw className="size-3.5 animate-spin" />

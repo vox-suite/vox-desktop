@@ -1,0 +1,105 @@
+/* Capture framing only; application components and their own styling are reused. */
+body {
+  width: 100vw;
+  height: 100vh;
+}
+body[data-screen="insights"] .pulse-chart-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body[data-screen="apps"] article {
+  min-height: 245px;
+}
+body[data-screen="home"] .vox-location-card__eyebrow {
+  font-size: 0;
+}
+body[data-screen="home"] .vox-location-card__eyebrow::after {
+  content: "PUBLIC LANDMARK";
+  font-size: 10px;
+}
+.capture-switches {
+  display: flex;
+  gap: 24px;
+  margin: 0 0 16px;
+  position: relative;
+}
+.capture-switches label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--vox-text-muted);
+  font-size: 12px;
+}
+.capture-switches input {
+  appearance: none;
+  width: 28px;
+  height: 16px;
+  border-radius: 20px;
+  background: var(--vox-border-strong);
+  position: relative;
+}
+.capture-switches input:checked {
+  background: var(--vox-mint);
+}
+.capture-switches input::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: white;
+}
+.capture-switches input:checked::after {
+  left: 15px;
+}
+.capture-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 24px;
+  border-bottom: 1px solid var(--vox-border);
+}
+.capture-range > span {
+  font: 10px monospace;
+  letter-spacing: 1.2px;
+  color: var(--vox-text-muted);
+  margin-right: 8px;
+}
+.capture-range button {
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  background: var(--vox-surface-accent);
+}
+.capture-range button[aria-pressed="true"] {
+  background: var(--vox-border-strong);
+  color: var(--vox-mint);
+}
+.capture-range small {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--vox-text-muted);
+}
+.capture-amount {
+  margin-left: auto;
+  margin-right: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vox-mint);
+  font-variant-numeric: tabular-nums;
+}
+.capture-evidence-heading {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vox-text);
+  margin-bottom: 12px;
+}
+.capture-comparison {
+  padding: 0 18px 12px;
+  color: var(--vox-mint);
+  font-size: 12px;
+}
+body[data-screen="home"] .vox-hud-marker__label {
+  max-width: 320px;
+}

@@ -8,7 +8,6 @@ const AUTH_DESTINATIONS = new Set([
   "https://accounts.google.com/o/oauth2/v2/auth",
   "https://accounts.spotify.com/authorize",
   "https://mcp.swiggy.com/auth/authorize",
-  "https://mcp-server.zomato.com/authorize",
 ]);
 
 export function isAllowedExternalUrl(url: string): boolean {

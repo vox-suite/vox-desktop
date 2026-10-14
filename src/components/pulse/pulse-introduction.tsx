@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { alpha, token } from "@/lib/theme";
 
 type V3 = [number, number, number];
 
@@ -12,9 +13,10 @@ const T = 20;
 const SLICES = 13;
 const N = 96;
 const FLOOR = -50;
-const LINE = "#c9d1da";
-const FAINT = "#3a4048";
-const GREEN = "#3ecf8e";
+const LINE = alpha("ink", 80);
+const FAINT = token("border-strong");
+const GREEN = token("mint");
+const LABEL = alpha("ink", 90);
 
 const P = ([x, y, z]: V3) =>
   [SX + (x - y) * 0.866 * S, SY + (x + y) * 0.5 * S - z * S] as const;
@@ -169,51 +171,48 @@ function PulseHeart() {
         rx="74"
         ry="40"
         fill="none"
-        stroke={FAINT}
+       
         strokeWidth="0.7"
-        strokeDasharray="2 5"
+        strokeDasharray="2 5" style={{ stroke: FAINT }}
       />
       <path
         d={path([
           [0, 0, FLOOR],
           [0, 0, at(Math.PI, 0, 1)[2]],
         ])}
-        stroke={FAINT}
+       
         strokeWidth="0.7"
-        strokeDasharray="3 4"
+        strokeDasharray="3 4" style={{ stroke: FAINT }}
       />
       <path
         d={ribs}
         fill="none"
-        stroke={LINE}
+       
         strokeWidth="0.45"
-        opacity="0.28"
+        opacity="0.28" style={{ stroke: LINE }}
       />
       {slices.map(({ y, d }, i) => {
         const g = reds[i];
         const depth = 0.2 + 0.7 * ((y + T) / (2 * T));
-        const r = Math.round(201 + 54 * g);
-        const gr = Math.round(209 - 119 * g);
-        const bl = Math.round(218 - 115 * g);
         return (
           <path
             key={y}
             d={d}
             fill="none"
-            stroke={`rgb(${r},${gr},${bl})`}
+           
             strokeWidth={0.7 + 0.5 * g}
             strokeLinejoin="round"
-            opacity={Math.min(1, depth + 0.6 * g)}
+            opacity={Math.min(1, depth + 0.6 * g)} style={{ stroke: `color-mix(in srgb, var(--vox-danger) ${Math.round(g * 100)}%, ${LINE})` }}
           />
         );
       })}
       <path
         d={path(ecg)}
         fill="none"
-        stroke={GREEN}
+       
         strokeWidth="1.6"
         strokeLinejoin="round"
-        strokeLinecap="round"
+        strokeLinecap="round" style={{ stroke: GREEN }}
       />
       {CALLOUTS.map((c, n) => {
         const [ax, ay] = P(at(c.t, 0, k));
@@ -231,27 +230,27 @@ function PulseHeart() {
             <path
               d={`M${fmt(ax)},${fmt(ay)} L${fmt(ex1)},${c.ly} H${ex}`}
               fill="none"
-              stroke="#e8eaed"
-              strokeWidth="0.9"
+             
+              strokeWidth="0.9" style={{ stroke: LABEL }}
             />
-            <circle cx={ax} cy={ay} r="2.2" fill="#e8eaed" />
+            <circle cx={ax} cy={ay} r="2.2" style={{ fill: LABEL }} />
             <g textAnchor={right ? "end" : "start"}>
               <text
                 x={ex}
                 y={c.ly - 22}
-                fill="#8a929c"
+               
                 fontSize="8.5"
-                letterSpacing="1.4"
+                letterSpacing="1.4" style={{ fill: token("text-muted") }}
               >
                 {c.id} · {c.name}
               </text>
               <text
                 x={ex}
                 y={c.ly - 8}
-                fill="#e8eaed"
+               
                 fontSize="11"
                 fontFamily="Inter, sans-serif"
-                fontWeight="500"
+                fontWeight="500" style={{ fill: LABEL }}
               >
                 {c.label}
               </text>
@@ -261,18 +260,17 @@ function PulseHeart() {
               y={c.ly + 6}
               width="72"
               height="14"
-              fill="#3ecf8e1a"
-              stroke="#3ecf8e55"
-              strokeWidth="0.6"
+             
+             
+              strokeWidth="0.6" style={{ fill: alpha("mint", 10), stroke: alpha("mint", 33) }}
             />
             <rect
               x={x0}
               y={c.ly + 6}
               width={(72 * pct) / 100}
-              height="14"
-              fill="#3ecf8e40"
+              height="14" style={{ fill: alpha("mint", 25) }}
             />
-            <text x={x0 + 6} y={c.ly + 16.5} fill={GREEN} fontSize="9">
+            <text x={x0 + 6} y={c.ly + 16.5} fontSize="9" style={{ fill: GREEN }}>
               {c.value}
             </text>
           </g>
@@ -291,7 +289,7 @@ export function PulseIntroduction({ onCreate }: { onCreate: () => void }) {
       />
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 items-center px-12 py-12">
         <div className="relative z-10 flex max-w-sm flex-col items-start text-left">
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
+          <span className="rounded-full border border-ink/10 bg-ink/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
             INSIGHTS
           </span>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight">

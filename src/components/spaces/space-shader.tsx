@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTheme, useVoxColors, type VoxColor } from "@/lib/theme";
 
 const VERTEX = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
 
@@ -10,6 +11,9 @@ uniform float uDpr;
 uniform vec2 uMouse;
 uniform vec3 uAccent;
 uniform float uEnergy;
+uniform vec3 uBase;
+uniform vec3 uDot;
+uniform float uVignette;
 
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float noise(vec2 p){
@@ -28,15 +32,15 @@ void main(){
   vec2 q=vec2(fbm(p*1.3+t),fbm(p*1.3+vec2(5.2,1.3)-t));
   float f=fbm(p*1.1+2.*q+t*.5);
 
-  vec3 col=vec3(.040,.040,.048);
-  col+=vec3(.5,.55,.65)*smoothstep(.35,.95,f)*.018;
+  vec3 col=uBase;
+  col=mix(col,uDot,smoothstep(.35,.95,f)*.018);
 
   vec2 cell=fract(gl_FragCoord.xy/(24.*uDpr))-.5;
   float dotMask=smoothstep(.085,.035,length(cell));
-  col+=vec3(.62,.68,.74)*dotMask*(.05+.35*f*f);
+  col=mix(col,uDot,dotMask*(.05+.35*f*f));
 
   float vignette=smoothstep(1.35,.28,length((uv-.5)*vec2(1.15,1.)));
-  col*=mix(.55,1.,vignette);
+  col*=mix(uVignette,1.,vignette);
   col+=(hash(gl_FragCoord.xy+fract(uTime)*91.7)-.5)*.030;
   gl_FragColor=vec4(col,1.);
 }`;
@@ -57,14 +61,23 @@ export function SpaceShader({
   accent,
   energy,
 }: {
-  accent: string;
+  accent: VoxColor;
   energy: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const target = useRef({ accent: hexToRgb(accent), energy });
+  const colors = useVoxColors();
+  const vignette = useTheme() === "light" ? 0.94 : 0.55;
+  const resolve = () => ({
+    accent: hexToRgb(colors[accent]),
+    base: hexToRgb(colors.background),
+    dot: hexToRgb(colors["text-muted"]),
+    vignette,
+    energy,
+  });
+  const target = useRef(resolve());
   useEffect(() => {
-    target.current = { accent: hexToRgb(accent), energy };
-  }, [accent, energy]);
+    target.current = resolve();
+  });
 
   useEffect(() => {
     const host = hostRef.current;
@@ -110,6 +123,9 @@ export function SpaceShader({
     const uMouse = u("uMouse");
     const uAccent = u("uAccent");
     const uEnergy = u("uEnergy");
+    const uBase = u("uBase");
+    const uDot = u("uDot");
+    const uVignette = u("uVignette");
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -150,6 +166,9 @@ export function SpaceShader({
         current.accent[2],
       );
       gl.uniform1f(uEnergy, current.energy);
+      gl.uniform3f(uBase, ...target.current.base);
+      gl.uniform3f(uDot, ...target.current.dot);
+      gl.uniform1f(uVignette, target.current.vignette);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
     const loop = (now: number) => {
@@ -183,7 +202,7 @@ export function SpaceShader({
     <div
       ref={hostRef}
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:24px_24px]"
+      className="pointer-events-none absolute inset-0 bg-[radial-gradient(color-mix(in_srgb,var(--vox-ink)_7%,transparent)_1px,transparent_1px)] [background-size:24px_24px]"
     />
   );
 }
