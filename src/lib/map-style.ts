@@ -74,8 +74,21 @@ export function ensureMissionControlLook(map: maplibregl.Map) {
   const base = rgba(c.map);
   const ink = rgba(c.text);
   const original = originalPaint(map);
-  if (map.getLayer(BUILDINGS_LAYER))
+  if (map.getLayer(BUILDINGS_LAYER)) {
     map.setPaintProperty(BUILDINGS_LAYER, "fill-extrusion-color", c["map-building"]);
+    map.setPaintProperty(BUILDINGS_LAYER, "fill-extrusion-vertical-gradient", false);
+  }
+
+  try {
+    map.setLight({
+      anchor: "viewport",
+      color: "#eff2ee",
+      intensity: light ? 0.12 : 0.5,
+      position: [1.15, 210, 30],
+    });
+  } catch {
+    /* ignore if lighting not supported by current projection/style */
+  }
 
   for (const layer of style.layers) {
     const id = layer.id.toLowerCase();
@@ -93,7 +106,8 @@ export function ensureMissionControlLook(map: maplibregl.Map) {
       if (
         (id.includes("land") ||
           id.includes("landcover") ||
-          id.includes("landuse")) &&
+          id.includes("landuse") ||
+          id.includes("park")) &&
         layer.type === "fill"
       ) {
         map.setPaintProperty(layer.id, "fill-color", c["map-land"]);
@@ -101,12 +115,13 @@ export function ensureMissionControlLook(map: maplibregl.Map) {
       const road = light ? ROAD_LIGHT.test(id) && !id.includes("casing") : ROAD.test(id);
       if (road && layer.type === "line") {
         map.setPaintProperty(layer.id, "line-color", c["map-road"]);
-        map.setPaintProperty(layer.id, "line-opacity", 0.75);
+        map.setPaintProperty(layer.id, "line-opacity", light ? 0.95 : 0.75);
       }
       // Hide flat 2D building fills AND any base-style extrusions — they
       // z-fight with our custom vox-3d-buildings layer during camera movement.
       if (
         id.includes("building") &&
+        layer.id !== BUILDINGS_LAYER &&
         (layer.type === "fill" ||
           layer.type === "line" ||
           layer.type === "fill-extrusion")

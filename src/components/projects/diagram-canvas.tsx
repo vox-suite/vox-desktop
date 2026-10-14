@@ -145,23 +145,12 @@ export function DiagramCanvas({
       const edge = flow.edges.find(
         (e) => e.from === from && e.to === to && (!label || e.label === label),
       );
-      setSelected(
-        edge
-          ? {
-              title: edge.label || `${from} → ${to}`,
-              detail:
-                edge.evidence === "observed"
-                  ? "Traced in the referenced implementation."
-                  : "Inferred connection. The complete path is not established by code evidence.",
-              citations: edge.citations,
-            }
-          : {
-              title: `${from} → ${to}`,
-              detail:
-                "This visual ordering has no independently cited relationship.",
-              citations: [],
-            },
-      );
+      if (edge)
+        setSelected({
+          title: edge.label || `${from} → ${to}`,
+          detail: "",
+          citations: edge.citations,
+        });
     },
     [flow],
   );
@@ -208,7 +197,7 @@ export function DiagramCanvas({
           <span>{flow.nodes.length} elements</span>
           {!!flow.gaps.length && (
             <details>
-              <summary>{flow.gaps.length} open questions</summary>
+              <summary>{flow.gaps.length} not in sources</summary>
               <ul>
                 {flow.gaps.map((gap, i) => (
                   <li key={i}>{gap}</li>
@@ -311,7 +300,7 @@ export function DiagramCanvas({
               </Button>
             </div>
             <h3>{selected.title}</h3>
-            <p>{selected.detail}</p>
+            {selected.detail && <p>{selected.detail}</p>}
             <div className="project-inspector-sources">
               <h4>Source references</h4>
               {selected.citations.length ? (
@@ -334,7 +323,7 @@ export function DiagramCanvas({
         )}
       </div>
       <div className="project-diagram-receipt">
-        Validated schema and composition · Source references attached
+        Validated schema and composition
         <span>Choose a component or connection to inspect</span>
       </div>
     </div>

@@ -46,7 +46,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { InvestigationComposer } from "./investigation-composer";
-import { ProjectFlowCanvas } from "./project-flow";
+import { DiagramCanvas } from "./diagram-canvas";
 import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
@@ -492,8 +492,8 @@ export function ProjectDetail({
           >
             {tab === "context" &&
               (p.data.messages.filter((m) => m.role === "assistant").at(-1)
-                ?.flow ? (
-                <ProjectFlowCanvas
+                ?.flow?.diagram ? (
+                <DiagramCanvas
                   flow={
                     p.data.messages
                       .filter((m) => m.role === "assistant")

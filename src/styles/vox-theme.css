@@ -89,10 +89,10 @@
   --vox-pink: #b8327a;
   --vox-orange: #b45309;
   --vox-slate: #566273;
-  --vox-map: #ecebe7;
-  --vox-map-water: #d3dde2;
-  --vox-map-land: #e6e5e0;
-  --vox-map-road: #ffffff;
-  --vox-map-building: #d8d7d2;
+  --vox-map: #c4cac6;
+  --vox-map-water: #6b8fa8;
+  --vox-map-land: #b8beba;
+  --vox-map-road: #8c938f;
+  --vox-map-building: #ffffff;
   color-scheme: light;
 }
