@@ -47,6 +47,7 @@
   --color-surface-raised: var(--vox-surface-raised);
   --color-surface-accent: var(--vox-surface-accent);
   --color-panel: var(--vox-panel);
+  --color-modal: var(--vox-modal);
   --color-line: var(--vox-border);
   --color-line-strong: var(--vox-border-strong);
   --color-dim: var(--vox-text-dim);
@@ -105,7 +106,7 @@
   --border: var(--vox-border);
   --input: var(--vox-border-strong);
   --ring: var(--vox-text-dim);
-  --sidebar: var(--vox-panel);
+  --sidebar: var(--vox-sidebar);
   --sidebar-foreground: var(--vox-text);
   --sidebar-primary: var(--vox-sky);
   --sidebar-primary-foreground: var(--vox-on-accent);

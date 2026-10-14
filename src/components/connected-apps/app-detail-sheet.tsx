@@ -148,7 +148,7 @@ export function AppDetailSheet({
         side="right"
         overlay={false}
         onInteractOutside={outsideGuard}
-        className="vox-scroll w-full overflow-y-auto border-ink/10 bg-surface sm:max-w-lg"
+        className="vox-scroll w-full overflow-y-auto border-ink/10 bg-modal sm:max-w-lg"
       >
         {openApp && openBrand && (
           <div className="relative isolate flex min-h-full shrink-0 flex-col gap-7 px-8 pb-12 pt-9">
@@ -289,7 +289,7 @@ export function AppDetailSheet({
                 {openAccount && (
                   <div className="space-y-3">
                     <dl className="grid gap-px overflow-hidden rounded-lg border border-ink/10 bg-ink/10 text-sm">
-                      <div className="bg-surface p-3.5">
+                      <div className="bg-modal p-3.5">
                         <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           Account
                         </dt>
@@ -297,7 +297,7 @@ export function AppDetailSheet({
                           {openAccount.account_display_id || "Connected account"}
                         </dd>
                       </div>
-                      <div className="bg-surface p-3.5">
+                      <div className="bg-modal p-3.5">
                         <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                           Last synced
                         </dt>

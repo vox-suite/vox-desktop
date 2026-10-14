@@ -26,7 +26,7 @@ export function SpanPanel({
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
         data-span-panel="true"
-        className="z-30 isolate w-full gap-0 overflow-visible border-line bg-surface sm:max-w-lg [&_[data-slot=sheet-close]]:top-6"
+        className="z-30 isolate w-full gap-0 overflow-visible border-line bg-modal sm:max-w-lg [&_[data-slot=sheet-close]]:top-6"
       >
         <PanelEdgeBlur selector="[data-span-panel]" edge="left" />
         <div className="vox-scroll flex min-h-0 flex-1 flex-col overflow-y-auto">

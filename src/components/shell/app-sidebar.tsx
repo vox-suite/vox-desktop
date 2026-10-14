@@ -143,7 +143,7 @@ export function AppSidebar({
       onMouseLeave={() => {
         dragOrigin.current = null;
       }}
-      className="z-30 p-0 group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:relative [&_[data-sidebar=sidebar]]:isolate [&_[data-sidebar=sidebar]]:rounded-none [&_[data-sidebar=sidebar]]:bg-panel/90 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-line [&_[data-sidebar=sidebar]]:backdrop-blur-[30px]"
+      className="z-30 p-0 group-data-[side=left]:border-r-0 [&_[data-sidebar=sidebar]]:relative [&_[data-sidebar=sidebar]]:isolate [&_[data-sidebar=sidebar]]:rounded-none [&_[data-sidebar=sidebar]]:bg-sidebar/90 [&_[data-sidebar=sidebar]]:border-r [&_[data-sidebar=sidebar]]:border-line [&_[data-sidebar=sidebar]]:backdrop-blur-[30px]"
     >
       <SidebarHeader className="gap-2 px-4 pb-3 pt-3 group-data-[collapsible=icon]:px-2">
         <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
