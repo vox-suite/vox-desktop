@@ -1,0 +1,13 @@
+{
+  "capturedWith": "Chromium frontend served by local Tauri/Vite dev server",
+  "files": [
+    {
+      "file": "timeline-day.webp",
+      "screen": "day",
+      "width": 3840,
+      "height": 2160,
+      "timezone": "America/Los_Angeles",
+      "dummyData": true
+    }
+  ]
+}
