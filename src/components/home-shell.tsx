@@ -2,6 +2,11 @@ import { DesktopActionOverlay } from "@/components/shell/desktop-action-overlay"
 import { TerminalPanel } from "@/components/shell/terminal-panel";
 import { ConnectedAppsView } from "@/components/connected-apps-view";
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import {
+  PageContainer,
+  PageHeader,
+  PageBody,
+} from "@/components/ui/page-container";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AgentPane } from "@/components/shell/agent-pane";
 import { ActivityLogs } from "@/components/activity-logs";
@@ -89,13 +94,13 @@ export function HomeShell({
     );
   } else if (activeTab === "pulse") {
     body = (
-      <Suspense fallback={null}>
+      <Suspense fallback={<PageLoadingFrame title="Insights" />}>
         <PulseView />
       </Suspense>
     );
   } else if (activeTab === "projects") {
     body = (
-      <Suspense fallback={null}>
+      <Suspense fallback={<PageLoadingFrame title="Projects" />}>
         <ProjectsView />
       </Suspense>
     );
@@ -105,7 +110,7 @@ export function HomeShell({
     body = <ConnectedAppsView />;
   } else {
     body = (
-      <Suspense fallback={null}>
+      <Suspense fallback={<PageLoadingFrame title="Plans" />}>
         <SpacesView />
       </Suspense>
     );
@@ -164,5 +169,32 @@ export function HomeShell({
         </SidebarInset>
       </SidebarProvider>
     </div>
+  );
+}
+
+function PageLoadingFrame({ title }: { title: string }) {
+  return (
+    <PageContainer aria-busy="true" aria-label={`Loading ${title}`}>
+      <PageHeader className="h-16 px-6 py-0">
+        <div className="flex items-center gap-3.5">
+          <span
+            aria-hidden="true"
+            className="size-10 animate-pulse rounded-lg bg-muted"
+          />
+          <div className="leading-tight">
+            <h1 className="text-base font-semibold tracking-tight">{title}</h1>
+            <span
+              aria-hidden="true"
+              className="mt-0.5 block h-4 w-20 animate-pulse rounded-sm bg-muted"
+            />
+          </div>
+        </div>
+      </PageHeader>
+      <PageBody className="flex items-center justify-center">
+        <p role="status" className="text-sm text-muted-foreground">
+          Loading {title.toLowerCase()}…
+        </p>
+      </PageBody>
+    </PageContainer>
   );
 }

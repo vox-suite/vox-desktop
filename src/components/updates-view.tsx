@@ -52,11 +52,11 @@ export function UpdatesView() {
   }
   const kindLabel = kind ? kinds.find(([value]) => value === kind)?.[1] : "All updates";
   return <PageContainer><PageHeader><h1 className="text-sm font-medium">Updates</h1><Button variant="ghost" size="icon" aria-label="Refresh updates" disabled={loading} onClick={() => void load()}><RotateCw size={16} /></Button></PageHeader>
-    <div className="flex shrink-0 flex-wrap gap-2 border-b border-border px-6 py-3" role="group" aria-label="Update categories">{kinds.map(([value, label]) => <Button key={value} size="sm" variant={kind === value ? "secondary" : "ghost"} onClick={() => setKind(value)}>{label}</Button>)}</div>
+    <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-border px-6 py-3" role="group" aria-label="Update categories">{kinds.map(([value, label]) => <Button key={value} size="sm" variant={kind === value ? "secondary" : "ghost"} onClick={() => setKind(value)}>{label}</Button>)}</div>
     <PageBody className="p-6"><div className="mx-auto flex min-h-full max-w-4xl flex-col space-y-3">
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {loading && items.length > 0 && <p role="status" className="text-sm text-muted-foreground">Loading updates…</p>}
-      {loading && !items.length && <div className="flex flex-1 items-center justify-center py-6"><StateCard loading accent="orange" figure={<UpdatesFigure loading />} kicker={kindLabel} title="Checking for updates…" text="Sorting new briefings, email notices and alerts by kind." /></div>}
+      {loading && items.length > 0 && <p role="status" className="absolute right-6 top-2 z-10 rounded bg-background px-2 text-xs text-muted-foreground">Loading updates…</p>}
+      {loading && !items.length && <div className="flex flex-1 items-center justify-center py-6"><StateCard loading reserveAction accent="orange" figure={<UpdatesFigure loading />} kicker={kindLabel} title="Checking for updates…" loadingText="Sorting new briefings, email notices and alerts by kind." text="Briefings, email notices and anything that needs you will land here as Vox works." /></div>}
       {!loading && !error && !items.length && <div className="flex flex-1 items-center justify-center py-6"><StateCard accent="orange" figure={<UpdatesFigure />} kicker={kindLabel} title="You're up to date." text="Briefings, email notices and anything that needs you will land here as Vox works." action={<Button variant="secondary" size="sm" className="gap-1.5" onClick={() => void load()}><RotateCw size={14} />Check again</Button>} /></div>}
       {items.map((item) => <article key={item.id} className="rounded-lg border border-border p-4">
         <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium">{item.title}</h2><span className="text-xs text-muted-foreground">{item.category}</span></div>

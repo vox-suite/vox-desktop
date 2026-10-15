@@ -31,14 +31,11 @@ export function PulseShell({
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-96"
           style={{
-            background:
-              `radial-gradient(ellipse 70% 100% at 100% 0%, ${alpha("mint", 33)} 0%, ${alpha("mint", 13)} 40%, ${alpha("mint", 4)} 65%, transparent 85%)`,
+            background: `radial-gradient(ellipse 70% 100% at 100% 0%, ${alpha("mint", 33)} 0%, ${alpha("mint", 13)} 40%, ${alpha("mint", 4)} 65%, transparent 85%)`,
           }}
         />
       )}
-      <PageHeader className="relative z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-3">
-        {header}
-      </PageHeader>
+      <PageHeader className="relative z-10 h-16 px-6 py-0">{header}</PageHeader>
       <PageBody scroll={false} className="flex flex-col">
         {scroll ? (
           <ScrollArea className="pulse-scroll relative min-h-0 flex-1">

@@ -108,7 +108,7 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     onModeChange={(next) => { setRange(null); setMode(next); setAnchor((date) => next === "month" ? startOfMonth(date) : next === "week" ? addDays(date, -date.getDay()) : date); }}
     onPrev={() => { if (range) setRange(null); setAnchor((date) => mode === "month" ? addMonths(date, -1) : addDays(date, mode === "week" ? -7 : -1)); }}
     onNext={() => { if (range) setRange(null); setAnchor((date) => mode === "month" ? addMonths(date, 1) : addDays(date, mode === "week" ? 7 : 1)); }} />
-    <div className="flex shrink-0 flex-wrap gap-2 border-b border-border px-6 py-2" role="group" aria-label="Timeline groups">
+    <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-border px-6 py-2" role="group" aria-label="Timeline groups">
       <Button size="sm" variant={!group ? "secondary" : "ghost"} onClick={() => setGroup("")}>All</Button>
       {groups.map((g) => <Button key={g.id} size="sm" variant={group === g.value ? "secondary" : "ghost"} onClick={() => setGroup(g.value)}>{g.label}</Button>)}
     </div>

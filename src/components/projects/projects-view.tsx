@@ -124,10 +124,10 @@ export function ProjectsView() {
               <span
                 role="status"
                 aria-label="Loading"
-                className="mt-1.5 block h-2.5 w-20 animate-pulse rounded-sm bg-muted"
+                className="mt-0.5 block h-4 w-20 animate-pulse rounded-sm bg-muted"
               />
             ) : (
-              <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+              <p className="mt-0.5 font-mono text-[10.5px] leading-4 text-muted-foreground">
                 {`${count} ${count === 1 ? "project" : "projects"}`}
               </p>
             )}

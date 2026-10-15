@@ -328,24 +328,15 @@ export function PlanningTimeline({
       </div>
       {items.length === 0 && !unavailable && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-center justify-center px-6">
-          {loading ? (
-            <StateCard
-              loading
-              accent="sky"
-              figure={<TimelineFigure loading />}
-              kicker="Timeline"
-              title="Loading your timeline…"
-              text="Pulling entries from your connected sources."
-            />
-          ) : (
-            <StateCard
-              accent="sky"
-              figure={<TimelineFigure />}
-              kicker="Timeline"
-              title="No recorded entries"
-              text="Nothing was recorded in this date range. Pick another date or connect a source to add history."
-            />
-          )}
+          <StateCard
+            loading={loading}
+            accent="sky"
+            figure={<TimelineFigure loading={loading} />}
+            kicker="Timeline"
+            title={loading ? "Loading your timeline…" : "No recorded entries"}
+            loadingText="Pulling entries from your connected sources."
+            text="Nothing was recorded in this date range. Pick another date or connect a source to add history."
+          />
         </div>
       )}
     </div>

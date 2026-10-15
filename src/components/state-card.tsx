@@ -7,18 +7,22 @@ export function StateCard({
   kicker,
   title,
   text,
+  loadingText,
   action,
   loading = false,
   tall = false,
+  reserveAction = false,
 }: {
   accent: VoxColor;
   figure: ReactNode;
   kicker?: string;
   title: string;
   text: string;
+  loadingText?: string;
   action?: ReactNode;
   loading?: boolean;
   tall?: boolean;
+  reserveAction?: boolean;
 }) {
   return (
     <div
@@ -33,10 +37,21 @@ export function StateCard({
       <div className="empty-card-body">
         {kicker && <p className="start-kicker">{kicker}</p>}
         <h2 className="mt-2 text-lg font-medium tracking-tight">{title}</h2>
-        <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
-          {text}
+        {/* Keep the final copy in layout so wrapping cannot move the artwork. */}
+        <p className="mx-auto mt-1.5 grid max-w-xs text-sm leading-6 text-muted-foreground">
+          <span
+            className={`col-start-1 row-start-1${loading && loadingText ? " invisible" : ""}`}
+            aria-hidden={(loading && !!loadingText) || undefined}
+          >
+            {text}
+          </span>
+          {loading && loadingText && (
+            <span className="col-start-1 row-start-1">{loadingText}</span>
+          )}
         </p>
-        {action && <div className="mt-4">{action}</div>}
+        {(action || reserveAction) && (
+          <div className="mt-4 min-h-7">{action}</div>
+        )}
       </div>
     </div>
   );
