@@ -53,7 +53,15 @@ export function UpdatesView() {
     <div className="flex shrink-0 flex-wrap gap-2 border-b border-border px-6 py-3" role="group" aria-label="Update categories">{kinds.map(([value, label]) => <Button key={value} size="sm" variant={kind === value ? "secondary" : "ghost"} onClick={() => setKind(value)}>{label}</Button>)}</div>
     <PageBody className="p-6"><div className="mx-auto flex min-h-full max-w-4xl flex-col space-y-3">
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {loading && <p role="status" className="text-sm text-muted-foreground">Loading updates…</p>}
+      {loading && items.length > 0 && <p role="status" className="text-sm text-muted-foreground">Loading updates…</p>}
+      {loading && !items.length && <div role="status" className="flex flex-1 items-center justify-center py-6"><div className="start-tile empty-card [--start-accent:var(--vox-orange)]">
+        <div className="start-tile-art"><UpdatesFigure loading /></div>
+        <div className="empty-card-body">
+          <p className="start-kicker">{kind ? kinds.find(([value]) => value === kind)?.[1] : "All updates"}</p>
+          <h2 className="mt-2 text-lg font-medium tracking-tight">Checking for updates…</h2>
+          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">Sorting new briefings, email notices and alerts by kind.</p>
+        </div>
+      </div></div>}
       {!loading && !error && !items.length && <div className="flex flex-1 items-center justify-center py-6"><div className="start-tile empty-card [--start-accent:var(--vox-orange)]">
         <div className="start-tile-art"><UpdatesFigure /></div>
         <div className="empty-card-body">

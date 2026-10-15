@@ -520,8 +520,9 @@ const BINS: {
 const ease = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
 
 // A sorting rack: each kind of update has its own bin, and new ones drop in
-// from above, light their bin, and settle.
-export function UpdatesFigure() {
+// from above, light their bin, and settle. While loading, the rack sorts
+// faster and the signal reads as a check in progress.
+export function UpdatesFigure({ loading = false }: { loading?: boolean }) {
   const t = useClock();
   const P = at(178, 310);
   const trace = makeTrace(P);
@@ -529,7 +530,7 @@ export function UpdatesFigure() {
   const D = 30;
   const H = 24;
   const xs = BINS.map((_, i) => -104 + i * 52);
-  const step = 1.8;
+  const step = loading ? 0.9 : 1.8;
   const k = Math.floor(t / step) % BINS.length;
   const u = (t % step) / step;
   const cardZ = 96 - ease((u - 0.15) / 0.5) * 84;
@@ -652,9 +653,11 @@ export function UpdatesFigure() {
         from={[bx - 12, by - 12]}
         ex={28}
         ey={64}
-        id="SIGNAL"
-        title="New updates ring in"
-        note="Vox files each one by kind"
+        id={loading ? "CHECKING" : "SIGNAL"}
+        title={loading ? "Looking for new updates" : "New updates ring in"}
+        note={
+          loading ? "Sorting each one by kind" : "Vox files each one by kind"
+        }
         dot={orange}
       />
 
