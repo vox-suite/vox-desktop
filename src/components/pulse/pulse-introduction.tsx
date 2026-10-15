@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Activity, ArrowRight, Plug } from "lucide-react";
+import { desktopStore } from "@/features/desktop-control/store";
 import { alpha, token } from "@/lib/theme";
 
 type V3 = [number, number, number];
@@ -171,25 +171,28 @@ function PulseHeart() {
         rx="74"
         ry="40"
         fill="none"
-       
+
         strokeWidth="0.7"
-        strokeDasharray="2 5" style={{ stroke: FAINT }}
+        strokeDasharray="2 5"
+        style={{ stroke: FAINT }}
       />
       <path
         d={path([
           [0, 0, FLOOR],
           [0, 0, at(Math.PI, 0, 1)[2]],
         ])}
-       
+
         strokeWidth="0.7"
-        strokeDasharray="3 4" style={{ stroke: FAINT }}
+        strokeDasharray="3 4"
+        style={{ stroke: FAINT }}
       />
       <path
         d={ribs}
         fill="none"
-       
+
         strokeWidth="0.45"
-        opacity="0.28" style={{ stroke: LINE }}
+        opacity="0.28"
+        style={{ stroke: LINE }}
       />
       {slices.map(({ y, d }, i) => {
         const g = reds[i];
@@ -199,20 +202,24 @@ function PulseHeart() {
             key={y}
             d={d}
             fill="none"
-           
+
             strokeWidth={0.7 + 0.5 * g}
             strokeLinejoin="round"
-            opacity={Math.min(1, depth + 0.6 * g)} style={{ stroke: `color-mix(in srgb, var(--vox-danger) ${Math.round(g * 100)}%, ${LINE})` }}
+            opacity={Math.min(1, depth + 0.6 * g)}
+            style={{
+              stroke: `color-mix(in srgb, var(--vox-danger) ${Math.round(g * 100)}%, ${LINE})`,
+            }}
           />
         );
       })}
       <path
         d={path(ecg)}
         fill="none"
-       
+
         strokeWidth="1.6"
         strokeLinejoin="round"
-        strokeLinecap="round" style={{ stroke: GREEN }}
+        strokeLinecap="round"
+        style={{ stroke: GREEN }}
       />
       {CALLOUTS.map((c, n) => {
         const [ax, ay] = P(at(c.t, 0, k));
@@ -230,27 +237,30 @@ function PulseHeart() {
             <path
               d={`M${fmt(ax)},${fmt(ay)} L${fmt(ex1)},${c.ly} H${ex}`}
               fill="none"
-             
-              strokeWidth="0.9" style={{ stroke: LABEL }}
+
+              strokeWidth="0.9"
+              style={{ stroke: LABEL }}
             />
             <circle cx={ax} cy={ay} r="2.2" style={{ fill: LABEL }} />
             <g textAnchor={right ? "end" : "start"}>
               <text
                 x={ex}
                 y={c.ly - 22}
-               
+
                 fontSize="8.5"
-                letterSpacing="1.4" style={{ fill: token("text-muted") }}
+                letterSpacing="1.4"
+                style={{ fill: token("text-muted") }}
               >
                 {c.id} · {c.name}
               </text>
               <text
                 x={ex}
                 y={c.ly - 8}
-               
+
                 fontSize="11"
                 fontFamily="Inter, sans-serif"
-                fontWeight="500" style={{ fill: LABEL }}
+                fontWeight="500"
+                style={{ fill: LABEL }}
               >
                 {c.label}
               </text>
@@ -260,17 +270,23 @@ function PulseHeart() {
               y={c.ly + 6}
               width="72"
               height="14"
-             
-             
-              strokeWidth="0.6" style={{ fill: alpha("mint", 10), stroke: alpha("mint", 33) }}
+
+              strokeWidth="0.6"
+              style={{ fill: alpha("mint", 10), stroke: alpha("mint", 33) }}
             />
             <rect
               x={x0}
               y={c.ly + 6}
               width={(72 * pct) / 100}
-              height="14" style={{ fill: alpha("mint", 25) }}
+              height="14"
+              style={{ fill: alpha("mint", 25) }}
             />
-            <text x={x0 + 6} y={c.ly + 16.5} fontSize="9" style={{ fill: GREEN }}>
+            <text
+              x={x0 + 6}
+              y={c.ly + 16.5}
+              fontSize="9"
+              style={{ fill: GREEN }}
+            >
               {c.value}
             </text>
           </g>
@@ -280,38 +296,105 @@ function PulseHeart() {
   );
 }
 
+const BARS = [38, 62, 46, 80, 54, 92, 70];
+
 export function PulseIntroduction({ onCreate }: { onCreate: () => void }) {
   return (
-    <section className="relative isolate -m-4 flex flex-1 overflow-hidden sm:-m-6">
-      <div
-        aria-hidden="true"
-        className="pulse-dots pointer-events-none absolute inset-0 -z-10"
-      />
-      <div className="relative mx-auto flex w-full max-w-6xl flex-1 items-center px-12 py-12">
-        <div className="relative z-10 flex max-w-sm flex-col items-start text-left">
-          <span className="rounded-full border border-ink/10 bg-ink/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-muted-foreground">
-            INSIGHTS
-          </span>
-          <h2 className="mt-5 text-4xl font-semibold tracking-tight">
+    <div className="start [--start-accent:var(--vox-mint)]">
+      <header className="start-head">
+        <div>
+          <p className="start-kicker">Insights</p>
+          <h2 className="mt-3 text-[28px] font-medium leading-tight tracking-tight">
             Your life, as a living chart.
           </h2>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Insights turn your connected apps into small, live charts — what you
-            listen to, what you play, where your money goes.
-          </p>
-          <Button
-            onClick={onCreate}
-            size="lg"
-            className="mt-7 gap-2 rounded-full px-6"
-          >
-            <Plus className="size-4" />
-            Add your first chart
-          </Button>
         </div>
-        <div className="pointer-events-none absolute -right-4 top-1/2 z-0 w-[min(620px,56%)] -translate-y-1/2 [mask-image:linear-gradient(to_right,transparent,black_14%)]">
-          <PulseHeart />
+        <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+          Insights turn your connected apps into small, live charts — what you
+          listen to, what you play, where your money goes.
+        </p>
+      </header>
+      <div className="start-bento">
+        <button className="start-tile start-tile-feature" onClick={onCreate}>
+          <div className="start-tile-art">
+            <PulseHeart />
+          </div>
+          <div className="start-tile-body">
+            <span className="start-tile-icon">
+              <Activity className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-medium">Ask for a chart</h3>
+              <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                Describe what you want to track. Vox builds a live chart from
+                your connected apps and keeps it up to date.
+              </p>
+            </div>
+            <span className="start-tile-cta start-tile-cta-primary">
+              Add your first chart
+              <ArrowRight className="size-3.5" />
+            </span>
+          </div>
+        </button>
+        <button
+          className="start-tile"
+          onClick={() => desktopStore.navigate("connections")}
+        >
+          <div className="start-panel" aria-hidden="true">
+            <span className="start-panel-title">Sources</span>
+            {["Music", "Games", "Spending", "Health"].map((name, i) => (
+              <span key={name} className="flex items-center gap-2 text-xs">
+                <span
+                  className="size-1.5 rounded-full"
+                  style={{
+                    background:
+                      i < 2 ? "var(--vox-mint)" : "var(--vox-border-strong)",
+                  }}
+                />
+                <span className={i < 2 ? "" : "text-muted-foreground"}>
+                  {name}
+                </span>
+              </span>
+            ))}
+          </div>
+          <span className="start-tile-icon">
+            <Plug className="size-4" />
+          </span>
+          <h3 className="mt-4 text-base font-medium">Connect your apps</h3>
+          <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+            Charts draw from the apps you connect. The more you link, the more
+            Vox can show you.
+          </p>
+          <span className="start-tile-cta mt-5">
+            Connected apps
+            <ArrowRight className="size-3.5" />
+          </span>
+        </button>
+        <div className="start-tile start-tile-preview">
+          <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+            {[0, 1].map((n) => (
+              <div key={n} className="start-ghost flex-col items-stretch">
+                <span className="start-line w-[60%]" />
+                <div className="mt-3 flex h-12 items-end gap-1">
+                  {BARS.map((h, i) => (
+                    <span
+                      key={i}
+                      className="flex-1 rounded-sm"
+                      style={{
+                        height: `${n ? 100 - h + 20 : h}%`,
+                        background:
+                          "color-mix(in oklab, var(--vox-mint) 22%, transparent)",
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            Your charts will live here and refresh on their own.
+          </p>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

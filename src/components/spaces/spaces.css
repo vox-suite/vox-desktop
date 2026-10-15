@@ -463,3 +463,18 @@
     animation: none;
   }
 }
+
+/* The populated page keeps the empty state's softly fading canvas. */
+.spaces-plans-populated { isolation: isolate; }
+.spaces-plans-populated::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--vox-ink) 9%, transparent) 1px, transparent 1px),
+    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--vox-gold) 8%, transparent), transparent 70%);
+  background-size: 16px 16px, 100% 100%;
+  mask-image: linear-gradient(to top left, black, transparent 85%);
+}

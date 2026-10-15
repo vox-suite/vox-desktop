@@ -111,14 +111,14 @@ export function SpacesView() {
       <PageHeader className="h-16 px-6 py-0">
         <div className="flex items-center gap-3.5">
           <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
-            <Workflow className="size-[18px]" />
+            <Workflow className="size-[18px] text-gold" />
           </span>
           <div className="leading-tight">
             <h1 className="text-base font-semibold tracking-tight">Plans</h1>
             <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
               {spaces.length === 0
                 ? "Nothing here yet"
-                : `${spaces.length} ${spaces.length === 1 ? "space" : "spaces"}`}
+                : `${spaces.length} ${spaces.length === 1 ? "plan" : "plans"}`}
             </p>
           </div>
         </div>
@@ -129,12 +129,12 @@ export function SpacesView() {
           className="h-8 gap-1.5 rounded-lg px-3 text-xs"
         >
           <Plus className="size-3.5" />
-          New space
+          New plan
         </Button>
       </PageHeader>
       <PageBody
-        scroll={loading || spaces.length > 0}
-        className="flex flex-col p-6"
+        scroll
+        className={`flex flex-col p-6${spaces.length > 0 ? " spaces-plans-populated" : ""}`}
       >
         {error && (
           <div className="relative z-10 mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
@@ -214,7 +214,7 @@ export function SpacesView() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                Create a Space
+                Create a plan
               </DialogTitle>
             </DialogHeader>
 

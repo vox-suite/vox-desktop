@@ -53,7 +53,9 @@ export function PulseView() {
               <Activity className="size-[18px] text-mint" />
             </span>
             <div className="leading-tight">
-              <h1 className="text-base font-semibold tracking-tight">Insights</h1>
+              <h1 className="text-base font-semibold tracking-tight">
+                Insights
+              </h1>
               <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
                 {empty
                   ? "No charts yet"
@@ -90,7 +92,7 @@ export function PulseView() {
       }
     >
       <div
-        className={`relative flex flex-col p-4 sm:p-6 ${empty ? "h-full" : "min-h-full"}`}
+        className={`relative flex flex-col p-4 sm:p-6 ${empty ? "h-full overflow-auto" : "min-h-full"}`}
       >
         {loading && !canvas ? (
           <div

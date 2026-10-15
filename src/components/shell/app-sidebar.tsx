@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Activity,
   House,
@@ -61,13 +62,54 @@ const CONTROLS = [
 ] as const;
 
 const NAV_ITEMS = [
-  { id: "agent", label: "Home", icon: House },
-  { id: "timeline", label: "Timeline", icon: GanttChart },
-  { id: "spaces", label: "Plans", icon: Workflow },
-  { id: "projects", label: "Projects", icon: Folder },
-  { id: "pulse", label: "Insights", icon: Activity },
-  { id: "updates", label: "Updates", icon: Bell },
-] as const satisfies readonly { id: ShellTab; label: string; icon: unknown }[];
+  {
+    id: "agent",
+    label: "Home",
+    icon: House,
+    activeColor:
+      "data-[active=true]:text-foreground data-[active=true]:hover:text-foreground",
+  },
+  {
+    id: "timeline",
+    label: "Timeline",
+    icon: GanttChart,
+    activeColor:
+      "data-[active=true]:text-sky data-[active=true]:hover:text-sky",
+  },
+  {
+    id: "spaces",
+    label: "Plans",
+    icon: Workflow,
+    activeColor:
+      "data-[active=true]:text-gold data-[active=true]:hover:text-gold",
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    icon: Folder,
+    activeColor:
+      "data-[active=true]:text-pink data-[active=true]:hover:text-pink",
+  },
+  {
+    id: "pulse",
+    label: "Insights",
+    icon: Activity,
+    activeColor:
+      "data-[active=true]:text-mint data-[active=true]:hover:text-mint",
+  },
+  {
+    id: "updates",
+    label: "Updates",
+    icon: Bell,
+    activeColor:
+      "data-[active=true]:text-orange data-[active=true]:hover:text-orange",
+  },
+] as const satisfies readonly {
+  id: ShellTab;
+  label: string;
+  icon: unknown;
+  activeColor: string;
+}[];
 
 const THEMES = [
   { pref: "auto", label: "Auto", icon: Monitor },
@@ -188,7 +230,10 @@ export function AppSidebar({
                     isActive={activeTab === item.id}
                     tooltip={item.label}
                     onClick={() => onTabChange(item.id)}
-                    className="h-8 rounded-lg px-3 text-[13px] text-muted-foreground data-[active=true]:bg-ink/[0.08] data-[active=true]:text-foreground [&>svg]:size-4"
+                    className={cn(
+                      "h-8 rounded-lg px-3 text-[13px] text-muted-foreground data-[active=true]:bg-ink/[0.08] [&>svg]:size-4",
+                      item.activeColor,
+                    )}
                   >
                     <item.icon />
                     <span>{item.label}</span>
@@ -226,6 +271,7 @@ export function AppSidebar({
               isActive={activeTab === "connections"}
               tooltip="Connected Apps"
               onClick={() => onTabChange("connections")}
+              className="data-[active=true]:text-coral data-[active=true]:hover:text-coral"
             >
               <Plug />
               <span>Connected Apps</span>

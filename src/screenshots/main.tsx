@@ -144,7 +144,13 @@ const mock: Platform = {
       if (path.endsWith("/connections/list")) return connections as never;
       if (path.includes("/count"))
         return {
-          count: path.includes("pulse") ? 4 : 1,
+          count:
+            path.includes("projects") &&
+            new URLSearchParams(location.search).get("projects") === "0"
+              ? 0
+              : path.includes("pulse")
+                ? 4
+                : 1,
           revision: "demo",
           rev: "demo",
         } as never;
@@ -152,11 +158,34 @@ const mock: Platform = {
       if (path.includes("/result"))
         return charts.find((c) => path.includes(c.id))!.result as never;
       if (path.endsWith("/pulse/measurements")) return [] as never;
-      if (path.endsWith("/spaces")) return [plan.space] as never;
+      if (path.endsWith("/spaces")) {
+        const count = Math.max(
+          0,
+          Math.min(
+            6,
+            Number(new URLSearchParams(location.search).get("plans") ?? 1) || 0,
+          ),
+        );
+        return Array.from({ length: count }, (_, i) => ({
+          ...plan.space,
+          id: i ? `${plan.space.id}-${i}` : plan.space.id,
+          title: i ? `Plan ${i + 1}` : plan.space.title,
+        })) as never;
+      }
       if (path.endsWith("/messages")) return [] as never;
       if (path.includes("/spaces/")) return plan as never;
       if (path.endsWith("/projects"))
-        return { items: [project], next_cursor: null } as never;
+        return {
+          items:
+            new URLSearchParams(location.search).get("projects") === "0"
+              ? []
+              : [project],
+          count:
+            new URLSearchParams(location.search).get("projects") === "0"
+              ? 0
+              : 1,
+          next_cursor: null,
+        } as never;
       if (path.includes("/projects/")) return project as never;
       return [] as never;
     },
@@ -173,7 +202,9 @@ const tabs = {
   apps: "connections",
   insights: "pulse",
   plans: "spaces",
+  "plans-list": "spaces",
   project: "projects",
+  "projects-list": "projects",
 } as const;
 desktopStore.patch({
   page: tabs[page as keyof typeof tabs] ?? "agent",

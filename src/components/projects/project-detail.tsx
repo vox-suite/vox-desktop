@@ -334,7 +334,7 @@ export function ProjectDetail({
           >
             <ArrowLeft className="size-4" />
           </Button>
-          <Folder className="size-4 shrink-0" />
+          <Folder className="size-4 shrink-0 text-pink" />
           <div className="min-w-0">
             <h1 className="truncate text-base font-medium">{p.name}</h1>
             <p className="project-header-meta">
@@ -367,14 +367,15 @@ export function ProjectDetail({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
+                className="size-8 rounded-lg"
                 aria-label="Project options"
                 disabled={!!traceStatus || !!importStatus}
               >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
                 onSelect={() => {
                   setName(p.name);
@@ -382,12 +383,12 @@ export function ProjectDetail({
                   setSettings(true);
                 }}
               >
-                <FileText />
-                Edit project
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span>Edit project</span>
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setAgentSetup(true)}>
-                <Settings2 />
-                Model connection
+                <Settings2 className="size-3.5 text-muted-foreground" />
+                <span>Model connection</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={state.busy}
@@ -405,8 +406,8 @@ export function ProjectDetail({
                   })
                 }
               >
-                <Plus />
-                Add decision
+                <Plus className="size-3.5 text-muted-foreground" />
+                <span>Add decision</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -414,8 +415,8 @@ export function ProjectDetail({
                 variant="destructive"
                 onSelect={() => setPendingArchive(true)}
               >
-                <Archive />
-                Archive project
+                <Archive className="size-3.5" />
+                <span>Archive project</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -904,7 +905,7 @@ export function ProjectCard({
   return (
     <button className="project-list-row group" onClick={onOpen}>
       <div className="project-list-icon">
-        <Folder className="size-5" />
+        <Folder className="size-5 text-pink" />
       </div>
       <div className="project-list-content">
         <h2>{project.name}</h2>

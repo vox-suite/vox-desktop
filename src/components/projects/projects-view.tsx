@@ -1,6 +1,7 @@
 import { projectList } from "@/features/projects/list-cache";
 import { useCallback, useEffect, useState } from "react";
 import {
+  ArrowRight,
   Folder,
   FolderInput,
   Plus,
@@ -30,6 +31,7 @@ import { platform } from "@/platform";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import { ProjectDetail, ProjectCard } from "./project-detail";
+import { ProjectIllustration } from "./project-illustration";
 import "./projects.css";
 export function ProjectsView() {
   const id = useDesktopContext().projectId;
@@ -111,159 +113,204 @@ export function ProjectsView() {
     );
   return (
     <PageContainer>
-      <PageHeader className="h-16">
-        <div className="flex items-center gap-3">
-          <Folder className="size-5" />
-          <div>
-            <h1 className="text-base font-medium">Projects</h1>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+      <PageHeader className="h-16 px-6 py-0">
+        <div className="flex items-center gap-3.5">
+          <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
+            <Folder className="size-[18px] text-pink" />
+          </span>
+          <div className="leading-tight">
+            <h1 className="text-base font-semibold tracking-tight">Projects</h1>
+            <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
               {count === null
                 ? "Context that stays with your work"
                 : `${count} ${count === 1 ? "project" : "projects"}`}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {(items.length > 0 || search) && (
+            <div className="relative w-48 sm:w-60">
+              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                aria-label="Find projects"
+                placeholder="Find a project"
+                className="h-8 rounded-lg pl-8 text-xs"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          )}
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
+            className="size-8 rounded-lg"
             aria-label="Refresh projects"
             onClick={() => void reload()}
           >
             <RefreshCw className="size-3.5" />
           </Button>
-          <Button size="sm" variant="secondary" onClick={() => start("import")}>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs"
+            onClick={() => start("import")}
+          >
             <FolderInput className="size-3.5" />
             Import project
           </Button>
-          <Button size="sm" onClick={() => start("new")}>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 rounded-lg px-3 text-xs"
+            onClick={() => start("new")}
+          >
             <Plus className="size-3.5" />
             New project
           </Button>
         </div>
       </PageHeader>
-      <PageBody>
-        <div className="project-library">
-          {error && (
-            <p role="alert" className="mb-5 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          {loading && items.length === 0 ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : items.length === 0 ? (
-            <div className="project-start">
-              <div className="project-empty-mark">
-                <Folder className="size-6" />
+      <PageBody scroll className="flex flex-col p-6">
+        {error && (
+          <p role="alert" className="mb-5 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {loading && items.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="start">
+            <header className="start-head">
+              <div>
+                <p className="start-kicker">Getting started</p>
+                <h2 className="mt-3 text-[28px] font-medium leading-tight tracking-tight">
+                  A home for your project.
+                </h2>
               </div>
-              <h2 className="mt-6 text-2xl font-medium tracking-tight">
-                A home for your project.
-              </h2>
-              <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
+              <p className="max-w-sm text-sm leading-6 text-muted-foreground">
                 Bring your code and notes, or start with an idea. Your sources,
                 diagrams and decisions stay together.
               </p>
-              <div className="mt-9 grid gap-4 sm:grid-cols-2">
-                <button
-                  className="project-entry"
-                  onClick={() => start("import")}
-                >
-                  <FolderInput className="size-5" />
-                  <h3 className="mt-5 text-base font-medium">
-                    Bring an existing project
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Connect local folders and files. Explore the structure,
-                    inspect sources, and plan your next change.
-                  </p>
-                  <span className="mt-5 block text-xs">Import project</span>
-                </button>
-                <button className="project-entry" onClick={() => start("new")}>
-                  <Plus className="size-5" />
-                  <h3 className="mt-5 text-base font-medium">
-                    Start with an idea
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Keep a brief and your decisions together. Add sources as
-                    your project takes shape.
-                  </p>
-                  <span className="mt-5 block text-xs">New project</span>
-                </button>
+            </header>
+            <div className="start-bento">
+              <button
+                className="start-tile start-tile-feature"
+                onClick={() => start("import")}
+              >
+                <div className="start-tile-art">
+                  <ProjectIllustration />
+                </div>
+                <div className="start-tile-body">
+                  <span className="start-tile-icon">
+                    <FolderInput className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-medium">
+                      Bring an existing project
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                      Connect local folders and files. Explore the structure,
+                      inspect sources, and plan your next change.
+                    </p>
+                  </div>
+                  <span className="start-tile-cta start-tile-cta-primary">
+                    Import project
+                    <ArrowRight className="size-3.5" />
+                  </span>
+                </div>
+              </button>
+              <button className="start-tile" onClick={() => start("new")}>
+                <div className="start-panel" aria-hidden="true">
+                  <span className="start-panel-title">Untitled idea</span>
+                  <span className="start-line w-[82%]" />
+                  <span className="start-line w-[64%]" />
+                  <span className="start-line w-[71%]" />
+                  <span className="start-caret" />
+                </div>
+                <span className="start-tile-icon">
+                  <Plus className="size-4" />
+                </span>
+                <h3 className="mt-4 text-base font-medium">
+                  Start with an idea
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                  Keep a brief and your decisions together. Add sources as your
+                  project takes shape.
+                </p>
+                <span className="start-tile-cta mt-5">
+                  New project
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </button>
+              <div className="start-tile start-tile-preview">
+                <div className="start-ghosts" aria-hidden="true">
+                  {[0, 1].map((n) => (
+                    <div key={n} className="start-ghost">
+                      <span className="start-ghost-mark" />
+                      <div className="flex flex-1 flex-col gap-1.5">
+                        <span className="start-line w-[58%]" />
+                        <span className="start-line w-[86%] opacity-60" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                  Your projects will collect here, each with its sources,
+                  diagrams and decisions.
+                </p>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="project-library-heading">
-                <div>
-                  <h2>Your projects</h2>
-                  <p>Pick up where you left off.</p>
-                </div>
-                <div className="relative max-w-sm">
-                  <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                  <Input
-                    aria-label="Find projects"
-                    placeholder="Find a project"
-                    className="pl-9"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="project-library-grid">
-                {items
-                  .filter((p) =>
-                    `${p.name} ${p.data.notes}`
-                      .toLowerCase()
-                      .includes(search.toLowerCase()),
-                  )
-                  .map((p) => (
-                    <ProjectCard
-                      key={p.id}
-                      project={p}
-                      onOpen={() => open(p)}
-                    />
-                  ))}
-              </div>
-              {items.every(
-                (p) =>
-                  !`${p.name} ${p.data.notes}`
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {items
+                .filter((p) =>
+                  `${p.name} ${p.data.notes}`
                     .toLowerCase()
                     .includes(search.toLowerCase()),
-              ) && (
-                <p className="project-quiet-empty">
-                  No projects match “{search}”.
-                </p>
-              )}
-              {next && (
-                <Button
-                  variant="ghost"
-                  disabled={loading}
-                  className="mt-4"
-                  onClick={() => {
-                    setLoading(true);
-                    void projectsApi
-                      .list(next)
-                      .then((list) => {
-                        setItems((old) => [
-                          ...old,
-                          ...list.items.filter(
-                            (p) => !old.some((o) => o.id === p.id),
-                          ),
-                        ]);
-                        setNext(list.next_cursor);
-                      })
-                      .catch((e) => setError(String(e)))
-                      .finally(() => setLoading(false));
-                  }}
-                >
-                  Load more projects
-                </Button>
-              )}
-            </>
-          )}
-        </div>
+                )
+                .map((p) => (
+                  <ProjectCard key={p.id} project={p} onOpen={() => open(p)} />
+                ))}
+            </div>
+            {items.every(
+              (p) =>
+                !`${p.name} ${p.data.notes}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
+            ) && (
+              <p className="project-quiet-empty py-16 text-center text-sm text-muted-foreground">
+                No projects match “{search}”.
+              </p>
+            )}
+            {next && (
+              <Button
+                variant="ghost"
+                disabled={loading}
+                className="mt-4 self-start"
+                onClick={() => {
+                  setLoading(true);
+                  void projectsApi
+                    .list(next)
+                    .then((list) => {
+                      setItems((old) => [
+                        ...old,
+                        ...list.items.filter(
+                          (p) => !old.some((o) => o.id === p.id),
+                        ),
+                      ]);
+                      setNext(list.next_cursor);
+                    })
+                    .catch((e) => setError(String(e)))
+                    .finally(() => setLoading(false));
+                }}
+              >
+                Load more projects
+              </Button>
+            )}
+          </div>
+        )}
       </PageBody>
       <Dialog
         open={mode !== null}
@@ -271,66 +318,123 @@ export function ProjectsView() {
           if (!open && !creating) setMode(null);
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {mode === "import" ? "Import a project" : "New project"}
-            </DialogTitle>
-            <DialogDescription>
-              {mode === "import"
-                ? "Name the project, then choose local sources in its Sources tab. Nothing is uploaded during indexing."
-                : "Give your idea a home. You can add sources whenever you’re ready."}
-            </DialogDescription>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+          <DialogHeader className="flex-row items-start gap-3.5 p-5 pr-12">
+            <span className="start-tile-icon size-10">
+              {mode === "import" ? (
+                <FolderInput className="size-[18px]" />
+              ) : (
+                <Plus className="size-[18px]" />
+              )}
+            </span>
+            <div className="grid gap-1">
+              <DialogTitle className="text-base">
+                {mode === "import" ? "Import a project" : "New project"}
+              </DialogTitle>
+              <DialogDescription className="leading-5">
+                {mode === "import"
+                  ? "Name it here, then pick local folders and files. Nothing is uploaded while indexing."
+                  : "Give your idea a home. Add sources whenever you’re ready."}
+              </DialogDescription>
+            </div>
           </DialogHeader>
+          {mode === "import" && (
+            <ol className="mx-5 mb-4 flex items-center gap-2 font-mono text-[10.5px] text-muted-foreground">
+              <li className="flex items-center gap-1.5 text-foreground">
+                <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">
+                  1
+                </span>
+                Name
+              </li>
+              <li aria-hidden="true" className="h-px w-6 bg-border" />
+              <li className="flex items-center gap-1.5">
+                <span className="flex size-4 items-center justify-center rounded-full border border-border text-[9px]">
+                  2
+                </span>
+                Choose sources
+              </li>
+            </ol>
+          )}
           <form
-            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
               void create();
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void create();
+              }
+            }}
           >
-            <label className="grid gap-2 text-xs">
-              Project name
-              <Input
-                autoFocus
-                required
-                maxLength={160}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="What are you working on?"
-              />
-            </label>
-            <label className="grid gap-2 text-xs">
-              Vision or notes
-              <Textarea
-                maxLength={12000}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                placeholder="Optional project notes"
-              />
-            </label>
-            {error && (
-              <p role="alert" className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={creating}
-                onClick={() => setMode(null)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creating || !name.trim()}>
-                {creating
-                  ? "Creating project…"
-                  : mode === "import"
-                    ? "Choose sources"
-                    : "Create project"}
-              </Button>
+            <div className="grid gap-4 px-5 pb-5">
+              <label className="grid gap-2 text-xs font-medium">
+                Project name
+                <Input
+                  autoFocus
+                  required
+                  maxLength={160}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="What are you working on?"
+                  className="h-10 text-sm"
+                />
+              </label>
+              <label className="grid gap-2 text-xs font-medium">
+                <span className="flex items-baseline justify-between">
+                  {mode === "import" ? "Notes" : "Vision"}
+                  <span className="font-normal text-muted-foreground">
+                    Optional
+                  </span>
+                </span>
+                <Textarea
+                  maxLength={12000}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  placeholder={
+                    mode === "import"
+                      ? "What should Vox know about this codebase?"
+                      : "What are you trying to build, and why?"
+                  }
+                  className="min-h-24 resize-none text-sm"
+                />
+              </label>
+              {error && (
+                <p role="alert" className="text-xs text-destructive">
+                  {error}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-border bg-card px-5 py-3">
+              <span className="hidden font-mono text-[10.5px] text-muted-foreground sm:inline">
+                ⌘ ↵ to {mode === "import" ? "continue" : "create"}
+              </span>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={creating}
+                  onClick={() => setMode(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={creating || !name.trim()}
+                  className="gap-1.5"
+                >
+                  {creating ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : null}
+                  {creating
+                    ? "Creating…"
+                    : mode === "import"
+                      ? "Choose sources"
+                      : "Create project"}
+                  {!creating && <ArrowRight className="size-3.5" />}
+                </Button>
+              </div>
             </div>
           </form>
         </DialogContent>

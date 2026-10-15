@@ -5,6 +5,7 @@
 @import "shadcn/tailwind.css";
 
 @import "./styles/theme.css";
+@import "./styles/start-grid.css";
 
 @layer base {
   * {

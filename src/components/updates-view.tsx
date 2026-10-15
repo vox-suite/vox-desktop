@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { updatesApi, type UpdateItem } from "@/features/updates/api";
+import { UpdatesFigure } from "@/components/empty-figures";
 
 const kinds = [["", "All"], ["briefing", "Briefings"], ["email_notice", "Email"], ["processing_issue", "Needs attention"], ["connection_status", "Connections"], ["daily_plan", "Plans"]];
 export function UpdatesView() {
@@ -50,10 +51,18 @@ export function UpdatesView() {
   }
   return <PageContainer><PageHeader><h1 className="text-sm font-medium">Updates</h1><Button variant="ghost" size="icon" aria-label="Refresh updates" disabled={loading} onClick={() => void load()}><RotateCw size={16} /></Button></PageHeader>
     <div className="flex shrink-0 flex-wrap gap-2 border-b border-border px-6 py-3" role="group" aria-label="Update categories">{kinds.map(([value, label]) => <Button key={value} size="sm" variant={kind === value ? "secondary" : "ghost"} onClick={() => setKind(value)}>{label}</Button>)}</div>
-    <PageBody className="p-6"><div className="mx-auto max-w-4xl space-y-3">
+    <PageBody className="p-6"><div className="mx-auto flex min-h-full max-w-4xl flex-col space-y-3">
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {loading && <p role="status" className="text-sm text-muted-foreground">Loading updates…</p>}
-      {!loading && !error && !items.length && <p className="py-12 text-center text-sm text-muted-foreground">You're up to date.</p>}
+      {!loading && !error && !items.length && <div className="flex flex-1 items-center justify-center py-6"><div className="start-tile empty-card [--start-accent:var(--vox-orange)]">
+        <div className="start-tile-art"><UpdatesFigure /></div>
+        <div className="empty-card-body">
+          <p className="start-kicker">{kind ? kinds.find(([value]) => value === kind)?.[1] : "All updates"}</p>
+          <h2 className="mt-2 text-lg font-medium tracking-tight">You're up to date.</h2>
+          <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">Briefings, email notices and anything that needs you will land here as Vox works.</p>
+          <Button variant="secondary" size="sm" className="mt-4 gap-1.5" onClick={() => void load()}><RotateCw size={14} />Check again</Button>
+        </div>
+      </div></div>}
       {items.map((item) => <article key={item.id} className="rounded-lg border border-border p-4">
         <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium">{item.title}</h2><span className="text-xs text-muted-foreground">{item.category}</span></div>
         {item.summary && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{item.summary}</p>}
