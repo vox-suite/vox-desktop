@@ -191,16 +191,11 @@ function Figure({
 }
 
 const ENTRIES: { color: VoxColor; x: number; w: number; h: number }[] = [
-  { color: "slate", x: -98, w: 7, h: 10 },
-  { color: "gold", x: -76, w: 5, h: 18 },
-  { color: "mint", x: -54, w: 10, h: 26 },
-  { color: "sky", x: -26, w: 12, h: 14 },
-  { color: "sky", x: 0, w: 7, h: 22 },
-  { color: "violet", x: 22, w: 9, h: 30 },
-  { color: "gold", x: 46, w: 5, h: 12 },
-  { color: "mint", x: 68, w: 10, h: 20 },
-  { color: "coral", x: 94, w: 7, h: 16 },
-  { color: "violet", x: 120, w: 11, h: 24 },
+  { color: "gold", x: -82, w: 12, h: 18 },
+  { color: "mint", x: -32, w: 14, h: 28 },
+  { color: "sky", x: 18, w: 12, h: 20 },
+  { color: "violet", x: 66, w: 14, h: 32 },
+  { color: "coral", x: 114, w: 11, h: 16 },
 ];
 
 // A day laid out as a track: today's date at the start, hours along the
@@ -288,7 +283,8 @@ export function TimelineFigure({ loading = false }: { loading?: boolean }) {
           d={12}
           depth={b.h}
           stroke={token(b.color)}
-          top={alpha(b.color, 22)}
+          fill={`color-mix(in srgb, ${token(b.color)} 8%, ${SURFACE})`}
+          top={`color-mix(in srgb, ${token(b.color)} 24%, ${SURFACE})`}
           width={0.9}
         />
       ) : (
@@ -365,7 +361,7 @@ export function TimelineFigure({ loading = false }: { loading?: boolean }) {
         d={18}
         depth={22}
         stroke={sky}
-        top={alpha("sky", 16)}
+        top={`color-mix(in srgb, ${sky} 16%, ${SURFACE})`}
       />
       <path
         d={face([
