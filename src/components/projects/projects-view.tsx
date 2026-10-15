@@ -32,7 +32,6 @@ import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import { ProjectDetail, ProjectCard } from "./project-detail";
 import { ProjectIllustration } from "./project-illustration";
-import { StateCard } from "@/components/state-card";
 import "./projects.css";
 export function ProjectsView() {
   const id = useDesktopContext().projectId;
@@ -121,11 +120,17 @@ export function ProjectsView() {
           </span>
           <div className="leading-tight">
             <h1 className="text-base font-semibold tracking-tight">Projects</h1>
-            <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
-              {count === null
-                ? "Context that stays with your work"
-                : `${count} ${count === 1 ? "project" : "projects"}`}
-            </p>
+            {count === null ? (
+              <span
+                role="status"
+                aria-label="Loading"
+                className="mt-1.5 block h-2.5 w-20 animate-pulse rounded-sm bg-muted"
+              />
+            ) : (
+              <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                {`${count} ${count === 1 ? "project" : "projects"}`}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -175,19 +180,7 @@ export function ProjectsView() {
             {error}
           </p>
         )}
-        {loading && items.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center py-6">
-            <StateCard
-              loading
-              tall
-              accent="pink"
-              figure={<ProjectIllustration />}
-              kicker="Projects"
-              title="Loading projects…"
-              text="Gathering your sources, diagrams and decisions."
-            />
-          </div>
-        ) : items.length === 0 ? (
+        {items.length === 0 ? (
           <div className="start">
             <header className="start-head">
               <div>

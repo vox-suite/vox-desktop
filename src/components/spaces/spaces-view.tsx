@@ -31,8 +31,7 @@ import { Card } from "@/components/ui/card";
 import { useSpaces } from "@/hooks/use-spaces";
 import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
-import { PlanStack, SpacesIntroduction } from "./spaces-introduction";
-import { StateCard } from "@/components/state-card";
+import { SpacesIntroduction } from "./spaces-introduction";
 import { token } from "@/lib/theme";
 
 export function SpacesView() {
@@ -116,11 +115,19 @@ export function SpacesView() {
           </span>
           <div className="leading-tight">
             <h1 className="text-base font-semibold tracking-tight">Plans</h1>
-            <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
-              {spaces.length === 0
-                ? "Nothing here yet"
-                : `${spaces.length} ${spaces.length === 1 ? "plan" : "plans"}`}
-            </p>
+            {loading && spaces.length === 0 ? (
+              <span
+                role="status"
+                aria-label="Loading"
+                className="mt-1.5 block h-2.5 w-20 animate-pulse rounded-sm bg-muted"
+              />
+            ) : (
+              <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                {spaces.length === 0
+                  ? "Nothing here yet"
+                  : `${spaces.length} ${spaces.length === 1 ? "plan" : "plans"}`}
+              </p>
+            )}
           </div>
         </div>
         <Button
@@ -143,19 +150,7 @@ export function SpacesView() {
           </div>
         )}
 
-        {loading && spaces.length === 0 ? (
-          <div className="relative z-10 flex flex-1 items-center justify-center py-6">
-            <StateCard
-              loading
-              tall
-              accent="gold"
-              figure={<PlanStack speed={2.5} />}
-              kicker="Plans"
-              title="Loading plans…"
-              text="Gathering your research, context and decisions."
-            />
-          </div>
-        ) : spaces.length === 0 ? (
+        {spaces.length === 0 ? (
           <SpacesIntroduction onCreate={openCreate} />
         ) : (
           <div className="relative z-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">

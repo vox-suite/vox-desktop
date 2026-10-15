@@ -6,8 +6,7 @@ import { Activity, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { CreatePulsePage } from "./create-pulse-page";
-import { PulseHeart, PulseIntroduction } from "./pulse-introduction";
-import { StateCard } from "@/components/state-card";
+import { PulseIntroduction } from "./pulse-introduction";
 import { PulseShell } from "./pulse-shell";
 import { SavedChart } from "./saved-chart";
 import { discoveryApi } from "@/features/pulse/api";
@@ -57,15 +56,23 @@ export function PulseView() {
               <h1 className="text-base font-semibold tracking-tight">
                 Insights
               </h1>
-              <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
-                {empty
-                  ? "No charts yet"
-                  : `${canvas?.charts.length ?? 0} live charts`}
-              </p>
+              {loading && !canvas ? (
+                <span
+                  role="status"
+                  aria-label="Loading"
+                  className="mt-1.5 block h-2.5 w-20 animate-pulse rounded-sm bg-muted"
+                />
+              ) : (
+                <p className="mt-0.5 font-mono text-[10.5px] text-muted-foreground">
+                  {empty
+                    ? "No charts yet"
+                    : `${canvas?.charts.length ?? 0} live charts`}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!empty && (
+            {!centered && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -95,19 +102,7 @@ export function PulseView() {
       <div
         className={`relative flex flex-col p-4 sm:p-6 ${centered ? "h-full overflow-auto" : "min-h-full"}`}
       >
-        {loading && !canvas ? (
-          <div className="flex flex-1 items-center justify-center py-6">
-            <StateCard
-              loading
-              tall
-              accent="mint"
-              figure={<PulseHeart speed={2} />}
-              kicker="Insights"
-              title="Loading insights…"
-              text="Refreshing charts from your connected apps."
-            />
-          </div>
-        ) : error && !canvas ? (
+        {error && !canvas && !loading ? (
           <div
             role="alert"
             className="flex flex-1 flex-col items-center justify-center gap-3"
@@ -122,7 +117,7 @@ export function PulseView() {
           </div>
         ) : (
           <>
-            {empty ? (
+            {centered ? (
               <PulseIntroduction onCreate={() => setAdding(true)} />
             ) : null}
             {(error || actionError) && (

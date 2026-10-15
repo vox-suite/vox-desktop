@@ -1,7 +1,7 @@
 import { DesktopActionOverlay } from "@/components/shell/desktop-action-overlay";
 import { TerminalPanel } from "@/components/shell/terminal-panel";
 import { ConnectedAppsView } from "@/components/connected-apps-view";
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AgentPane } from "@/components/shell/agent-pane";
 import { ActivityLogs } from "@/components/activity-logs";
@@ -13,22 +13,20 @@ import { TimelineView } from "@/components/timeline-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
 
-// Charts (recharts) and the canvas (xyflow) are large, so load them on first visit.
+// Charts (recharts) and the canvas (xyflow) are large, so they ship in their
+// own chunks. The shell preloads them after first paint so opening a page
+// never waits on a download.
+const loadPulse = () => import("@/components/pulse/pulse-view");
+const loadSpaces = () => import("@/components/spaces/spaces-view");
+const loadProjects = () => import("@/components/projects/projects-view");
 const PulseView = lazy(() =>
-  import("@/components/pulse/pulse-view").then((m) => ({
-    default: m.PulseView,
-  })),
+  loadPulse().then((m) => ({ default: m.PulseView })),
 );
 const SpacesView = lazy(() =>
-  import("@/components/spaces/spaces-view").then((m) => ({
-    default: m.SpacesView,
-  })),
+  loadSpaces().then((m) => ({ default: m.SpacesView })),
 );
-
 const ProjectsView = lazy(() =>
-  import("@/components/projects/projects-view").then((m) => ({
-    default: m.ProjectsView,
-  })),
+  loadProjects().then((m) => ({ default: m.ProjectsView })),
 );
 
 export function HomeShell({
@@ -60,6 +58,14 @@ export function HomeShell({
   onToggleCall: () => void;
   collections: Collection[];
 }) {
+  useEffect(() => {
+    const id = setTimeout(() => {
+      void loadPulse();
+      void loadSpaces();
+      void loadProjects();
+    }, 300);
+    return () => clearTimeout(id);
+  }, []);
   const { mapNode, mapReady, mapError } = useMissionMap({
     callActive: isActive,
     voxSpeaking,
@@ -83,27 +89,13 @@ export function HomeShell({
     );
   } else if (activeTab === "pulse") {
     body = (
-      <Suspense
-        fallback={
-          <div
-            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
-            aria-label="Loading page"
-          />
-        }
-      >
+      <Suspense fallback={null}>
         <PulseView />
       </Suspense>
     );
   } else if (activeTab === "projects") {
     body = (
-      <Suspense
-        fallback={
-          <div
-            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
-            aria-label="Loading projects"
-          />
-        }
-      >
+      <Suspense fallback={null}>
         <ProjectsView />
       </Suspense>
     );
@@ -113,14 +105,7 @@ export function HomeShell({
     body = <ConnectedAppsView />;
   } else {
     body = (
-      <Suspense
-        fallback={
-          <div
-            className="m-8 h-48 animate-pulse rounded-lg bg-muted"
-            aria-label="Loading page"
-          />
-        }
-      >
+      <Suspense fallback={null}>
         <SpacesView />
       </Suspense>
     );
