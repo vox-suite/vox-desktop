@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { LoaderCircle } from "lucide-react";
 import { SpanInfoTooltip } from "@/components/span-info-tooltip";
 import { CategoryIndicator } from "@/components/category-indicator";
 import type { Span } from "@/features/spans/types";
@@ -13,6 +12,7 @@ import {
 } from "@/lib/span-format";
 import { cn } from "@/lib/utils";
 import { TimelineFigure } from "@/components/empty-figures";
+import { StateCard } from "@/components/state-card";
 import { FrontierSentinel } from "./spans/frontier-sentinel";
 
 function durationLabel(start: number, end: number) {
@@ -329,27 +329,22 @@ export function PlanningTimeline({
       {items.length === 0 && !unavailable && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-center justify-center px-6">
           {loading ? (
-            <div className="flex flex-col items-center gap-2 rounded-2xl bg-background px-10 py-8 text-center">
-              <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">
-                Loading your timeline…
-              </p>
-            </div>
+            <StateCard
+              loading
+              accent="sky"
+              figure={<TimelineFigure loading />}
+              kicker="Timeline"
+              title="Loading your timeline…"
+              text="Pulling entries from your connected sources."
+            />
           ) : (
-            <div className="start-tile empty-card [--start-accent:var(--vox-sky)]">
-              <div className="start-tile-art">
-                <TimelineFigure />
-              </div>
-              <div className="empty-card-body">
-                <h2 className="text-base font-medium tracking-tight">
-                  No recorded entries
-                </h2>
-                <p className="mx-auto mt-1.5 max-w-xs text-sm leading-6 text-muted-foreground">
-                  Nothing was recorded in this date range. Pick another date or
-                  connect a source to add history.
-                </p>
-              </div>
-            </div>
+            <StateCard
+              accent="sky"
+              figure={<TimelineFigure />}
+              kicker="Timeline"
+              title="No recorded entries"
+              text="Nothing was recorded in this date range. Pick another date or connect a source to add history."
+            />
           )}
         </div>
       )}

@@ -713,6 +713,9 @@
     stroke-dashoffset: -238;
   }
 }
+.is-loading .project-evidence-flow {
+  animation-duration: 3s;
+}
 @media (prefers-reduced-motion: reduce) {
   .project-evidence-flow {
     animation: none;

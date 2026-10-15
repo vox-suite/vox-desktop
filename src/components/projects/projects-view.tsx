@@ -32,6 +32,7 @@ import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import { ProjectDetail, ProjectCard } from "./project-detail";
 import { ProjectIllustration } from "./project-illustration";
+import { StateCard } from "@/components/state-card";
 import "./projects.css";
 export function ProjectsView() {
   const id = useDesktopContext().projectId;
@@ -175,8 +176,16 @@ export function ProjectsView() {
           </p>
         )}
         {loading && items.length === 0 ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <div className="flex flex-1 items-center justify-center py-6">
+            <StateCard
+              loading
+              tall
+              accent="pink"
+              figure={<ProjectIllustration />}
+              kicker="Projects"
+              title="Loading projects…"
+              text="Gathering your sources, diagrams and decisions."
+            />
           </div>
         ) : items.length === 0 ? (
           <div className="start">

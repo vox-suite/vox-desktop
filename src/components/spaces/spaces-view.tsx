@@ -31,7 +31,8 @@ import { Card } from "@/components/ui/card";
 import { useSpaces } from "@/hooks/use-spaces";
 import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
-import { SpacesIntroduction } from "./spaces-introduction";
+import { PlanStack, SpacesIntroduction } from "./spaces-introduction";
+import { StateCard } from "@/components/state-card";
 import { token } from "@/lib/theme";
 
 export function SpacesView() {
@@ -143,8 +144,16 @@ export function SpacesView() {
         )}
 
         {loading && spaces.length === 0 ? (
-          <div className="relative z-10 flex flex-1 items-center justify-center py-20">
-            <RotateCw className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="relative z-10 flex flex-1 items-center justify-center py-6">
+            <StateCard
+              loading
+              tall
+              accent="gold"
+              figure={<PlanStack speed={2.5} />}
+              kicker="Plans"
+              title="Loading plans…"
+              text="Gathering your research, context and decisions."
+            />
           </div>
         ) : spaces.length === 0 ? (
           <SpacesIntroduction onCreate={openCreate} />

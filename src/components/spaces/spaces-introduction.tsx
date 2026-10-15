@@ -222,8 +222,8 @@ function Plan({ cy }: { cy: number }) {
 
 const CONTENT = [Plan, Context, Research, Vision];
 
-function PlanStack() {
-  const t = useClock();
+export function PlanStack({ speed = 1 }: { speed?: number }) {
+  const t = useClock() * speed;
   const sweep = ((t % 4.5) / 4.5) * 1.5 - 0.15;
   const glow = (i: number) => Math.exp(-(((sweep - (3 - i) / 3) / 0.14) ** 2));
   return (

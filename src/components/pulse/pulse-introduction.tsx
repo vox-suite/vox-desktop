@@ -121,8 +121,8 @@ function useClock(interval = 50) {
   return t;
 }
 
-function PulseHeart() {
-  const t = useClock();
+export function PulseHeart({ speed = 1 }: { speed?: number }) {
+  const t = useClock() * speed;
   const cycle = (t % 1.2) / 1.2;
   const beatPulse =
     Math.exp(-(((cycle - 0.1) / 0.06) ** 2)) +

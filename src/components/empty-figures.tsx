@@ -191,282 +191,255 @@ function Figure({
 }
 
 const ENTRIES: { color: VoxColor; x: number; w: number; h: number }[] = [
-  { color: "slate", x: -128, w: 9, h: 10 },
-  { color: "gold", x: -102, w: 6, h: 18 },
-  { color: "mint", x: -78, w: 12, h: 26 },
-  { color: "sky", x: -44, w: 16, h: 14 },
-  { color: "sky", x: -12, w: 8, h: 22 },
-  { color: "violet", x: 14, w: 10, h: 30 },
-  { color: "gold", x: 40, w: 6, h: 12 },
-  { color: "mint", x: 64, w: 11, h: 20 },
-  { color: "coral", x: 92, w: 8, h: 16 },
-  { color: "violet", x: 118, w: 12, h: 24 },
+  { color: "slate", x: -98, w: 7, h: 10 },
+  { color: "gold", x: -76, w: 5, h: 18 },
+  { color: "mint", x: -54, w: 10, h: 26 },
+  { color: "sky", x: -26, w: 12, h: 14 },
+  { color: "sky", x: 0, w: 7, h: 22 },
+  { color: "violet", x: 22, w: 9, h: 30 },
+  { color: "gold", x: 46, w: 5, h: 12 },
+  { color: "mint", x: 68, w: 10, h: 20 },
+  { color: "coral", x: 94, w: 7, h: 16 },
+  { color: "violet", x: 120, w: 11, h: 24 },
 ];
 
-// A day pulled apart: the month it sits in, the hours that fill it, and the
-// moment entries arrive.
-export function TimelineFigure() {
-  const t = useClock();
-  const P = at(418);
+// A day laid out as a track: today's date at the start, hours along the
+// edge, and a Now gate that records entries as it passes.
+export function TimelineFigure({ loading = false }: { loading?: boolean }) {
+  const t = useClock() * (loading ? 2.2 : 1);
+  const P = at(172, 300);
   const trace = makeTrace(P);
-  const cycle = (t % 9) / 9;
-  const nowX = -140 + cycle * 280;
-  const dayZ = 196;
-  const dialZ = 312;
-  const sky = token("sky");
+  const L = 150;
+  const D = 24;
+  const top = 8;
+  const span = { from: -112, to: 146 };
+  const cycle = (t % 10) / 10;
+  const nowX = t > 0 ? span.from + cycle * (span.to - span.from) : 34;
   const red = token("danger");
+  const sky = token("sky");
+  const gateH = 58;
+  const face = (pts: V3[]) => trace(pts, true);
+  const [px, py] = P([nowX, 0, top + gateH]);
+  const [cx, cy] = P([-131, 0, top + 22]);
 
-  const month = { w: 122, d: 90 };
-  const cols = 7;
-  const rows = 5;
-  const cw = (2 * month.w - 24) / cols;
-  const ch = (2 * month.d - 24) / rows;
-  const origin = (c: number, r: number) =>
-    [-month.w + 12 + c * cw + 2, -month.d + 12 + r * ch + 2] as const;
-  const cell = (c: number, r: number): V3[] => {
-    const [x0, y0] = origin(c, r);
-    return [
-      [x0, y0, 0],
-      [x0 + cw - 4, y0, 0],
-      [x0 + cw - 4, y0 + ch - 4, 0],
-      [x0, y0 + ch - 4, 0],
-    ];
-  };
-  const today = { c: 3, r: 2 };
-  const busy = new Set([
-    "0,1",
-    "1,0",
-    "2,2",
-    "4,1",
-    "5,3",
-    "1,3",
-    "6,0",
-    "2,4",
-    "0,3",
-  ]);
-  const hand = (len: number, turns: number) => {
-    const a = turns * Math.PI * 2 - Math.PI / 2;
-    return trace([
-      [0, 0, dialZ],
-      [Math.cos(a) * len, Math.sin(a) * len, dialZ],
-    ]);
-  };
-  const [ncx, ncy] = P([nowX, 30, dayZ + 36]);
-  const [hx, hy] = P([0, 0, dialZ]);
-  const [tx, ty] = origin(today.c, today.r);
-  const [lx, ly] = P([tx + cw / 2 - 2, ty + ch / 2 - 2, 0]);
-  const lift = (n: number) => Math.sin(t * 0.9 + n) * 2.5;
+  const gate = (
+    <g key="gate">
+      <path
+        d={face([
+          [nowX, -D - 6, top],
+          [nowX, D + 6, top],
+          [nowX, D + 6, top + gateH],
+          [nowX, -D - 6, top + gateH],
+        ])}
+        style={{ fill: alpha("danger", 5), stroke: "none" }}
+      />
+      <path
+        d={trace([
+          [nowX, -D - 6, top],
+          [nowX, -D - 6, top + gateH],
+          [nowX, D + 6, top + gateH],
+          [nowX, D + 6, top],
+        ])}
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+        style={{ stroke: red }}
+      />
+      <path
+        d={trace([
+          [nowX, -D, top],
+          [nowX, D, top],
+        ])}
+        strokeWidth="1.4"
+        style={{ stroke: red }}
+      />
+      <rect
+        x={px - 14}
+        y={py - 19}
+        width="28"
+        height="13"
+        rx="6.5"
+        style={{ fill: red }}
+      />
+      <text
+        x={px}
+        y={py - 9.6}
+        textAnchor="middle"
+        fontSize="7.5"
+        fontFamily="Inter, sans-serif"
+        fontWeight="600"
+        style={{ fill: token("on-accent") }}
+      >
+        Now
+      </text>
+    </g>
+  );
+
+  const entries = ENTRIES.map((b) => {
+    const done = b.x + b.w < nowX;
+    return {
+      key: b.x,
+      node: done ? (
+        <Box
+          key={b.x}
+          trace={trace}
+          x={b.x}
+          z={top + b.h}
+          w={b.w}
+          d={12}
+          depth={b.h}
+          stroke={token(b.color)}
+          top={alpha(b.color, 22)}
+          width={0.9}
+        />
+      ) : (
+        <path
+          key={b.x}
+          d={face([
+            [b.x - b.w, -12, top],
+            [b.x + b.w, -12, top],
+            [b.x + b.w, 12, top],
+            [b.x - b.w, 12, top],
+          ])}
+          strokeWidth="0.7"
+          strokeDasharray="2 2.5"
+          style={{ stroke: alpha("ink", 32) }}
+        />
+      ),
+    };
+  });
+  const scene = [...entries, { key: nowX, node: gate }].sort(
+    (a, b) => a.key - b.key,
+  );
 
   return (
-    <Figure label="An exploded view of a day: a month grid, an hour-by-hour strip filling with entries, and a clock marking now">
-      <g strokeWidth="0.7" strokeDasharray="3 4" style={{ stroke: FAINT }}>
-        {[
-          [-1, -1],
-          [1, -1],
-          [1, 1],
-          [-1, 1],
-        ].map(([sx, sy]) => (
+    <Figure
+      height={300}
+      label="A day laid out as a track: today's date, the hours of the day, and a Now gate recording entries as it moves along"
+    >
+      <Box trace={trace} z={top} w={L} d={D} depth={9} />
+      <path
+        d={trace([
+          [-L + 4, -D + 4, top],
+          [L - 4, -D + 4, top],
+        ])}
+        strokeWidth="0.6"
+        strokeDasharray="2 4"
+        style={{ stroke: FAINT }}
+      />
+      {Array.from({ length: 25 }, (_, i) => {
+        const x = span.from + (i / 24) * (span.to - span.from);
+        const major = i % 6 === 0;
+        return (
           <path
-            key={`${sx}${sy}`}
+            key={i}
             d={trace([
-              [sx * 146, sy * 30, dayZ - 7],
-              [sx * month.w, sy * month.d, 0],
+              [x, D, top],
+              [x, D - (major ? 9 : 5), top],
             ])}
+            strokeWidth="0.7"
+            style={{ stroke: major ? LINE : FAINT }}
           />
-        ))}
-        <path
-          d={trace([
-            [0, 0, 0],
-            [0, 0, dialZ],
-          ])}
+        );
+      })}
+      {["12a", "6a", "12p", "6p"].map((label, i) => {
+        const [x, y] = P([span.from + (i / 4) * (span.to - span.from), D, 0]);
+        return (
+          <text
+            key={i}
+            x={x - 8}
+            y={y + 12}
+            fontSize="7"
+            textAnchor="middle"
+            style={{ fill: token("text-dim") }}
+          >
+            {label}
+          </text>
+        );
+      })}
+
+      <Box
+        trace={trace}
+        x={-131}
+        z={top + 22}
+        w={14}
+        d={18}
+        depth={22}
+        stroke={sky}
+        top={alpha("sky", 16)}
+      />
+      <path
+        d={face([
+          [-145, -18, top + 22],
+          [-117, -18, top + 22],
+          [-117, -10, top + 22],
+          [-145, -10, top + 22],
+        ])}
+        strokeWidth="0.7"
+        style={{ stroke: sky, fill: alpha("sky", 40) }}
+      />
+      <text
+        x={cx + 2}
+        y={cy + 6}
+        textAnchor="middle"
+        fontSize="10"
+        fontFamily="Inter, sans-serif"
+        fontWeight="600"
+        style={{ fill: sky }}
+      >
+        15
+      </text>
+      <g className="figure-float">
+        <Box
+          trace={trace}
+          x={-131}
+          z={top + 44}
+          w={14}
+          d={18}
+          depth={2}
+          stroke={alpha("ink", 32)}
+          dash="2 2.5"
+          fill="transparent"
         />
       </g>
 
-      <g transform={`translate(0 ${lift(0)})`}>
-        <Box trace={trace} z={0} w={month.w} d={month.d} depth={9} />
-        {Array.from({ length: cols * rows }, (_, i) => {
-          const c = i % cols;
-          const r = Math.floor(i / cols);
-          const isToday = c === today.c && r === today.r;
-          const has = busy.has(`${c},${r}`);
-          return (
-            <path
-              key={i}
-              d={trace(cell(c, r), true)}
-              strokeWidth={isToday ? 1.2 : 0.6}
-              style={{
-                stroke: isToday ? sky : has ? LINE : FAINT,
-                fill: isToday
-                  ? alpha("sky", 18)
-                  : has
-                    ? alpha("ink", 5)
-                    : "none",
-              }}
-            />
-          );
-        })}
-        <text
-          x={lx}
-          y={ly + 3}
-          textAnchor="middle"
-          fontSize="8"
-          fontFamily="Inter, sans-serif"
-          fontWeight="600"
-          style={{ fill: sky }}
-        >
-          15
-        </text>
-        <Callout
-          from={P([-month.w, 0, 0])}
-          ex={28}
-          ey={470}
-          id="01 · MONTH"
-          title="Every day at a glance"
-          note="Busy days stand out"
-        />
-        <Callout
-          from={P([tx + cw - 4, ty, 0])}
-          ex={532}
-          ey={420}
-          id="TODAY"
-          title="Thursday, 15"
-          note="Opens on the current day"
-          right
-          dot={sky}
-        />
-      </g>
+      {scene.map((item) => item.node)}
 
-      <g transform={`translate(0 ${lift(1.6)})`}>
-        <Box trace={trace} z={dayZ} w={146} d={30} depth={7} />
-        {Array.from({ length: 25 }, (_, i) => {
-          const x = -140 + i * (280 / 24);
-          return (
-            <path
-              key={i}
-              d={trace([
-                [x, -30, dayZ],
-                [x, i % 6 === 0 ? -18 : -24, dayZ],
-              ])}
-              strokeWidth="0.6"
-              style={{ stroke: i % 6 === 0 ? LINE : FAINT }}
-            />
-          );
-        })}
-        {ENTRIES.map((b, i) => {
-          const done = b.x + b.w < nowX;
-          return (
-            <Box
-              key={i}
-              trace={trace}
-              x={b.x}
-              y={4}
-              z={dayZ + (done ? b.h : 3)}
-              w={b.w}
-              d={9}
-              depth={done ? b.h : 3}
-              stroke={done ? token(b.color) : FAINT}
-              fill={done ? SURFACE : "transparent"}
-              top={done ? alpha(b.color, 22) : undefined}
-              dash={done ? undefined : "2 2.5"}
-              width={done ? 0.9 : 0.7}
-            />
-          );
-        })}
-        <path
-          d={trace([
-            [nowX, -30, dayZ],
-            [nowX, 30, dayZ],
-          ])}
-          strokeWidth="1.2"
-          style={{ stroke: red }}
-        />
-        <path
-          d={trace([
-            [nowX, 30, dayZ],
-            [nowX, 30, dayZ + 30],
-          ])}
-          strokeWidth="1"
-          style={{ stroke: red }}
-        />
-        <rect
-          x={ncx - 13}
-          y={ncy - 12}
-          width="26"
-          height="12"
-          rx="6"
-          style={{ fill: red }}
-        />
-        <text
-          x={ncx}
-          y={ncy - 3.4}
-          textAnchor="middle"
-          fontSize="7"
-          fontFamily="Inter, sans-serif"
-          fontWeight="600"
-          style={{ fill: token("on-accent") }}
-        >
-          Now
-        </text>
-        <Callout
-          from={P([146, 0, dayZ])}
-          ex={532}
-          ey={250}
-          id="02 · DAY"
-          title="Hour by hour"
-          note="Finance, activity, work, health"
-          right
-        />
-        <Callout
-          from={P([-146, 0, dayZ - 4])}
-          ex={28}
-          ey={318}
-          id="03 · ENTRIES"
-          title="Filled as you go"
-          note="From your connected sources"
-          dot={token("mint")}
-        />
-      </g>
-
-      <g transform={`translate(0 ${lift(3.2)})`}>
-        <Box trace={trace} z={dialZ} w={50} d={50} depth={8} />
-        <path
-          d={trace(circle(40, 0, 0, dialZ))}
-          strokeWidth="0.8"
-          style={{ stroke: LINE }}
-        />
-        <path
-          d={trace(circle(30, 0, 0, dialZ))}
-          strokeWidth="0.6"
-          strokeDasharray="2 3"
-          style={{ stroke: FAINT }}
-        />
-        {Array.from({ length: 12 }, (_, i) => {
-          const a = (i / 12) * Math.PI * 2;
-          return (
-            <path
-              key={i}
-              d={trace([
-                [Math.cos(a) * 34, Math.sin(a) * 34, dialZ],
-                [Math.cos(a) * 40, Math.sin(a) * 40, dialZ],
-              ])}
-              strokeWidth={i % 3 === 0 ? 1.1 : 0.6}
-              style={{ stroke: LINE }}
-            />
-          );
-        })}
-        <path d={hand(20, t / 60)} strokeWidth="1.6" style={{ stroke: LINE }} />
-        <path d={hand(30, t / 9)} strokeWidth="1" style={{ stroke: red }} />
-        <circle cx={hx} cy={hy} r="2.2" style={{ fill: red }} />
-        <Callout
-          from={P([-50, 0, dialZ])}
-          ex={28}
-          ey={128}
-          id="04 · NOW"
-          title="Entries land as they happen"
-          note="Nothing recorded yet"
-          dot={red}
-        />
-      </g>
+      <Callout
+        from={P([-131, 18, top + 12])}
+        ex={28}
+        ey={122}
+        id="TODAY"
+        title="Thursday, 15"
+        note="Opens on the current day"
+        dot={sky}
+      />
+      <Callout
+        from={P([-60, D, top - 4])}
+        ex={28}
+        ey={196}
+        id="03 · CATEGORIES"
+        title="Colour by kind"
+        note="Finance, activity, work, health"
+      />
+      <Callout
+        from={P([L, -D, top - 4])}
+        ex={532}
+        ey={196}
+        id="01 · DAY"
+        title="Hour by hour"
+        note="Midnight to midnight"
+        right
+      />
+      <Callout
+        from={P([132, D, top - 4])}
+        ex={532}
+        ey={268}
+        id="02 · ENTRIES"
+        title="Filled as you go"
+        note="From your connected sources"
+        right
+        dot={token("mint")}
+      />
     </Figure>
   );
 }

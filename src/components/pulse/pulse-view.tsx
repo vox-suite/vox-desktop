@@ -6,9 +6,9 @@ import { Activity, Plus, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePulseCanvas } from "@/hooks/use-pulse-canvas";
 import { CreatePulsePage } from "./create-pulse-page";
-import { PulseIntroduction } from "./pulse-introduction";
+import { PulseHeart, PulseIntroduction } from "./pulse-introduction";
+import { StateCard } from "@/components/state-card";
 import { PulseShell } from "./pulse-shell";
-import { PulseChartSkeleton } from "./chart-card";
 import { SavedChart } from "./saved-chart";
 import { discoveryApi } from "@/features/pulse/api";
 export function PulseView() {
@@ -43,9 +43,10 @@ export function PulseView() {
     );
   const empty =
     canvas?.charts.filter((chart) => !removed.includes(chart.id)).length === 0;
+  const centered = empty || (loading && !canvas);
   return (
     <PulseShell
-      scroll={!empty}
+      scroll={!centered}
       header={
         <>
           <div className="flex items-center gap-3.5">
@@ -92,17 +93,19 @@ export function PulseView() {
       }
     >
       <div
-        className={`relative flex flex-col p-4 sm:p-6 ${empty ? "h-full overflow-auto" : "min-h-full"}`}
+        className={`relative flex flex-col p-4 sm:p-6 ${centered ? "h-full overflow-auto" : "min-h-full"}`}
       >
         {loading && !canvas ? (
-          <div
-            role="status"
-            aria-label="Loading Pulse"
-            className="pulse-chart-grid"
-          >
-            {Array.from({ length: 4 }, (_, i) => (
-              <PulseChartSkeleton key={i} />
-            ))}
+          <div className="flex flex-1 items-center justify-center py-6">
+            <StateCard
+              loading
+              tall
+              accent="mint"
+              figure={<PulseHeart speed={2} />}
+              kicker="Insights"
+              title="Loading insights…"
+              text="Refreshing charts from your connected apps."
+            />
           </div>
         ) : error && !canvas ? (
           <div
