@@ -8,12 +8,11 @@ const LINE = alpha("ink", 62);
 const FAINT = token("border-strong");
 const SURFACE = token("surface");
 const LABEL = alpha("ink", 90);
-const K = 0.78;
 
 const at =
-  (cy: number) =>
+  (cy: number, cx = CX) =>
   ([x, y, z]: V3): [number, number] => [
-    CX + (x - y) * 0.866,
+    cx + (x - y) * 0.866,
     cy + (x + y) * 0.5 - z,
   ];
 
@@ -168,10 +167,18 @@ function Callout({
   );
 }
 
-function Figure({ label, children }: { label: string; children: ReactNode }) {
+function Figure({
+  label,
+  height = 570,
+  children,
+}: {
+  label: string;
+  height?: number;
+  children: ReactNode;
+}) {
   return (
     <svg
-      viewBox="0 0 560 570"
+      viewBox={`0 0 560 ${height}`}
       role="img"
       aria-label={label}
       fill="none"
@@ -464,35 +471,21 @@ export function TimelineFigure() {
   );
 }
 
-type Card = {
+type Glyph = "attention" | "briefing" | "email" | "connection" | "plan";
+
+const BINS: {
   id: string;
   title: string;
   note: string;
   color: VoxColor;
-  glyph: "attention" | "briefing" | "email" | "connection" | "plan";
-};
-
-const CARDS: Card[] = [
+  glyph: Glyph;
+}[] = [
   {
-    id: "05 · PLANS",
-    title: "Plans",
-    note: "Daily plans when they are ready",
-    color: "violet",
-    glyph: "plan",
-  },
-  {
-    id: "04 · CONNECTIONS",
-    title: "Connections",
-    note: "Apps that need a nudge",
-    color: "mint",
-    glyph: "connection",
-  },
-  {
-    id: "03 · EMAIL",
-    title: "Email",
-    note: "Notices worth reading",
-    color: "sky",
-    glyph: "email",
+    id: "01 · ATTENTION",
+    title: "Needs attention",
+    note: "Anything waiting on you",
+    color: "danger",
+    glyph: "attention",
   },
   {
     id: "02 · BRIEFINGS",
@@ -502,54 +495,75 @@ const CARDS: Card[] = [
     glyph: "briefing",
   },
   {
-    id: "01 · ATTENTION",
-    title: "Needs attention",
-    note: "Anything waiting on you",
-    color: "danger",
-    glyph: "attention",
+    id: "03 · EMAIL",
+    title: "Email",
+    note: "Notices worth reading",
+    color: "sky",
+    glyph: "email",
+  },
+  {
+    id: "04 · CONNECTIONS",
+    title: "Connections",
+    note: "Apps that need a nudge",
+    color: "mint",
+    glyph: "connection",
+  },
+  {
+    id: "05 · PLANS",
+    title: "Plans",
+    note: "Daily plans when ready",
+    color: "violet",
+    glyph: "plan",
   },
 ];
 
-// An inbox taken apart: every kind of update has its own layer, and each one
-// drops through the stack into the tray until nothing is left waiting.
+const ease = (v: number) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+
+// A sorting rack: each kind of update has its own bin, and new ones drop in
+// from above, light their bin, and settle.
 export function UpdatesFigure() {
   const t = useClock();
-  const P = at(470);
+  const P = at(178, 310);
   const trace = makeTrace(P);
-  const gap = 60;
-  const z0 = 66;
-  const bellZ = z0 + gap * CARDS.length + 26;
-  const cycle = (t % 4.2) / 4.2;
-  const dropZ = bellZ - 18 - cycle * (bellZ - 26);
-  const glow = (z: number) => Math.exp(-(((dropZ - z) / 22) ** 2));
-  const ringing = Math.max(0, 1 - cycle * 4);
-  const settled = Math.exp(-(((cycle - 0.97) / 0.05) ** 2));
-  const fade = Math.sin(Math.PI * cycle);
+  const W = 20;
+  const D = 30;
+  const H = 24;
+  const xs = BINS.map((_, i) => -104 + i * 52);
+  const step = 1.8;
+  const k = Math.floor(t / step) % BINS.length;
+  const u = (t % step) / step;
+  const cardZ = 96 - ease((u - 0.15) / 0.5) * 84;
+  const cardOpacity =
+    t > 0 ? Math.min(1, u / 0.12) * (1 - ease((u - 0.72) / 0.2)) : 0;
+  const landed = ease((u - 0.6) / 0.12) * (1 - ease((u - 0.8) / 0.2));
+  const ringing = t > 0 ? Math.max(0, 1 - u * 5) : 0;
 
-  const glyph = (c: Card, z: number, g: number) => {
-    const p = (u: number, v: number): V3 => [u * K, v * K, z];
-    const s = { stroke: mixTo(token(c.color), 0.55 + g * 0.45, FAINT) };
-    switch (c.glyph) {
+  const glyph = (kind: Glyph, ox: number, z: number, color: string) => {
+    const s = 0.5;
+    const p = (a: number, b: number): V3 => [ox + a * s, b * s, z];
+    const ring = (r: number, a: number, b: number) =>
+      trace(circle(r * s, ox + a * s, b * s, z));
+    const style = { stroke: color };
+    switch (kind) {
       case "attention":
         return (
-          <g strokeWidth="1" strokeLinejoin="round" style={s}>
+          <g strokeWidth="1" strokeLinejoin="round" style={style}>
             <path d={trace([p(-14, 10), p(0, -14), p(14, 10)], true)} />
-            <path d={trace([p(-1, -4), p(-1, 3)])} strokeWidth="1.4" />
-            <path d={trace([p(-1, 6.5), p(-1, 7)])} strokeWidth="1.8" />
+            <path d={trace([p(-1, -4), p(-1, 3)])} />
           </g>
         );
       case "briefing":
         return (
-          <g strokeWidth="0.9" style={s}>
+          <g strokeWidth="0.9" style={style}>
             {[-12, -4, 4].map((v, i) => (
               <path key={v} d={trace([p(-24, v), p(i === 2 ? 2 : 10, v)])} />
             ))}
-            <path d={trace(circle(7 * K, 22 * K, -6 * K, z))} />
+            <path d={ring(7, 22, -6)} />
           </g>
         );
       case "email":
         return (
-          <g strokeWidth="0.9" strokeLinejoin="round" style={s}>
+          <g strokeWidth="0.9" strokeLinejoin="round" style={style}>
             <path
               d={trace([p(-24, -14), p(24, -14), p(24, 14), p(-24, 14)], true)}
             />
@@ -558,195 +572,197 @@ export function UpdatesFigure() {
         );
       case "connection":
         return (
-          <g strokeWidth="0.9" style={s}>
-            <path d={trace(circle(6 * K, -18 * K, 0, z))} />
-            <path d={trace(circle(6 * K, 18 * K, 0, z))} />
+          <g strokeWidth="0.9" style={style}>
+            <path d={ring(6, -18, 0)} />
+            <path d={ring(6, 18, 0)} />
             <path d={trace([p(-12, 0), p(12, 0)])} strokeDasharray="2 2.5" />
           </g>
         );
       case "plan":
         return (
-          <g strokeWidth="0.9" strokeLinejoin="round" style={s}>
+          <g strokeWidth="0.9" strokeLinejoin="round" style={style}>
             <path d={trace([p(-16, 12), p(-16, -16)])} />
             <path d={trace([p(-16, -16), p(8, -10), p(-16, -4)], true)} />
-            <path d={trace([p(-4, 12), p(22, 12)])} strokeDasharray="2 3" />
           </g>
         );
     }
   };
 
-  const [bx, by] = P([0, 0, bellZ]);
-  const [dx, dy] = P([0, 0, dropZ]);
-  const [kx, ky] = P([0, 56, 14]);
+  const face = (pts: V3[]) => trace(pts, true);
+  const [bx, by] = P([-122, -30, 62]);
+  const orange = token("orange");
 
   return (
-    <Figure label="An exploded inbox: needs attention, briefings, email, connections and plans stacked above an empty tray">
-      <g strokeWidth="0.7" strokeDasharray="3 4" style={{ stroke: FAINT }}>
-        <path
-          d={trace([
-            [0, 0, 22],
-            [0, 0, bellZ - 4],
-          ])}
-        />
-        {[
-          [-54, -36],
-          [54, -36],
-          [54, 36],
-          [-54, 36],
-        ].map(([x, y]) => (
-          <path
-            key={`${x}${y}`}
-            d={trace([
-              [x, y, 22],
-              [x, y, z0 + gap * (CARDS.length - 1)],
-            ])}
-          />
-        ))}
-      </g>
-
-      <g>
-        <Box trace={trace} z={22} w={74} d={56} depth={24} />
-        <path
-          d={trace(
-            [
-              [-64, -46, 22],
-              [64, -46, 22],
-              [64, 46, 22],
-              [-64, 46, 22],
-            ],
-            true,
-          )}
-          strokeWidth="0.7"
-          style={{ stroke: LINE, fill: alpha("ink", 4) }}
-        />
-        <path
-          d={trace([
-            [-64, 46, 22],
-            [-64, 46, 6],
-            [-64, -46, 6],
-            [64, -46, 6],
-            [64, -46, 22],
-          ])}
-          strokeWidth="0.6"
-          style={{ stroke: FAINT }}
-        />
-        <g opacity={0.4 + settled * 0.6}>
-          <circle cx={kx} cy={ky - 4} r="10" style={{ fill: token("mint") }} />
-          <path
-            d={`M${fmt(kx - 4.2)},${fmt(ky - 4)} l3,3 l5.6,-6`}
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-            style={{ stroke: token("on-accent") }}
-          />
-        </g>
-        <Callout
-          from={P([74, 0, 10])}
-          ex={532}
-          ey={514}
-          id="INBOX"
-          title="All caught up"
-          note="Read items settle here"
-          right
-          dot={token("mint")}
-        />
-      </g>
-
-      {CARDS.map((c, i) => {
-        const z = z0 + i * gap;
-        const g = glow(z);
-        const right = i % 2 === 1;
-        const base = c.glyph === "attention" ? 0.7 : 0;
-        return (
-          <g
-            key={c.id}
-            className="figure-float"
-            style={{ animationDelay: `${i * -0.7}s` }}
-          >
-            <Box
-              trace={trace}
-              z={z}
-              w={54}
-              d={36}
-              depth={5}
-              stroke={mixTo(token(c.color), g * 0.9 + base)}
-              top={alpha(c.color, Math.round(3 + g * 12))}
-              width={0.85 + g * 0.5}
-            />
-            {glyph(c, z, Math.max(g, base))}
-            <Callout
-              from={P(right ? [54, 8, z] : [-8, 36, z])}
-              ex={right ? 532 : 28}
-              ey={Math.round(P([0, 0, z])[1] + (right ? -2 : 24))}
-              id={c.id}
-              title={c.title}
-              note={c.note}
-              right={right}
-              dot={mixTo(token(c.color), 0.5 + g * 0.5, FAINT)}
-            />
-          </g>
-        );
-      })}
+    <Figure
+      height={300}
+      label="A sorting rack with bins for needs attention, briefings, email, connections and plans, with new updates dropping into place"
+    >
+      <Box trace={trace} z={0} w={134} d={42} depth={8} />
+      <path
+        d={trace([
+          [-134, 0, 0],
+          [134, 0, 0],
+        ])}
+        strokeWidth="0.6"
+        strokeDasharray="2 4"
+        style={{ stroke: FAINT }}
+      />
 
       <path
-        d={`M${fmt(dx)},${fmt(dy - 9)} V${fmt(dy + 9)}`}
-        strokeWidth="1.2"
-        opacity={fade}
-        style={{ stroke: token("orange") }}
+        d={trace([
+          [-122, -30, 0],
+          [-122, -30, 44],
+        ])}
+        strokeWidth="0.85"
+        style={{ stroke: LINE }}
       />
-      <circle
-        cx={dx}
-        cy={dy}
-        r="3"
-        opacity={fade}
-        style={{ fill: token("orange") }}
-      />
-
-      <g>
+      <g transform={`translate(${fmt(bx)} ${fmt(by)}) scale(0.62)`}>
         <path
-          d={trace(circle(22, 0, 0, bellZ))}
-          strokeWidth="0.85"
-          style={{ stroke: LINE, fill: SURFACE }}
-        />
-        <path
-          d={`M${bx - 19},${by} C${bx - 19},${by - 30} ${bx - 13},${by - 42} ${bx},${by - 42} C${bx + 13},${by - 42} ${bx + 19},${by - 30} ${bx + 19},${by} Z`}
-          strokeWidth="0.85"
+          d="M-19,0 C-19,-30 -13,-42 0,-42 C13,-42 19,-30 19,0 Z"
+          strokeWidth="1.3"
           strokeLinejoin="round"
           style={{ stroke: LINE, fill: SURFACE }}
         />
         <path
-          d={`M${bx - 19},${by} C${bx - 10},${by + 6} ${bx + 10},${by + 6} ${bx + 19},${by}`}
-          strokeWidth="0.85"
+          d="M-23,0 C-12,7 12,7 23,0"
+          strokeWidth="1.3"
           style={{ stroke: LINE }}
         />
         <circle
-          cx={bx}
-          cy={by - 45}
-          r="2.4"
-          strokeWidth="0.85"
+          cx="0"
+          cy="-45"
+          r="3"
+          strokeWidth="1.3"
           style={{ stroke: LINE, fill: SURFACE }}
         />
-        <circle cx={bx} cy={by + 6} r="3" style={{ fill: token("orange") }} />
-        {[1, 2].map((k) => (
+        <circle cx="0" cy="7" r="4" style={{ fill: orange }} />
+        {[1, 2].map((n) => (
           <g
-            key={k}
-            strokeWidth="0.9"
-            opacity={ringing * (k === 1 ? 1 : 0.55)}
-            style={{ stroke: token("orange") }}
+            key={n}
+            strokeWidth="1.4"
+            opacity={ringing * (n === 1 ? 1 : 0.55)}
+            style={{ stroke: orange }}
           >
-            <path d={`M${bx - 26 - k * 6},${by - 30} q-${5 + k * 2},12 0,24`} />
-            <path d={`M${bx + 26 + k * 6},${by - 30} q${5 + k * 2},12 0,24`} />
+            <path d={`M${-26 - n * 7},-32 q-${5 + n * 2},13 0,26`} />
+            <path d={`M${26 + n * 7},-32 q${5 + n * 2},13 0,26`} />
           </g>
         ))}
-        <Callout
-          from={[bx - 19, by - 16]}
-          ex={28}
-          ey={Math.round(by - 20)}
-          id="SIGNAL"
-          title="New updates ring in"
-          note="Vox files each one by kind"
-          dot={token("orange")}
-        />
       </g>
+      <Callout
+        from={[bx - 12, by - 12]}
+        ex={28}
+        ey={64}
+        id="SIGNAL"
+        title="New updates ring in"
+        note="Vox files each one by kind"
+        dot={orange}
+      />
+
+      {BINS.map((b, i) => {
+        const x = xs[i];
+        const g = i === k ? landed : 0;
+        const color = token(b.color);
+        const edge = mixTo(color, 0.35 + g * 0.65);
+        const left = i % 2 === 0;
+        return (
+          <g key={b.id}>
+            <g strokeWidth="0.7" strokeLinejoin="round">
+              <path
+                d={face([
+                  [x - W, -D, 0],
+                  [x + W, -D, 0],
+                  [x + W, -D, H],
+                  [x - W, -D, H],
+                ])}
+                style={{ stroke: FAINT, fill: alpha("ink", 3) }}
+              />
+              <path
+                d={face([
+                  [x - W, -D, 0],
+                  [x - W, D, 0],
+                  [x - W, D, H],
+                  [x - W, -D, H],
+                ])}
+                style={{ stroke: FAINT, fill: alpha("ink", 5) }}
+              />
+              <path
+                d={face([
+                  [x - W, -D, 0],
+                  [x + W, -D, 0],
+                  [x + W, D, 0],
+                  [x - W, D, 0],
+                ])}
+                style={{
+                  stroke: FAINT,
+                  fill: alpha(b.color, Math.round(4 + g * 20)),
+                }}
+              />
+            </g>
+            {i === k && (
+              <g opacity={cardOpacity}>
+                <Box
+                  trace={trace}
+                  x={x}
+                  z={cardZ}
+                  w={15}
+                  d={22}
+                  depth={2}
+                  stroke={color}
+                  top={alpha(b.color, 14)}
+                />
+                {glyph(b.glyph, x, cardZ, color)}
+              </g>
+            )}
+            <g
+              strokeWidth={0.85 + g * 0.4}
+              strokeLinejoin="round"
+              style={{ stroke: edge, fill: SURFACE }}
+            >
+              <path
+                d={face([
+                  [x - W, D, 0],
+                  [x + W, D, 0],
+                  [x + W, D, H],
+                  [x - W, D, H],
+                ])}
+              />
+              <path
+                d={face([
+                  [x + W, -D, 0],
+                  [x + W, D, 0],
+                  [x + W, D, H],
+                  [x + W, -D, H],
+                ])}
+              />
+            </g>
+            <path
+              d={face([
+                [x - 11, D, 9],
+                [x + 11, D, 9],
+                [x + 11, D, 16],
+                [x - 11, D, 16],
+              ])}
+              strokeWidth="0.7"
+              style={{
+                stroke: color,
+                fill: alpha(b.color, Math.round(18 + g * 50)),
+              }}
+            />
+            <Callout
+              from={P(left ? [x - W, D, 13] : [x + W, 0, 20])}
+              ex={left ? 28 : 532}
+              ey={Math.round(
+                P(left ? [x - W, D, 13] : [x + W, 0, 20])[1] + (left ? 22 : -4),
+              )}
+              id={b.id}
+              title={b.title}
+              note={b.note}
+              right={!left}
+              dot={color}
+            />
+          </g>
+        );
+      })}
     </Figure>
   );
 }
