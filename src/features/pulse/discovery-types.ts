@@ -37,8 +37,12 @@ export type PulseSuggestion = Omit<
 };
 export type SavedPulseChart = Omit<
   Required<S["SavedPulseChart"]>,
-  "definition" | "result"
-> & { definition: PulseDefinition; result: PulseResult | null };
+  "definition" | "result" | "is_pinned"
+> & {
+  definition: PulseDefinition;
+  result: PulseResult | null;
+  is_pinned?: boolean;
+};
 export type DiscoveryResponse = Omit<
   Required<S["DiscoveryResponse"]>,
   "suggestions"

@@ -63,6 +63,7 @@ export type ProjectMessage = {
   at: string;
   proposals: ContextNode[];
   flow?: ProjectFlow | null;
+  diagram_id?: string | null;
 };
 export type ProjectActivity = { id: string; text: string; at: string };
 export type ProjectData = {
@@ -121,12 +122,13 @@ export type ProjectAgentStatus = {
 export type ProjectAgentProgress = { type: string; message: string };
 export type ProjectAgentResult = {
   flow: ProjectFlow;
+  mode: "update" | "new";
   reply: string;
   engine: string;
   request_id: string;
 };
 export interface ProjectLocalPort {
-  renderDiagram(diagram: DiagramIR): Promise<RenderedDiagram>;
+  renderDiagram(diagram: DiagramIR, draft?: boolean): Promise<RenderedDiagram>;
   exportDiagram(
     flow: ProjectFlow,
     format: "html" | "svg" | "json",
@@ -137,7 +139,7 @@ export interface ProjectLocalPort {
     projectId: string,
     requestId: string,
     question: string,
-    context: string,
+    base: ProjectFlow | null,
     progress: (event: ProjectAgentProgress) => void,
   ): Promise<ProjectAgentResult>;
   cancelTrace(requestId: string): Promise<void>;

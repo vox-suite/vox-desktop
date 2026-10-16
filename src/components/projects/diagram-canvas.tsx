@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import DOMPurify from "dompurify";
 import { ReactFlow, Controls, type NodeProps, type Node } from "@xyflow/react";
 import { Download, Loader2, X, FileCode2 } from "lucide-react";
@@ -20,6 +28,7 @@ import { useTheme } from "@/lib/theme";
 
 type SceneData = {
   rendered: RenderedDiagram;
+  seen: RefObject<Set<string>>;
   onSelect: (
     id: string | null,
     from?: string,
@@ -29,6 +38,7 @@ type SceneData = {
 };
 function Scene({ data }: NodeProps<Node<SceneData>>) {
   const host = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -45,7 +55,37 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
     root.replaceChildren(style);
     const template = document.createElement("template");
     template.innerHTML = svg;
+    // Theme selectors inside the shadow root cannot see the app's root attribute.
+    const diagram = template.content.querySelector("svg");
+    if (diagram) {
+      diagram.dataset.theme = theme;
+      diagram.style.colorScheme = theme;
+    }
     root.append(template.content);
+    // Fade in elements that were not on the previous render, so a streaming draft builds up piece by piece.
+    const fresh = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    root
+      .querySelectorAll("[data-node-id], [data-edge-from]")
+      .forEach((element, i) => {
+        const key =
+          element.getAttribute("data-node-id") ??
+          `${element.getAttribute("data-edge-from")}>${element.getAttribute("data-edge-to")}`;
+        if (data.seen.current.has(key)) return;
+        data.seen.current.add(key);
+        if (fresh)
+          element.animate(
+            [
+              { opacity: 0, transform: "translateY(4px)" },
+              { opacity: 1, transform: "none" },
+            ],
+            {
+              duration: 420,
+              delay: Math.min(i, 8) * 40,
+              easing: "ease-out",
+              fill: "backwards",
+            },
+          );
+      });
     const select = (event: Event) => {
       if (!(event.target instanceof Element)) return;
       const node = event.target.closest("[data-node-id]");
@@ -75,7 +115,7 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
       root.removeEventListener("click", select);
       root.removeEventListener("keydown", keyboard);
     };
-  }, [data]);
+  }, [data, theme]);
   return (
     <div
       ref={host}
@@ -95,10 +135,17 @@ const labels = {
 export function DiagramCanvas({
   flow,
   onRead,
+  actions,
+  draft = false,
 }: {
   flow: ProjectFlow;
   onRead: (citation: Citation) => void;
+  actions?: ReactNode;
+  draft?: boolean;
 }) {
+  const seen = useRef(new Set<string>());
+  const shown = useRef(0);
+  const requested = useRef(0);
   const theme = useTheme();
   const [result, setResult] = useState<{
     flow: ProjectFlow;
@@ -119,22 +166,27 @@ export function DiagramCanvas({
   }, [selected]);
   useEffect(() => {
     let active = true;
+    const request = ++requested.current;
     void localProjects()
-      .renderDiagram(flow.diagram!)
+      .renderDiagram(flow.diagram!, draft)
       .then((rendered) => {
-        if (active) {
+        // Drafts arrive faster than they render: show any newer one, never an older one.
+        if (draft ? request > shown.current : active) {
+          shown.current = request;
           setResult({ flow, rendered });
           setSelected(null);
         }
       })
       .catch((error) => {
-        if (active) setResult({ flow, error: String(error) });
+        // A draft that does not validate yet keeps the last good render on screen.
+        if (active && !draft) setResult({ flow, error: String(error) });
       });
     return () => {
       active = false;
     };
-  }, [flow, retry]);
-  const rendered = result?.flow === flow ? result.rendered : undefined;
+  }, [flow, retry, draft]);
+  const rendered =
+    result?.flow === flow || draft ? result?.rendered : undefined;
   const onSelect = useCallback(
     (id: string | null, from?: string, to?: string, label?: string) => {
       if (id) {
@@ -165,7 +217,7 @@ export function DiagramCanvas({
               position: { x: 0, y: 0 },
               width: rendered.width,
               height: rendered.height,
-              data: { rendered, onSelect },
+              data: { rendered, onSelect, seen },
               selectable: false,
               focusable: false,
             },
@@ -194,7 +246,11 @@ export function DiagramCanvas({
           </span>
         </div>
         <div className="project-flow-coverage">
-          <span>{flow.nodes.length} elements</span>
+          {draft ? (
+            <span className="project-thinking">Drawing…</span>
+          ) : (
+            <span>{flow.nodes.length} elements</span>
+          )}
           {!!flow.gaps.length && (
             <details>
               <summary>{flow.gaps.length} not in sources</summary>
@@ -231,6 +287,7 @@ export function DiagramCanvas({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {actions}
         </div>
       </div>
       {exportError && (
@@ -241,7 +298,11 @@ export function DiagramCanvas({
       <div className="project-architecture-stage">
         {rendered ? (
           <ReactFlow
-            key={flow.title + retry}
+            key={
+              draft && rendered
+                ? `${rendered.width}x${rendered.height}`
+                : flow.title + retry
+            }
             nodes={sceneNodes}
             nodeTypes={nodeTypes}
             edges={[]}
@@ -273,7 +334,9 @@ export function DiagramCanvas({
             ) : (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Rendering the diagram…
+                {draft
+                  ? "Laying out the first elements…"
+                  : "Rendering the diagram…"}
               </>
             )}
           </div>

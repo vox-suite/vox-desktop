@@ -140,6 +140,9 @@ export function PulseView() {
                   >
                     <SavedChart
                       key={chart.id}
+                      id={chart.id}
+                      pinned={chart.is_pinned}
+                      onChanged={() => void reload(true)}
                       onRemove={() => {
                         setActionError("");
                         void discoveryApi

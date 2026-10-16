@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ArrowUp, Folder, Loader2, ShieldCheck, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +29,7 @@ export function InvestigationComposer({
   onStop,
   status,
   log,
+  thinking,
   disabled,
   sourceCount,
 }: {
@@ -38,9 +40,14 @@ export function InvestigationComposer({
   onStop: () => void;
   status: string;
   log: string[];
+  thinking: string;
   disabled: boolean;
   sourceCount: number;
 }) {
+  const stream = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    stream.current?.scrollTo({ top: stream.current.scrollHeight });
+  }, [thinking]);
   return (
     <div className="project-composer-dock">
       <form
@@ -111,7 +118,10 @@ export function InvestigationComposer({
               ) : (
                 <span className="project-status-dot" />
               )}
-              <span role="status">
+              <span
+                role="status"
+                className={status ? "project-thinking" : undefined}
+              >
                 {status ? describeStatus(status) : "Recent investigation"}
               </span>
               <span className="project-investigation-detail">
@@ -124,6 +134,12 @@ export function InvestigationComposer({
               ))}
             </ol>
           </details>
+        )}
+        {thinking && (
+          <p ref={stream} className="project-thinking-stream">
+            {thinking}
+            {status && <span className="project-thinking-caret" />}
+          </p>
         )}
       </form>
     </div>

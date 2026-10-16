@@ -80,6 +80,47 @@ pub fn schema(kind: &str) -> Result<Value, String> {
     }
     run("schema", Path::new(kind))
 }
+// Drafts are streamed mid-write: keep only required keys (optional ones like mainPath or cards can
+// reference elements not written yet) and give required arrays not reached yet an empty value.
+fn fill_draft(diagram: &mut Value) -> Result<(), String> {
+    static SCHEMAS: Mutex<Option<std::collections::HashMap<String, Value>>> = Mutex::new(None);
+    let kind = diagram["diagram_type"]
+        .as_str()
+        .ok_or("Draft has no diagram type")?
+        .to_string();
+    let cached = SCHEMAS
+        .lock()
+        .map_err(|_| "Schema cache poisoned")?
+        .get_or_insert_with(Default::default)
+        .get(&kind)
+        .cloned();
+    let schema = match cached {
+        Some(schema) => schema,
+        None => {
+            let schema = schema(&kind)?["schema"].take();
+            SCHEMAS
+                .lock()
+                .map_err(|_| "Schema cache poisoned")?
+                .get_or_insert_with(Default::default)
+                .insert(kind, schema.clone());
+            schema
+        }
+    };
+    let object = diagram.as_object_mut().ok_or("Draft is not an object")?;
+    let required: Vec<&str> = schema["required"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|k| k.as_str())
+        .collect();
+    object.retain(|key, _| required.contains(&key.as_str()));
+    for key in required {
+        if schema["properties"][key]["type"] == "array" && !object.contains_key(key) {
+            object.insert(key.to_string(), Value::Array(vec![]));
+        }
+    }
+    Ok(())
+}
 pub fn render(diagram: &Value, directory: &Path) -> Result<Value, String> {
     let bytes = serde_json::to_vec(diagram).map_err(|e| e.to_string())?;
     if bytes.len() > 100_000 {
@@ -103,7 +144,8 @@ fn account(auth: &AuthManager) -> Result<String, String> {
 }
 #[tauri::command]
 pub async fn project_render_diagram(
-    diagram: Value,
+    mut diagram: Value,
+    draft: Option<bool>,
     auth: State<'_, AuthManager>,
 ) -> Result<Value, String> {
     let owner = account(&auth)?;
@@ -113,6 +155,9 @@ pub async fn project_render_diagram(
         .join(uuid::Uuid::new_v4().to_string());
     let result = tokio::task::spawn_blocking(move || {
         let _cleanup = Temporary(directory.clone());
+        if draft == Some(true) {
+            fill_draft(&mut diagram)?;
+        }
         render(&diagram, &directory)
     })
     .await

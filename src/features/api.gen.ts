@@ -2172,6 +2172,7 @@ export interface components {
             version: number;
         };
         DiscoveryInput: {
+            prompt?: string | null;
             refresh?: boolean;
             timezone: string;
         };
@@ -2429,6 +2430,8 @@ export interface components {
         ProjectMessage: {
             at: string;
             body: string;
+            /** Format: uuid */
+            diagram_id?: string | null;
             flow?: null | components["schemas"]["ProjectFlow"];
             /** Format: uuid */
             id: string;
@@ -2566,6 +2569,7 @@ export interface components {
             definition: components["schemas"]["PulseDefinition"];
             /** Format: uuid */
             id: string;
+            is_pinned?: boolean;
             result?: null | components["schemas"]["PulseResult"];
             title: string;
         };
@@ -2956,6 +2960,7 @@ export interface components {
             limit?: number | null;
             merchant?: string | null;
             record_state?: string | null;
+            search?: string | null;
             spending_only?: boolean | null;
             /** Format: date-time */
             start_at?: string | null;

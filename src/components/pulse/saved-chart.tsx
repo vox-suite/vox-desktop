@@ -3,9 +3,20 @@ import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  Pencil,
+  Pin,
+  PinOff,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,18 +32,28 @@ import { ALL_TIME_DAYS, windowLabel } from "@/features/pulse/window";
 import { PulseChartCard } from "./chart-card";
 
 export function SavedChart({
-  title,
+  id,
+  title: initialTitle,
+  pinned = false,
   definition: initial,
   result: initialResult,
   pending = false,
   onRemove,
+  onChanged,
 }: {
+  id: string;
   title: string;
+  pinned?: boolean;
   definition: PulseDefinition;
   result: PulseResult | null;
   pending?: boolean;
   onRemove: () => void;
+  onChanged: () => void;
 }) {
+  const [title, setTitle] = useState(initialTitle);
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(initialTitle);
+  const [saveError, setSaveError] = useState("");
   const [definition, setDefinition] = useState(initial);
   const [result, setResult] = useState(initialResult);
   const [seen, setSeen] = useState(initialResult);
@@ -55,11 +76,34 @@ export function SavedChart({
     try {
       const fresh = await discoveryApi.preview(next);
       if (mine === ticket.current) setResult(fresh);
+      await discoveryApi.updateChart(id, { definition: next });
     } catch (e) {
       if (mine === ticket.current)
         setResult((r) => (r ? { ...r, error: String(e) } : r));
     } finally {
       if (mine === ticket.current) setLoading(false);
+    }
+  }
+
+  async function rename() {
+    const next = draft.trim();
+    if (!next || next === title) return setRenaming(false);
+    try {
+      await discoveryApi.updateChart(id, { title: next });
+      setTitle(next);
+      setRenaming(false);
+      setSaveError("");
+    } catch (e) {
+      setSaveError(String(e));
+    }
+  }
+
+  async function togglePin() {
+    try {
+      await discoveryApi.updateChart(id, { is_pinned: !pinned });
+      onChanged();
+    } catch (e) {
+      setSaveError(String(e));
     }
   }
 
@@ -87,6 +131,27 @@ export function SavedChart({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => {
+                  setDraft(title);
+                  setRenaming(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => void togglePin()}
+              >
+                {pinned ? (
+                  <PinOff className="h-4 w-4" />
+                ) : (
+                  <Pin className="h-4 w-4" />
+                )}
+                {pinned ? "Unpin" : "Pin to top"}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 className="cursor-pointer"
@@ -135,6 +200,44 @@ export function SavedChart({
           ) : null
         }
       />
+      {saveError && (
+        <p role="alert" className="mt-1 text-xs text-destructive">
+          {saveError}
+        </p>
+      )}
+      <Dialog open={renaming} onOpenChange={setRenaming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename chart</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void rename();
+            }}
+          >
+            <Input
+              autoFocus
+              aria-label="Chart title"
+              value={draft}
+              maxLength={120}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setRenaming(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!draft.trim()}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { PlanProjectLink } from "@/components/projects/plan-project-link";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   CheckCircle2,
   Flag,
   MessageSquare,
+  Pencil,
   RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +21,7 @@ export function SpaceCanvasHeader({
   selectedNode,
   chatOpen,
   onBack,
+  onRename,
   onStop,
   onRetryNode,
   onToggleChat,
@@ -31,6 +35,7 @@ export function SpaceCanvasHeader({
   selectedNode: SpaceNode | null;
   chatOpen: boolean;
   onBack: () => void;
+  onRename: (title: string) => Promise<void>;
   onStop: () => void;
   onRetryNode: () => void;
   onToggleChat: () => void;
@@ -38,6 +43,7 @@ export function SpaceCanvasHeader({
   progress: { done: number; total: number };
 }) {
   const isCommitted = graph.space.state === "committed";
+  const [renaming, setRenaming] = useState(false);
 
   const running = graph.space.run_state === "running";
   const segments = Math.min(progress.total, 14);
@@ -59,9 +65,47 @@ export function SpaceCanvasHeader({
         </Button>
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">
-              {graph.space.title}
-            </h1>
+            {renaming ? (
+              <Input
+                autoFocus
+                aria-label="Plan title"
+                defaultValue={graph.space.title}
+                maxLength={200}
+                className="h-7 w-64 text-[15px] font-semibold"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    e.stopPropagation();
+                    setRenaming(false);
+                  }
+                }}
+                onBlur={(e) => {
+                  const title = e.target.value.trim();
+                  setRenaming(false);
+                  if (title && title !== graph.space.title)
+                    void onRename(title);
+                }}
+              />
+            ) : (
+              <h1
+                className="truncate text-[15px] font-semibold tracking-tight text-foreground"
+                title="Double-click to rename"
+                onDoubleClick={() => setRenaming(true)}
+              >
+                {graph.space.title}
+              </h1>
+            )}
+            {!renaming && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 text-muted-foreground hover:text-foreground"
+                aria-label="Rename plan"
+                onClick={() => setRenaming(true)}
+              >
+                <Pencil className="size-3" />
+              </Button>
+            )}
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
                 isCommitted

@@ -142,7 +142,7 @@ export function ProjectSources({
       })),
   ];
   return (
-    <div className="project-content-page">
+    <div className="project-content-page project-sources-page">
       <div className="project-sources-heading">
         <div>
           <h2 className="text-xl font-medium tracking-tight">

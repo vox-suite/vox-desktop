@@ -260,11 +260,69 @@
   padding: 3px 0;
   overflow-wrap: anywhere;
 }
+.project-thinking {
+  background: linear-gradient(
+      90deg,
+      var(--muted-foreground) 35%,
+      var(--foreground) 50%,
+      var(--muted-foreground) 65%
+    )
+    0 0 / 300% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: project-thinking 2.2s linear infinite;
+}
+@keyframes project-thinking {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.project-thinking-stream {
+  max-height: 140px;
+  overflow: auto;
+  padding: 0 16px 12px 36px;
+  font-size: 11px;
+  background: var(--background);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+.project-thinking-caret {
+  display: inline-block;
+  width: 6px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--muted-foreground);
+  animation: project-caret 1s steps(1) infinite;
+}
+@keyframes project-caret {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-thinking,
+  .project-thinking-caret {
+    animation: none;
+  }
+  .project-thinking {
+    color: var(--muted-foreground);
+  }
+}
 .project-content-page {
   width: 100%;
   max-width: 920px;
   margin: auto;
   padding: 36px 32px;
+}
+.project-sources-page {
+  max-width: none;
+  margin: 0;
 }
 .project-quiet-empty {
   padding: 32px 0;
@@ -373,6 +431,19 @@
   gap: 16px;
   color: var(--muted-foreground);
   font-size: 11px;
+}
+.project-draft-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vox-gold);
+}
+.project-draft-badge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .project-flow-coverage details {
   max-width: 480px;

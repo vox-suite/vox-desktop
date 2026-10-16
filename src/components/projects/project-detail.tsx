@@ -11,6 +11,10 @@ import {
   Settings2,
   MoreHorizontal,
   ChevronRight,
+  History,
+  Layers,
+  RotateCcw,
+  Save,
 } from "lucide-react";
 import {
   PageContainer,
@@ -28,12 +32,14 @@ import {
 } from "@/components/ui/dialog";
 import { useProject } from "@/features/projects/use-project";
 import { replaceNode, activity } from "@/features/projects/context";
+import { streamingDiagram, withoutDiagrams } from "@/features/projects/draft";
 import { projectsApi, localProjects } from "@/features/projects/api";
 import type {
   Citation,
   ContextNode,
   Project,
   ProjectAgentStatus,
+  ProjectFlow,
 } from "@/features/projects/types";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
@@ -76,12 +82,60 @@ export function ProjectDetail({
   const [error, setError] = useState("");
   const [traceStatus, setTraceStatus] = useState("");
   const [traceLog, setTraceLog] = useState<string[]>([]);
+  const [traceText, setTraceText] = useState("");
+  const [liveFlow, setLiveFlow] = useState<ProjectFlow | null>(null);
+  const streamed = useRef("");
+  const liveJson = useRef("");
   const [agentStatus, setAgentStatus] = useState<ProjectAgentStatus | null>(
     null,
   );
   const [agentSetup, setAgentSetup] = useState(false);
   const [agentKey, setAgentKey] = useState("");
   const [agentSetupBusy, setAgentSetupBusy] = useState(false);
+  const draftKey = `vox.project-draft.${id}`;
+  const [draft, setDraftState] = useState<{
+    question: string;
+    flow: ProjectFlow;
+    mode: "update" | "new";
+    lineage: string | null;
+  } | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(draftKey) ?? "null");
+    } catch {
+      return null;
+    }
+  });
+  const setDraft = (next: typeof draft) => {
+    setDraftState(next);
+    try {
+      if (next) localStorage.setItem(draftKey, JSON.stringify(next));
+      else localStorage.removeItem(draftKey);
+    } catch {
+      // Draft survives only in memory.
+    }
+  };
+  const [viewing, setViewing] = useState<string | null>(null);
+  const messages = p?.data.messages ?? [];
+  const savedDiagrams = messages.filter(
+    (m) => m.role === "assistant" && m.flow?.diagram,
+  );
+  const lineageOf = (m: (typeof messages)[number]) => m.diagram_id ?? m.id;
+  const viewed =
+    savedDiagrams.find((m) => m.id === viewing) ?? savedDiagrams.at(-1);
+  const lineage = viewed ? lineageOf(viewed) : null;
+  const versions = savedDiagrams.filter((m) => lineageOf(m) === lineage);
+  const versionNumber = viewed ? versions.indexOf(viewed) + 1 : 0;
+  const diagrams = savedDiagrams
+    .filter(
+      (m, i) =>
+        !savedDiagrams.slice(i + 1).some((n) => lineageOf(n) === lineageOf(m)),
+    )
+    .reverse();
+  const questionFor = (m: (typeof messages)[number]) => {
+    const before = messages[messages.indexOf(m) - 1];
+    return before?.role === "user" ? before.body : "";
+  };
+  const shown = draft?.flow ?? viewed?.flow;
   const traceRequest = useRef<string | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
@@ -203,6 +257,10 @@ export function ProjectDetail({
     if (!p || !intent.trim() || state.busy || traceRequest.current) return;
     setError("");
     setTraceLog([]);
+    setTraceText("");
+    setLiveFlow(null);
+    streamed.current = "";
+    liveJson.current = "";
     const requestId = crypto.randomUUID();
     traceRequest.current = requestId;
     setTraceStatus("Checking source freshness…");
@@ -223,24 +281,66 @@ export function ProjectDetail({
         }
       }
       if (traceRequest.current !== requestId) return;
-      const context = p.data.messages
-        .filter((m) => m.flow)
-        .slice(-2)
-        .map((m) => JSON.stringify(m.flow))
-        .join("\n")
-        .slice(0, 20000);
       const result = await localProjects().trace(
         p.id,
         requestId,
         intent.trim(),
-        context,
+        shown ?? null,
         (event) => {
           if (!mounted.current || traceRequest.current !== requestId) return;
+          if (event.type === "text") {
+            // ponytail: reparses the whole buffer per delta; fine for the 100 KB diagram cap.
+            streamed.current = (streamed.current + event.message).slice(
+              -200000,
+            );
+            setTraceText(withoutDiagrams(streamed.current).slice(-4000));
+            const live = streamingDiagram(streamed.current);
+            const json = live ? JSON.stringify(live.diagram) : "";
+            if (live && json !== liveJson.current) {
+              liveJson.current = json;
+              const meta = live.diagram.meta as { title?: string } | undefined;
+              setLiveFlow({
+                title: meta?.title ?? "Drawing the diagram",
+                nodes: [],
+                edges: [],
+                gaps: [],
+                diagram: live.diagram,
+              });
+            }
+            return;
+          }
           setTraceStatus(event.message);
           setTraceLog((old) => [...old, event.message].slice(-40));
         },
       );
       if (!mounted.current || traceRequest.current !== requestId) return;
+      setDraft({
+        question: intent.trim(),
+        flow: result.flow,
+        mode: result.mode,
+        lineage:
+          result.mode === "update" ? (draft ? draft.lineage : lineage) : null,
+      });
+      setIntent("");
+    } catch (e) {
+      if (mounted.current && traceRequest.current === requestId)
+        setError(String(e));
+    } finally {
+      if (mounted.current) {
+        setTraceStatus("");
+        setLiveFlow(null);
+      }
+      if (traceRequest.current === requestId) traceRequest.current = null;
+    }
+  };
+  const saveVersion = (
+    question: string,
+    flow: ProjectFlow,
+    diagramId: string,
+    text: string,
+  ) =>
+    run(async () => {
+      const messageId = crypto.randomUUID();
       await state.save((current) =>
         activity(
           {
@@ -252,33 +352,49 @@ export function ProjectDetail({
                 {
                   id: crypto.randomUUID(),
                   role: "user",
-                  body: intent.trim(),
+                  body: question,
                   at: new Date().toISOString(),
                   proposals: [],
                 },
                 {
-                  id: crypto.randomUUID(),
+                  id: messageId,
                   role: "assistant",
-                  body: result.reply,
+                  body: "Diagram constructed from imported source code.",
                   at: new Date().toISOString(),
                   proposals: [],
-                  flow: result.flow,
+                  flow,
+                  diagram_id: diagramId,
                 },
               ].slice(-100),
             },
           },
-          `Created diagram: ${result.flow.title}`,
+          text,
         ),
       );
-      setIntent("");
-    } catch (e) {
-      if (mounted.current && traceRequest.current === requestId)
-        setError(String(e));
-    } finally {
-      if (mounted.current) setTraceStatus("");
-      if (traceRequest.current === requestId) traceRequest.current = null;
-    }
+      setViewing(messageId);
+    });
+  const saveDraft = async () => {
+    if (!draft) return;
+    const n = draft.lineage
+      ? savedDiagrams.filter((m) => lineageOf(m) === draft.lineage).length + 1
+      : 1;
+    await saveVersion(
+      draft.question,
+      draft.flow,
+      draft.lineage ?? crypto.randomUUID(),
+      `Saved diagram v${n}: ${draft.flow.title}`,
+    );
+    setDraft(null);
   };
+  const restore = () =>
+    viewed &&
+    lineage &&
+    saveVersion(
+      `Restore version ${versionNumber}`,
+      viewed.flow!,
+      lineage,
+      `Restored ${viewed.flow!.title} to v${versionNumber} (saved as v${versions.length + 1})`,
+    );
   const cancelTrace = async () => {
     const request = traceRequest.current;
     if (!request) return;
@@ -492,15 +608,136 @@ export function ProjectDetail({
             aria-labelledby={`project-tab-${tab}`}
           >
             {tab === "context" &&
-              (p.data.messages.filter((m) => m.role === "assistant").at(-1)
-                ?.flow?.diagram ? (
+              ((liveFlow ?? shown)?.diagram ? (
                 <DiagramCanvas
-                  flow={
-                    p.data.messages
-                      .filter((m) => m.role === "assistant")
-                      .at(-1)!.flow!
-                  }
+                  flow={liveFlow ?? shown!}
+                  draft={!!liveFlow}
                   onRead={setCitation}
+                  actions={
+                    !liveFlow && draft ? (
+                      <>
+                        <span className="project-draft-badge">
+                          {draft.mode === "update"
+                            ? "Draft · unsaved changes"
+                            : "Draft · unsaved new diagram"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={state.busy || !!traceStatus}
+                          onClick={() => setDraft(null)}
+                        >
+                          Discard
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={state.busy || !!traceStatus}
+                          onClick={() => void saveDraft()}
+                        >
+                          <Save className="size-3.5" />
+                          Save
+                        </Button>
+                      </>
+                    ) : (
+                      !liveFlow &&
+                      viewed && (
+                        <>
+                          {viewed !== versions.at(-1) && (
+                            <>
+                              <span className="project-draft-badge">
+                                Viewing older version
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={!!traceStatus}
+                                onClick={() => setViewing(versions.at(-1)!.id)}
+                              >
+                                Latest
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={state.busy || !!traceStatus}
+                                onClick={() => void restore()}
+                              >
+                                <RotateCcw className="size-3.5" />
+                                Restore
+                              </Button>
+                            </>
+                          )}
+                          {versions.length > 1 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={!!traceStatus}
+                                >
+                                  <History className="size-3.5" />v
+                                  {versionNumber} of {versions.length}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-72">
+                                {[...versions].reverse().map((m) => (
+                                  <DropdownMenuItem
+                                    key={m.id}
+                                    onSelect={() => setViewing(m.id)}
+                                  >
+                                    <span className="w-7 shrink-0 font-medium">
+                                      v{versions.indexOf(m) + 1}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {questionFor(m) || m.flow!.title}
+                                    </span>
+                                    <time className="text-[10px] text-muted-foreground">
+                                      {new Date(m.at).toLocaleString(
+                                        undefined,
+                                        {
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "numeric",
+                                          minute: "2-digit",
+                                        },
+                                      )}
+                                    </time>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                          {diagrams.length > 1 && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={!!traceStatus}
+                                >
+                                  <Layers className="size-3.5" />
+                                  Diagrams ({diagrams.length})
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-64">
+                                {diagrams.map((m) => (
+                                  <DropdownMenuItem
+                                    key={m.id}
+                                    onSelect={() => setViewing(m.id)}
+                                  >
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {m.flow!.title}
+                                    </span>
+                                    <time className="text-[10px] text-muted-foreground">
+                                      {new Date(m.at).toLocaleDateString()}
+                                    </time>
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </>
+                      )
+                    )
+                  }
                 />
               ) : (
                 <ProjectContext
@@ -639,6 +876,7 @@ export function ProjectDetail({
               onStop={() => void cancelTrace()}
               status={traceStatus}
               log={traceLog}
+              thinking={traceText}
               disabled={state.busy || creating}
               sourceCount={p.data.sources.length}
             />

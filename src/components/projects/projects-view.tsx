@@ -293,8 +293,7 @@ export function ProjectsView() {
                 className="mt-4 self-start"
                 onClick={() => {
                   setLoading(true);
-                  void projectsApi
-                    .list(next)
+                  void projectList(next)
                     .then((list) => {
                       setItems((old) => [
                         ...old,

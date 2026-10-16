@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { discoveryApi } from "@/features/pulse/api";
 import type {
   DiscoveryResponse,
@@ -13,12 +14,29 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<PulseSuggestion | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [hidden, setHidden] = useState<string[]>([]);
   const active = useRef(true);
+  async function loadHidden() {
+    const keys = await discoveryApi.listDismissals().catch(() => []);
+    if (active.current) setHidden(keys);
+  }
+  async function restoreHidden() {
+    setError("");
+    try {
+      await Promise.all(hidden.map((key) => discoveryApi.undismiss(key)));
+      setHidden([]);
+      await load(true);
+    } catch (e) {
+      setError(String(e));
+      void loadHidden();
+    }
+  }
   async function load(more: boolean) {
     setLoading(true);
     setError("");
     try {
-      const data = await discoveryApi.discover({ refresh: more });
+      const data = await discoveryApi.discover({ refresh: more, prompt });
       if (active.current) setResponse(data);
     } catch (e) {
       if (active.current) setError(String(e));
@@ -28,7 +46,10 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
   }
   useEffect(() => {
     active.current = true;
-    queueMicrotask(() => void load(false));
+    queueMicrotask(() => {
+      void load(false);
+      void loadHidden();
+    });
     return () => {
       active.current = false;
     };
@@ -36,6 +57,7 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
   async function dismiss(s: PulseSuggestion) {
     try {
       await discoveryApi.dismiss(s.definition);
+      void loadHidden();
       setResponse((current) =>
         current
           ? {
@@ -68,13 +90,31 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
     );
   return (
     <div className="space-y-5">
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void load(true);
+        }}
+      >
+        <Input
+          aria-label="Suggest charts about"
+          placeholder="Suggest charts about… (e.g. food spending, workouts)"
+          value={prompt}
+          maxLength={200}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        <Button type="submit" size="sm" disabled={loading}>
+          Suggest
+        </Button>
+      </form>
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-muted-foreground">
           {loading
             ? "Generating suggestions from your activity — this can take a minute…"
             : response
-            ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data ${response.source_count === 1 ? "source" : "sources"}.`
-            : "Looking through your activity…"}
+              ? `Based on ${response.record_count.toLocaleString()} recorded entries across ${response.source_count} data ${response.source_count === 1 ? "source" : "sources"}.`
+              : "Looking through your activity…"}
         </p>
         <Button
           variant="outline"
@@ -86,6 +126,20 @@ export function SuggestionsView({ onSaved }: { onSaved: () => void }) {
           Generate more
         </Button>
       </div>
+      {hidden.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {hidden.length} dismissed{" "}
+          {hidden.length === 1 ? "suggestion is" : "suggestions are"} hidden.{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-foreground"
+            disabled={loading}
+            onClick={() => void restoreHidden()}
+          >
+            Show them again
+          </button>
+        </p>
+      )}
       {error && (
         <div
           role="alert"

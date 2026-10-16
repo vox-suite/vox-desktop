@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { registerCacheReset } from "@/features/cache-reset";
 import { readPersisted, schedulePersist } from "@/features/persist";
-import { spacesApi } from "@/features/spaces/api";
+import { spacesApi, type SpaceListFilters } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
 import { platform } from "@/platform";
+
+const PAGE_SIZE = 24;
 
 const LIST_EVENTS = new Set([
   "space_created",
@@ -41,10 +43,21 @@ registerCacheReset(() => {
   cache.spaces = null;
 });
 
-export function useSpaces(enabled = true) {
+const isFiltered = (f: SpaceListFilters) =>
+  !!(f.q || f.state || (f.sort && f.sort !== "created"));
+
+export function useSpaces(enabled = true, filters: SpaceListFilters = {}) {
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    filtersRef.current = filters;
+  });
+  const filterKey = `${filters.q ?? ""}|${filters.state ?? ""}|${filters.sort ?? ""}`;
   const [spaces, setSpaces] = useState<Space[]>(cache.spaces ?? []);
   const [loading, setLoading] = useState(enabled && !cache.spaces);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
+
+  const requests = useRef(0);
 
   const [prevEnabled, setPrevEnabled] = useState(enabled);
   if (enabled !== prevEnabled) {
@@ -53,8 +66,26 @@ export function useSpaces(enabled = true) {
   }
 
   const load = useCallback(async (countFirst = false) => {
+    const ticket = ++requests.current;
+    const filters = filtersRef.current;
+    if (isFiltered(filters)) {
+      try {
+        const page = await spacesApi.listSpaces(PAGE_SIZE + 1, 0, filters);
+        if (ticket !== requests.current) return;
+        setSpaces(page.slice(0, PAGE_SIZE));
+        setHasMore(page.length > PAGE_SIZE);
+        setError("");
+      } catch (err) {
+        if (ticket === requests.current)
+          setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (ticket === requests.current) setLoading(false);
+      }
+      return;
+    }
     try {
       await ready();
+      if (ticket !== requests.current) return;
       if (cache.spaces)
         setSpaces((existing) =>
           existing.length ? existing : (cache.spaces ?? []),
@@ -62,38 +93,48 @@ export function useSpaces(enabled = true) {
       let rev: string | null = null;
       if (countFirst) {
         const meta = await spacesApi.countSpaces().catch(() => null);
+        if (ticket !== requests.current) return;
         if (meta?.count === 0) {
           cache.rev = meta.rev;
           cache.spaces = [];
           persist();
           setSpaces([]);
+          setHasMore(false);
           setError("");
           return;
         }
         rev = meta?.rev ?? null;
         if (rev && cache.spaces && cache.rev === rev) {
           setSpaces(cache.spaces);
+          setHasMore(
+            cache.spaces.length < (meta?.count ?? cache.spaces.length),
+          );
           setError("");
           return;
         }
       }
-      const data = await spacesApi.listSpaces();
+      const limit = Math.max(PAGE_SIZE, cache.spaces?.length ?? 0);
+      const page = await spacesApi.listSpaces(limit + 1);
+      if (ticket !== requests.current) return;
+      const data = page.slice(0, limit);
+      setHasMore(page.length > limit);
       cache.spaces = data;
       cache.rev = rev;
       persist();
       setSpaces(data);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (ticket === requests.current)
+        setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (ticket === requests.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (!enabled) return;
     queueMicrotask(() => void load(true));
-  }, [enabled, load]);
+  }, [enabled, load, filterKey]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -137,5 +178,36 @@ export function useSpaces(enabled = true) {
     return load(true);
   }, [load]);
 
-  return { spaces, loading, error, reload, create, drop };
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    const ticket = ++requests.current;
+    setLoading(true);
+    try {
+      const filtered = isFiltered(filtersRef.current);
+      const page = await spacesApi.listSpaces(
+        PAGE_SIZE + 1,
+        spaces.length,
+        filtersRef.current,
+      );
+      if (ticket !== requests.current) return;
+      const merged = [
+        ...spaces,
+        ...page
+          .slice(0, PAGE_SIZE)
+          .filter((p) => !spaces.some((old) => old.id === p.id)),
+      ];
+      if (!filtered) {
+        cache.spaces = merged;
+        persist();
+      }
+      setSpaces(merged);
+      setHasMore(page.length > PAGE_SIZE);
+      setError("");
+    } catch (err) {
+      if (ticket === requests.current) setError(String(err));
+    } finally {
+      if (ticket === requests.current) setLoading(false);
+    }
+  };
+  return { spaces, loading, error, reload, create, drop, hasMore, loadMore };
 }

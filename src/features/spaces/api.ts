@@ -9,6 +9,12 @@ import type {
 
 const CREATE_TIMEOUT_MS = 30_000;
 
+export type SpaceListFilters = {
+  q?: string;
+  state?: "active" | "committed";
+  sort?: "created" | "updated" | "title";
+};
+
 export const spacesApi = {
   countSpaces: () =>
     platform().http.request<{ count: number; rev: string }>({
@@ -16,11 +22,19 @@ export const spacesApi = {
       path: "/v1/me/spaces/count",
       timeoutMs: 8000,
     }),
-  listSpaces: () =>
+  listSpaces: (limit?: number, offset = 0, filters: SpaceListFilters = {}) =>
     platform().http.request<Space[]>({
       method: "GET",
       path: "/v1/me/spaces",
-      query: { summary: "true" },
+      query: {
+        summary: "true",
+        ...(limit === undefined
+          ? {}
+          : { limit: String(limit), offset: String(offset) }),
+        ...(filters.q ? { q: filters.q } : {}),
+        ...(filters.state ? { state: filters.state } : {}),
+        ...(filters.sort ? { sort: filters.sort } : {}),
+      },
     }),
   getSpace: (id: string) =>
     platform().http.request<SpaceGraph>({
@@ -37,6 +51,12 @@ export const spacesApi = {
         project_id: projectId ?? null,
       },
       timeoutMs: CREATE_TIMEOUT_MS,
+    }),
+  renameSpace: (id: string, title: string) =>
+    platform().http.request<void>({
+      method: "PATCH",
+      path: `/v1/me/spaces/${id}`,
+      body: { title },
     }),
   dropSpace: (id: string) =>
     platform().http.request<void>({

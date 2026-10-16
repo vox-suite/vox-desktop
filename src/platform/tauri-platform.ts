@@ -9,12 +9,13 @@ import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
   projects: {
-    renderDiagram: (diagram) => invoke("project_render_diagram", { diagram }),
+    renderDiagram: (diagram, draft) =>
+      invoke("project_render_diagram", { diagram, draft: !!draft }),
     exportDiagram: (flow, format) =>
       invoke("project_export_diagram", { flow, format }),
     agentStatus: () => invoke("project_agent_status"),
     configureAgent: (key) => invoke("project_agent_configure", { key }),
-    trace: (projectId, requestId, question, context, onProgress) => {
+    trace: (projectId, requestId, question, base, onProgress) => {
       const progress = new Channel<
         import("@/features/projects/types").ProjectAgentProgress
       >();
@@ -23,7 +24,7 @@ export const tauriPlatform: Platform = {
         projectId,
         requestId,
         question,
-        context,
+        base,
         progress,
       });
     },

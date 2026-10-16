@@ -1,5 +1,4 @@
 import { useProjectOptions } from "@/features/projects/use-project-options";
-import { useVisionDictation } from "@/hooks/use-vision-dictation";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
 import { desktopStore } from "@/features/desktop-control/store";
 import {
@@ -8,7 +7,7 @@ import {
   PageBody,
 } from "@/components/ui/page-container";
 import "./spaces.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   RotateCw,
@@ -26,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import type { Space } from "@/features/spaces/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useSpaces } from "@/hooks/use-spaces";
@@ -35,7 +36,24 @@ import { SpacesIntroduction } from "./spaces-introduction";
 import { token } from "@/lib/theme";
 
 export function SpacesView() {
-  const { spaces, loading, error, reload, create, drop } = useSpaces();
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState<
+    "all" | "active" | "committed"
+  >("all");
+  const [sort, setSort] = useState<"created" | "updated" | "title">("created");
+  useEffect(() => {
+    const id = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+  const filtering = !!(query || stateFilter !== "all" || sort !== "created");
+  const { spaces, loading, error, reload, create, drop, hasMore, loadMore } =
+    useSpaces(true, {
+      q: query || undefined,
+      state: stateFilter === "all" ? undefined : stateFilter,
+      sort,
+    });
+  const visible = spaces;
   const selectedSpaceId = useDesktopContext().spaceId;
   const setSelectedSpaceId = (spaceId: string | null) =>
     desktopStore.patch({ spaceId, selectedItemId: null });
@@ -43,13 +61,17 @@ export function SpacesView() {
   const [intent, setIntent] = useState("");
   const [projectId, setProjectId] = useState("");
   const projectOptions = useProjectOptions(showCreateDialog);
-  const dictation = useVisionDictation((text) =>
-    setIntent((value) => `${value}${value ? " " : ""}${text}`),
-  );
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
   const currentSpace = useSpace(selectedSpaceId);
+  const sections: [string, Space[]][] =
+    stateFilter === "all"
+      ? [
+          ["In progress", visible.filter((sp) => sp.state !== "committed")],
+          ["Committed", visible.filter((sp) => sp.state === "committed")],
+        ]
+      : [["", visible]];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +79,6 @@ export function SpacesView() {
     setCreating(true);
     setCreateError("");
     try {
-      dictation.stop();
       const created = await create(intent.trim(), projectId || undefined);
       setIntent("");
       setShowCreateDialog(false);
@@ -150,64 +171,138 @@ export function SpacesView() {
           </div>
         )}
 
-        {spaces.length === 0 ? (
+        {spaces.length === 0 && !filtering && !search ? (
           <SpacesIntroduction onCreate={openCreate} />
         ) : (
-          <div className="relative z-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {spaces.map((sp) => (
-              <Card
-                key={sp.id}
-                onClick={() => setSelectedSpaceId(sp.id)}
-                className="group relative flex cursor-pointer flex-col justify-between rounded-xl border-border bg-card p-5 shadow-none transition-colors duration-200 hover:border-ring"
+          <>
+            <div className="relative z-10 mb-5 flex flex-wrap items-center gap-2">
+              <Input
+                aria-label="Search plans"
+                placeholder="Search plans"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-56 text-xs"
+              />
+              <div role="group" aria-label="Plan state" className="flex gap-1">
+                {(
+                  [
+                    ["all", "All"],
+                    ["active", "In progress"],
+                    ["committed", "Committed"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    size="sm"
+                    variant={stateFilter === value ? "secondary" : "ghost"}
+                    aria-pressed={stateFilter === value}
+                    onClick={() => setStateFilter(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <select
+                aria-label="Sort plans"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as typeof sort)}
+                className="ml-auto h-8 rounded-md border border-border bg-background px-2 text-xs"
               >
-                <div>
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${sp.run_state === "running" ? "animate-pulse" : ""}`}
-                        style={{
-                          background: stateDot(
-                            sp.state,
-                            sp.run_state === "running",
-                          ),
-                        }}
-                      />
-                      {sp.run_state === "running" ? "running" : sp.state}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void drop(sp.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                      aria-label={`Drop ${sp.title}`}
-                      title="Abandon plan"
-                    >
-                      <Trash2 />
-                    </Button>
+                <option value="created">Newest first</option>
+                <option value="updated">Recently updated</option>
+                <option value="title">Title A–Z</option>
+              </select>
+            </div>
+            {visible.length === 0 && !loading && (
+              <p className="relative z-10 text-sm text-muted-foreground">
+                No plans match.
+              </p>
+            )}
+            {sections
+              .filter(([, list]) => list.length > 0)
+              .map(([heading, list]) => (
+                <section key={heading} className="relative z-10 mb-6">
+                  {heading && (
+                    <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {heading} · {list.length}
+                    </h2>
+                  )}
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {list.map((sp) => (
+                      <Card
+                        key={sp.id}
+                        onClick={() => setSelectedSpaceId(sp.id)}
+                        className="group relative flex cursor-pointer flex-col justify-between rounded-xl border-border bg-card p-5 shadow-none transition-colors duration-200 hover:border-ring"
+                      >
+                        <div>
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${sp.run_state === "running" ? "animate-pulse" : ""}`}
+                                style={{
+                                  background: stateDot(
+                                    sp.state,
+                                    sp.run_state === "running",
+                                  ),
+                                }}
+                              />
+                              {sp.run_state === "running"
+                                ? "running"
+                                : sp.state}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  window.confirm(
+                                    `Abandon “${sp.title}”? This removes it from Plans.`,
+                                  )
+                                )
+                                  void drop(sp.id).catch(() => undefined);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                              aria-label={`Drop ${sp.title}`}
+                              title="Abandon plan"
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                          <h3 className="text-sm font-medium text-foreground">
+                            {sp.title}
+                          </h3>
+                          <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                            {sp.intent}
+                          </p>
+                        </div>
+                        <div className="mt-5 flex items-center justify-between border-t border-border pt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(sp.created_at).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1 text-foreground transition-transform group-hover:translate-x-0.5">
+                            Open
+                            <ArrowRight className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
-                  <h3 className="text-sm font-medium text-foreground">
-                    {sp.title}
-                  </h3>
-                  <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                    {sp.intent}
-                  </p>
-                </div>
-                <div className="mt-5 flex items-center justify-between border-t border-border pt-3 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(sp.created_at).toLocaleDateString()}
-                  </span>
-                  <span className="flex items-center gap-1 text-foreground transition-transform group-hover:translate-x-0.5">
-                    Open
-                    <ArrowRight className="h-3 w-3" />
-                  </span>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </section>
+              ))}
+          </>
+        )}
+
+        {hasMore && (
+          <Button
+            variant="ghost"
+            className="relative z-10 mt-4 self-start"
+            disabled={loading}
+            onClick={() => void loadMore()}
+          >
+            {loading ? "Loading plans…" : "Load more plans"}
+          </Button>
         )}
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -262,7 +357,7 @@ export function SpacesView() {
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
                 >
-                  <option value="">Standalone plan</option>
+                  <option value=""></option>
                   {projectOptions.projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -270,23 +365,22 @@ export function SpacesView() {
                   ))}
                 </select>
               </label>
+              {projectOptions.hasMore && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={creating || projectOptions.loading}
+                  onClick={() => void projectOptions.loadMore()}
+                >
+                  {projectOptions.loading
+                    ? "Loading projects…"
+                    : "Load more projects"}
+                </Button>
+              )}
               {projectOptions.error && (
                 <p className="text-xs text-destructive">
                   {projectOptions.error}
                 </p>
-              )}
-              {dictation.error && (
-                <p className="text-xs text-destructive">{dictation.error}</p>
-              )}
-              {dictation.available && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={dictation.toggle}
-                >
-                  {dictation.listening ? "Stop dictation" : "Dictate vision"}
-                </Button>
               )}
               <div className="flex items-center justify-end gap-2 pt-1">
                 <Button

@@ -3,7 +3,9 @@ import { desktopStore } from "@/features/desktop-control/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageContainer, PageBody } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Plus } from "lucide-react";
+import { AddTimelineEntryDialog, TimelineEntryDialog } from "@/components/timeline-entry-dialogs";
 import { PlanningTimeline } from "@/components/planning-timeline";
 import { SpanMonthCounts } from "@/components/span-month-counts";
 import { daysFrom } from "@/lib/span-format";
@@ -31,7 +33,21 @@ function toSpan(entry: TimelineEntry, groups: TimelineGroup[]): Span {
 }
 
 export function TimelineView({ onBack }: { collection?: Collection | null; collections: Collection[]; onBack?: () => void; onCollapse?: () => void }) {
-  const voiceFilter = useDesktopContext().timeline;
+  const voiceContext = useDesktopContext().timeline;
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [merchantInput, setMerchantInput] = useState("");
+  const [merchant, setMerchant] = useState("");
+  const [spendingOnly, setSpendingOnly] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    const id = setTimeout(() => { setSearch(searchInput.trim()); setMerchant(merchantInput.trim()); }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput, merchantInput]);
+  const manualFilter = !!(search || typeFilter || merchant || spendingOnly);
+  const voiceFilter = voiceContext ?? (manualFilter ? { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, spendingOnly, category: null } : null);
   const [mode, setMode] = useState<ViewMode>("day");
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const [range, setRange] = useState<DateRange | null>(null);
@@ -67,9 +83,9 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const voiceTicket = useRef(0);
-  const voiceStart = voiceFilter?.startAt ?? days[0].toISOString();
-  const voiceEnd = voiceFilter?.endAt ?? addDays(days[days.length - 1], 1).toISOString();
-  const spending = { spending_only: voiceFilter?.spendingOnly, merchant: voiceFilter?.merchant, category: voiceFilter?.category };
+  const voiceStart = voiceContext?.startAt ?? null;
+  const voiceEnd = voiceContext?.endAt ?? null;
+  const spending = { spending_only: voiceFilter?.spendingOnly || spendingOnly || undefined, merchant: voiceContext?.merchant || merchant || null, category: voiceContext?.category, search: search || null, event_type_id: typeFilter || null };
   useEffect(() => {
     if (!voiceFilter) return;
     const current = ++voiceTicket.current;
@@ -80,7 +96,7 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
       .finally(() => { if (voiceTicket.current === current) setVoiceLoading(false); });
     return () => { voiceTicket.current++; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voiceFilter, voiceStart, voiceEnd, group]);
+  }, [voiceContext, voiceStart, voiceEnd, group, search, typeFilter, merchant, spendingOnly, refresh]);
   async function voiceMore() {
     if (!voiceCursor || voiceLoading) return;
     const current = voiceTicket.current;
@@ -99,7 +115,9 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const loading = voiceFilter ? voiceLoading : store.loading || store.countsLoading;
   const error = metaError || (voiceFilter ? voiceError : store.error);
   const spans = useMemo(() => entries.map((entry) => toSpan(entry, groups)), [entries, groups]);
-  const reload = () => (voiceFilter ? setGroup((g) => g) : timelineDays.invalidate());
+  const reload = () => (voiceFilter ? setRefresh((n) => n + 1) : timelineDays.invalidate());
+  const changed = () => { timelineDays.invalidate(); setRefresh((n) => n + 1); setSelected(null); };
+  const clearFilters = () => { desktopStore.patch({ timeline: null }); setSearchInput(""); setSearch(""); setTypeFilter(""); setMerchantInput(""); setMerchant(""); setSpendingOnly(false); };
   const select = (span: Span) => setSelected(entries.find((e) => e.event.id === span.id) ?? null);
   const extend = (side: "before" | "after") =>
     setWindowState({ ...win, [side]: Math.min(WINDOW_MAX, win[side] + WINDOW_STEP) });
@@ -111,18 +129,25 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-border px-6 py-2" role="group" aria-label="Timeline groups">
       <Button size="sm" variant={!group ? "secondary" : "ghost"} onClick={() => setGroup("")}>All</Button>
       {groups.map((g) => <Button key={g.id} size="sm" variant={group === g.value ? "secondary" : "ghost"} onClick={() => setGroup(g.value)}>{g.label}</Button>)}
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <Input aria-label="Search timeline" placeholder="Search" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="h-8 w-40 text-xs" />
+        <select aria-label="Event type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs">
+          <option value="">All types</option>
+          {types.filter((t) => !group || groups.find((g) => g.id === t.group_id)?.value === group).map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <Input aria-label="Merchant" placeholder="Merchant" value={merchantInput} onChange={(e) => setMerchantInput(e.target.value)} className="h-8 w-28 text-xs" />
+        <Button size="sm" variant={spendingOnly ? "secondary" : "ghost"} aria-pressed={spendingOnly} onClick={() => setSpendingOnly((v) => !v)}>Spending</Button>
+        <Button size="sm" variant="secondary" onClick={() => setAdding(true)}><Plus /> Add</Button>
+      </div>
     </div>
     {error && <p role="alert" className="px-6 py-2 text-xs text-destructive">{error}</p>}
     <PageBody scroll={false} className="flex flex-col">
-      {voiceFilter ? <div className="overflow-auto p-6"><div className="mb-4 flex items-center justify-between"><span className="text-xs text-muted-foreground">{voiceFilter.spendingOnly ? "Spending" : "Entries"} · {new Date(voiceStart).toLocaleDateString()} – {new Date(voiceEnd).toLocaleDateString()} · {voiceFilter.timezone}</span><Button variant="ghost" size="sm" onClick={() => desktopStore.patch({timeline:null})}>Clear filter</Button></div>{voiceLoading && !voiceEntries.length ? <div className="h-32 animate-pulse rounded bg-muted"/> : voiceEntries.length ? voiceEntries.map(entry => <button key={entry.event.id} onClick={() => setSelected(entry)} className="flex w-full justify-between border-b border-border py-4 text-left text-sm"><span>{entry.event.title}</span><span className="text-xs text-muted-foreground">{new Date(entry.event.occurred_at).toLocaleString()}</span></button>) : <p className="text-sm text-muted-foreground">No matching entries.</p>}{voiceCursor && <Button variant="ghost" disabled={voiceLoading} onClick={() => void voiceMore()}>Load more entries</Button>}</div>
+      {voiceFilter ? <div className="overflow-auto p-6"><div className="mb-4 flex items-center justify-between"><span className="text-xs text-muted-foreground">{voiceFilter.spendingOnly ? "Spending" : "Entries"} · {voiceStart && voiceEnd ? `${new Date(voiceStart).toLocaleDateString()} – ${new Date(voiceEnd).toLocaleDateString()} · ${voiceFilter.timezone}` : "All time"}</span><Button variant="ghost" size="sm" onClick={clearFilters}>Clear filter</Button></div>{voiceLoading && !voiceEntries.length ? <div className="h-32 animate-pulse rounded bg-muted"/> : voiceEntries.length ? voiceEntries.map(entry => <button key={entry.event.id} onClick={() => setSelected(entry)} className="flex w-full justify-between border-b border-border py-4 text-left text-sm"><span>{entry.event.title}{entry.event.summary && <span className="block text-xs text-muted-foreground">{entry.event.summary}</span>}</span><span className="text-xs text-muted-foreground">{new Date(entry.event.occurred_at).toLocaleString()}</span></button>) : <p className="text-sm text-muted-foreground">No matching entries.</p>}{voiceCursor && <Button variant="ghost" disabled={voiceLoading} onClick={() => void voiceMore()}>Load more entries</Button>}</div>
         : mode === "month" && !customRange ? <SpanMonthCounts anchorDate={anchor} counts={store.counts} loading={store.countsLoading && store.counts.size === 0} onSelectDay={(date) => { setMode("day"); setAnchor(startOfDay(date)); }} />
         : <PlanningTimeline key={mode === "day" && !customRange ? "day" : `${mode}-${days[0].getTime()}`} days={days} spans={spans} loading={loading} unavailable={!!error} onSelect={select} frontiers={store.frontiers} onLoadMore={(day) => loadMoreDay(group, day)}
             {...(mode === "day" && !customRange ? { dayWidth: DAY_WIDTH, hourly: true, anchorDay: anchor, onReachStart: win.before < WINDOW_MAX ? () => extend("before") : undefined, onReachEnd: win.after < WINDOW_MAX ? () => extend("after") : undefined } : {})} />}
     </PageBody>
-    <Dialog open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}><DialogContent className="max-h-[80vh] overflow-y-auto"><DialogHeader><DialogTitle>{selected?.event.title}</DialogTitle><DialogDescription>{selected?.event.summary || types.find((t) => t.id === selected?.event.event_type_id)?.label || "Timeline entry"}</DialogDescription></DialogHeader>
-      {selected && <><p className="text-xs text-muted-foreground">{["year", "month", "day"].includes(selected.event.time_precision) ? new Date(selected.event.occurred_at).toLocaleDateString() : new Date(selected.event.occurred_at).toLocaleString()} · {selected.event.time_precision} precision</p>
-      <dl className="space-y-2 text-sm">{Object.entries((selected.event.content ?? {}) as Record<string, unknown>).filter(([, v]) => v != null).map(([key, value]) => <div key={key}><dt className="text-xs text-muted-foreground">{key.replaceAll("_", " ")}</dt><dd className="break-words">{typeof value === "object" ? JSON.stringify(value) : String(value)}</dd></div>)}</dl>
-      <div className="border-t border-border pt-3 text-xs text-muted-foreground">{selected.evidence.map((ev) => <p key={ev.id}>{ev.source_type} · {ev.source_id ?? ev.raw_reference ?? "Recorded evidence"}</p>)}</div></>}
-    </DialogContent></Dialog>
+    <TimelineEntryDialog entry={selected} types={types} onClose={() => setSelected(null)} onChanged={changed} />
+    <AddTimelineEntryDialog open={adding} types={types} groups={groups} onClose={() => setAdding(false)} onCreated={changed} />
   </PageContainer>;
 }

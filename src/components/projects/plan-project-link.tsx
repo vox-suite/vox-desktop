@@ -66,6 +66,15 @@ export function PlanProjectLink({
               </option>
             ))}
           </select>
+          {options.hasMore && (
+            <Button
+              variant="ghost"
+              disabled={options.loading}
+              onClick={() => void options.loadMore()}
+            >
+              {options.loading ? "Loading projects…" : "Load more projects"}
+            </Button>
+          )}
           {(error || options.error) && (
             <p role="alert" className="text-xs text-destructive">
               {error || options.error}

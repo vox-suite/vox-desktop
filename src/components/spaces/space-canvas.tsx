@@ -262,6 +262,9 @@ function SpaceCanvasInner({
           selectedNode={selectedNode}
           chatOpen={chatOpen}
           onBack={onBack}
+          onRename={(title) =>
+            runAction(() => spacesApi.renameSpace(graph.space.id, title))
+          }
           onStop={() =>
             void runAction(() => spacesApi.stopSpace(graph.space.id))
           }

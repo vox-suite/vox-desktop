@@ -16,7 +16,7 @@ registerCacheReset(() => {
   cache = null;
   hydration = null;
 });
-export async function projectList() {
+export async function projectList(before?: string) {
   const started = epoch;
   hydration ??= readPersisted<CachedList>("projects").then((data) => {
     if (started === epoch && !cache && data) cache = data;
@@ -25,7 +25,25 @@ export async function projectList() {
   const count = await projectsApi.count();
   if (started !== epoch)
     throw new Error("Account changed while loading projects");
-  if (cache?.rev === count.rev) return cache;
+  if (cache?.rev === count.rev) {
+    if (!before || before !== cache.next_cursor) return cache;
+    const page = await projectsApi.list(before);
+    if (started !== epoch)
+      throw new Error("Account changed while loading projects");
+    cache = {
+      ...cache,
+      items: [
+        ...cache.items,
+        ...page.items.filter(
+          (p) => !cache!.items.some((old) => old.id === p.id),
+        ),
+      ],
+      next_cursor: page.next_cursor,
+    };
+    const snapshot = cache;
+    schedulePersist("projects", () => snapshot);
+    return cache;
+  }
   const list = count.count
     ? await projectsApi.list()
     : { items: [], next_cursor: null };

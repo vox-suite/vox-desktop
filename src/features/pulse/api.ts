@@ -58,6 +58,7 @@ export const discoveryApi = {
       body: {
         timezone: pulseTimezone(),
         refresh: opts.refresh ?? opts.more ?? false,
+        prompt: opts.prompt?.trim() || null,
       },
       timeoutMs: 200000,
     }),
@@ -72,6 +73,29 @@ export const discoveryApi = {
       method: "POST",
       path: "/v1/me/pulse/charts",
       body: { title, definition, idempotency_key: idempotencyKey },
+    }),
+  updateChart: (
+    id: string,
+    patch: {
+      title?: string;
+      definition?: PulseDefinition;
+      is_pinned?: boolean;
+    },
+  ) =>
+    platform().http.request<SavedPulseChart>({
+      method: "PATCH",
+      path: `/v1/me/pulse/charts/${id}`,
+      body: patch,
+    }),
+  listDismissals: () =>
+    platform().http.request<string[]>({
+      method: "GET",
+      path: "/v1/me/pulse/dismissals",
+    }),
+  undismiss: (key: string) =>
+    platform().http.request<void>({
+      method: "DELETE",
+      path: `/v1/me/pulse/dismissals/${encodeURIComponent(key)}`,
     }),
   deleteChart: (id: string) =>
     platform().http.request<void>({
