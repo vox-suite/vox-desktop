@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "list first without render",
+    "explicit open/back",
+    "Canvas reentry",
+    "version history",
+    "model title prefill",
+    "blank title blocked",
+    "failed save preserves draft",
+    "title persisted into IR",
+    "cancel/delete",
+    "versioned update",
+    "delete all versions",
+    "dark compact layout",
+    "empty state",
+    "failed delete retains diagrams"
+  ],
+  "pageErrors": []
+}

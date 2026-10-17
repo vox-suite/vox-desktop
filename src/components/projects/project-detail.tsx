@@ -12,7 +12,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   History,
-  Layers,
+  Trash2,
   RotateCcw,
   Save,
 } from "lucide-react";
@@ -40,6 +40,7 @@ import type {
   Project,
   ProjectAgentStatus,
   ProjectFlow,
+  ProjectMessage,
 } from "@/features/projects/types";
 import { spacesApi } from "@/features/spaces/api";
 import type { Space } from "@/features/spaces/types";
@@ -53,6 +54,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { InvestigationComposer } from "./investigation-composer";
 import { DiagramCanvas } from "./diagram-canvas";
+import { DiagramLibrary } from "./diagram-library";
+import {
+  diagramLineage as lineageOf,
+  removeDiagram,
+  titleDiagram,
+} from "@/features/projects/diagrams";
 import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
@@ -115,27 +122,31 @@ export function ProjectDetail({
     }
   };
   const [viewing, setViewing] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [diagramTitle, setDiagramTitle] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<ProjectMessage | null>(
+    null,
+  );
+  const [dialogError, setDialogError] = useState("");
   const messages = p?.data.messages ?? [];
   const savedDiagrams = messages.filter(
     (m) => m.role === "assistant" && m.flow?.diagram,
   );
-  const lineageOf = (m: (typeof messages)[number]) => m.diagram_id ?? m.id;
-  const viewed =
-    savedDiagrams.find((m) => m.id === viewing) ?? savedDiagrams.at(-1);
+  const viewed = savedDiagrams.find((m) => m.id === viewing);
   const lineage = viewed ? lineageOf(viewed) : null;
   const versions = savedDiagrams.filter((m) => lineageOf(m) === lineage);
   const versionNumber = viewed ? versions.indexOf(viewed) + 1 : 0;
-  const diagrams = savedDiagrams
-    .filter(
-      (m, i) =>
-        !savedDiagrams.slice(i + 1).some((n) => lineageOf(n) === lineageOf(m)),
-    )
-    .reverse();
   const questionFor = (m: (typeof messages)[number]) => {
     const before = messages[messages.indexOf(m) - 1];
     return before?.role === "user" ? before.body : "";
   };
-  const shown = draft?.flow ?? viewed?.flow;
+  const activeDraft = viewing === "draft" ? draft : null;
+  const shown = activeDraft?.flow ?? viewed?.flow;
+  const libraryOpen = !traceStatus && !liveFlow && !shown?.diagram && viewing !== "context";
+  const selectTab = (next: string) => {
+    if (next === "context") setViewing(null);
+    setTab(next);
+  };
   const traceRequest = useRef<string | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
@@ -255,6 +266,12 @@ export function ProjectDetail({
   };
   const trace = async () => {
     if (!p || !intent.trim() || state.busy || traceRequest.current) return;
+    if (draft && viewing !== "draft") {
+      setError(
+        "Open or discard your unsaved draft before drawing another diagram.",
+      );
+      return;
+    }
     setError("");
     setTraceLog([]);
     setTraceText("");
@@ -319,8 +336,13 @@ export function ProjectDetail({
         flow: result.flow,
         mode: result.mode,
         lineage:
-          result.mode === "update" ? (draft ? draft.lineage : lineage) : null,
+          result.mode === "update"
+            ? activeDraft
+              ? activeDraft.lineage
+              : lineage
+            : null,
       });
+      setViewing("draft");
       setIntent("");
     } catch (e) {
       if (mounted.current && traceRequest.current === requestId)
@@ -333,68 +355,99 @@ export function ProjectDetail({
       if (traceRequest.current === requestId) traceRequest.current = null;
     }
   };
-  const saveVersion = (
+  const saveVersion = async (
     question: string,
     flow: ProjectFlow,
     diagramId: string,
     text: string,
-  ) =>
+  ) => {
+    const messageId = crypto.randomUUID();
+    await state.save((current) =>
+      activity(
+        {
+          ...current,
+          data: {
+            ...current.data,
+            messages: [
+              ...current.data.messages,
+              {
+                id: crypto.randomUUID(),
+                role: "user",
+                body: question,
+                at: new Date().toISOString(),
+                proposals: [],
+              },
+              {
+                id: messageId,
+                role: "assistant",
+                body: "Diagram constructed from imported source code.",
+                at: new Date().toISOString(),
+                proposals: [],
+                flow,
+                diagram_id: diagramId,
+              },
+            ].slice(-100),
+          },
+        },
+        text,
+      ),
+    );
+    setViewing(messageId);
+  };
+  const saveDraft = async () => {
+    if (!draft || state.busy) return;
+    setDialogError("");
+    try {
+      const flow = titleDiagram(draft.flow, diagramTitle);
+      const n = draft.lineage
+        ? savedDiagrams.filter((m) => lineageOf(m) === draft.lineage).length + 1
+        : 1;
+      await saveVersion(
+        draft.question,
+        flow,
+        draft.lineage ?? crypto.randomUUID(),
+        `Saved diagram v${n}: ${flow.title}`,
+      );
+      setDraft(null);
+      setSaveOpen(false);
+    } catch (e) {
+      setDialogError(String(e));
+    }
+  };
+  const restore = () =>
     run(async () => {
-      const messageId = crypto.randomUUID();
+      if (viewed && lineage)
+        await saveVersion(
+          `Restore version ${versionNumber}`,
+          viewed.flow!,
+          lineage,
+          `Restored ${viewed.flow!.title} to v${versionNumber} (saved as v${versions.length + 1})`,
+        );
+    });
+  const deleteDiagram = async () => {
+    if (!pendingDelete || state.busy) return;
+    setDialogError("");
+    const target = lineageOf(pendingDelete);
+    try {
       await state.save((current) =>
         activity(
           {
             ...current,
             data: {
               ...current.data,
-              messages: [
-                ...current.data.messages,
-                {
-                  id: crypto.randomUUID(),
-                  role: "user",
-                  body: question,
-                  at: new Date().toISOString(),
-                  proposals: [],
-                },
-                {
-                  id: messageId,
-                  role: "assistant",
-                  body: "Diagram constructed from imported source code.",
-                  at: new Date().toISOString(),
-                  proposals: [],
-                  flow,
-                  diagram_id: diagramId,
-                },
-              ].slice(-100),
+              messages: removeDiagram(current.data.messages, target),
             },
           },
-          text,
+          `Deleted diagram: ${pendingDelete.flow!.title}`,
         ),
       );
-      setViewing(messageId);
-    });
-  const saveDraft = async () => {
-    if (!draft) return;
-    const n = draft.lineage
-      ? savedDiagrams.filter((m) => lineageOf(m) === draft.lineage).length + 1
-      : 1;
-    await saveVersion(
-      draft.question,
-      draft.flow,
-      draft.lineage ?? crypto.randomUUID(),
-      `Saved diagram v${n}: ${draft.flow.title}`,
-    );
-    setDraft(null);
+      if (draft?.lineage === target) setDraft(null);
+      setPendingDelete(null);
+      setViewing(null);
+    } catch (e) {
+      setDialogError(String(e));
+    }
   };
-  const restore = () =>
-    viewed &&
-    lineage &&
-    saveVersion(
-      `Restore version ${versionNumber}`,
-      viewed.flow!,
-      lineage,
-      `Restored ${viewed.flow!.title} to v${versionNumber} (saved as v${versions.length + 1})`,
-    );
   const cancelTrace = async () => {
     const request = traceRequest.current;
     if (!request) return;
@@ -575,12 +628,12 @@ export function ProjectDetail({
                             (e.key === "ArrowRight" ? 1 : -1) +
                             tabs.length) %
                           tabs.length;
-                  setTab(tabs[next].id);
+                  selectTab(tabs[next].id);
                   document
                     .getElementById(`project-tab-${tabs[next].id}`)
                     ?.focus();
                 }}
-                onClick={() => setTab(t.id)}
+                onClick={() => selectTab(t.id)}
               >
                 {t.label}
               </button>
@@ -602,22 +655,25 @@ export function ProjectDetail({
             </div>
           )}
           <PageBody
-            scroll={tab !== "context"}
+            scroll={tab !== "context" || libraryOpen}
             id={`project-${tab}`}
             role="tabpanel"
             aria-labelledby={`project-tab-${tab}`}
           >
             {tab === "context" &&
-              ((liveFlow ?? shown)?.diagram ? (
+              (traceStatus || (liveFlow ?? shown)?.diagram ? (
                 <DiagramCanvas
-                  flow={liveFlow ?? shown!}
-                  draft={!!liveFlow}
+                  flow={liveFlow ?? shown ?? { title: "New diagram", nodes: [], edges: [], gaps: [] }}
+                  generating={traceStatus}
+                  draft={!!traceStatus}
+                  onBack={() => setViewing(null)}
+                  backDisabled={!!traceStatus}
                   onRead={setCitation}
                   actions={
-                    !liveFlow && draft ? (
+                    !liveFlow && activeDraft ? (
                       <>
                         <span className="project-draft-badge">
-                          {draft.mode === "update"
+                          {activeDraft.mode === "update"
                             ? "Draft · unsaved changes"
                             : "Draft · unsaved new diagram"}
                         </span>
@@ -625,14 +681,23 @@ export function ProjectDetail({
                           size="sm"
                           variant="ghost"
                           disabled={state.busy || !!traceStatus}
-                          onClick={() => setDraft(null)}
+                          onClick={() => {
+                            setDraft(null);
+                            setViewing(null);
+                          }}
                         >
                           Discard
                         </Button>
                         <Button
                           size="sm"
                           disabled={state.busy || !!traceStatus}
-                          onClick={() => void saveDraft()}
+                          onClick={() => {
+                            setDiagramTitle(
+                              activeDraft.flow.title.trim().slice(0, 120),
+                            );
+                            setDialogError("");
+                            setSaveOpen(true);
+                          }}
                         >
                           <Save className="size-3.5" />
                           Save
@@ -705,49 +770,56 @@ export function ProjectDetail({
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
-                          {diagrams.length > 1 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={!!traceStatus}
-                                >
-                                  <Layers className="size-3.5" />
-                                  Diagrams ({diagrams.length})
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-64">
-                                {diagrams.map((m) => (
-                                  <DropdownMenuItem
-                                    key={m.id}
-                                    onSelect={() => setViewing(m.id)}
-                                  >
-                                    <span className="min-w-0 flex-1 truncate">
-                                      {m.flow!.title}
-                                    </span>
-                                    <time className="text-[10px] text-muted-foreground">
-                                      {new Date(m.at).toLocaleDateString()}
-                                    </time>
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="Delete diagram"
+                            disabled={state.busy || !!traceStatus}
+                            onClick={() => {
+                              setDialogError("");
+                              setPendingDelete(viewed);
+                            }}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
                         </>
                       )
                     )
                   }
                 />
+              ) : viewing === "context" ? (
+                <div className="flex h-full min-h-0 flex-col">
+                  <div className="border-b px-5 py-3">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setViewing(null)}
+                    >
+                      <ArrowLeft className="size-3.5" /> Diagrams
+                    </Button>
+                  </div>
+                  <ProjectContext
+                    project={p}
+                    onAddSources={() => setTab("sources")}
+                    investigating={!!traceStatus}
+                    onSelect={(n) => {
+                      if (!traceStatus) setEditing(n);
+                    }}
+                    onSource={(id) => setExplorer(id)}
+                  />
+                </div>
               ) : (
-                <ProjectContext
-                  project={p}
-                  onAddSources={() => setTab("sources")}
-                  investigating={!!traceStatus}
-                  onSelect={(n) => {
-                    if (!traceStatus) setEditing(n);
+                <DiagramLibrary
+                  messages={messages}
+                  draft={draft}
+                  busy={state.busy || !!traceStatus}
+                  onOpen={setViewing}
+                  onDraft={() => setViewing("draft")}
+                  onDelete={(message) => {
+                    setDialogError("");
+                    setPendingDelete(message);
                   }}
-                  onSource={(id) => setExplorer(id)}
+                  onContext={() => setViewing("context")}
                 />
               ))}
             {tab === "sources" && (
@@ -883,6 +955,132 @@ export function ProjectDetail({
           )}
         </div>
       </div>
+      <Dialog
+        open={saveOpen}
+        onOpenChange={(open) => {
+          if (!state.busy) setSaveOpen(open);
+        }}
+      >
+        <DialogContent showCloseButton={!state.busy}>
+          <DialogHeader>
+            <DialogTitle>Save diagram</DialogTitle>
+            <DialogDescription>
+              Give this diagram a title so it’s easy to find later.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void saveDraft();
+            }}
+          >
+            <div className="space-y-2">
+              <label htmlFor="diagram-title" className="text-xs font-medium">
+                Diagram title
+              </label>
+              <Input
+                id="diagram-title"
+                name="title"
+                value={diagramTitle}
+                onChange={(event) => setDiagramTitle(event.target.value)}
+                maxLength={120}
+                required
+                disabled={state.busy}
+                aria-describedby={
+                  dialogError
+                    ? "diagram-title-help diagram-save-error"
+                    : "diagram-title-help"
+                }
+                aria-invalid={!!dialogError}
+              />
+              <p
+                id="diagram-title-help"
+                className="text-xs text-muted-foreground"
+              >
+                Suggested by the model. Edit it before saving if you like.
+              </p>
+            </div>
+            {dialogError && (
+              <p
+                id="diagram-save-error"
+                role="alert"
+                className="text-xs text-destructive"
+              >
+                {dialogError}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={state.busy}
+                onClick={() => setSaveOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={state.busy || !diagramTitle.trim()}
+              >
+                {state.busy ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Save className="size-3.5" />
+                )}{" "}
+                {state.busy ? "Saving…" : "Save diagram"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => {
+          if (!open && !state.busy) setPendingDelete(null);
+        }}
+      >
+        <DialogContent showCloseButton={!state.busy}>
+          <DialogHeader>
+            <DialogTitle>Delete diagram?</DialogTitle>
+            <DialogDescription>
+              “{pendingDelete?.flow?.title}” and all of its saved versions will
+              be permanently removed.
+              {draft?.lineage &&
+              pendingDelete &&
+              draft.lineage === lineageOf(pendingDelete)
+                ? " Its unsaved draft will also be discarded."
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {dialogError && (
+            <p role="alert" className="text-xs text-destructive">
+              {dialogError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              disabled={state.busy}
+              onClick={() => setPendingDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={state.busy}
+              onClick={() => void deleteDiagram()}
+            >
+              {state.busy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="size-3.5" />
+              )}{" "}
+              {state.busy ? "Deleting…" : "Delete diagram"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {editing && (
         <ContextEditor
           key={editing.id}

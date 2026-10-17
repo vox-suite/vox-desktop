@@ -1,0 +1,369 @@
+.timeline-composer {
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border-radius: 20px;
+  box-shadow: 0 24px 80px -24px
+    color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+.timeline-composer-header {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 24px 20px;
+}
+.timeline-composer-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 46px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--muted);
+  box-shadow: 0 2px 3px -2px
+    color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+.timeline-composer-mark svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.5;
+}
+.timeline-composer-form {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+.timeline-composer-body {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 24px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.timeline-composer-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.timeline-composer-label svg {
+  width: 14px;
+  height: 14px;
+}
+.timeline-composer-story {
+  padding: 8px 0 22px;
+}
+.timeline-composer-title {
+  height: 42px;
+  padding: 0 0 6px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent !important;
+  font-size: 24px;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  box-shadow: none;
+}
+.timeline-composer-title::placeholder {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+.timeline-composer-title:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 1px 0 var(--ring);
+}
+.timeline-composer-notes {
+  min-height: 42px;
+  padding: 12px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.timeline-composer-notes:focus-visible {
+  box-shadow: 0 1px 0 var(--ring);
+}
+.timeline-composer-category {
+  padding-bottom: 22px;
+}
+.timeline-composer-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.timeline-composer-category-option {
+  position: relative;
+  cursor: pointer;
+}
+.timeline-composer-category-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.timeline-composer-category-option > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
+}
+.timeline-composer-category-option svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.6;
+}
+.timeline-composer-category-option:hover > span {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.timeline-composer-category-option input:checked + span {
+  color: var(--foreground);
+  border-color: var(--foreground);
+  background: var(--muted);
+}
+.timeline-composer-category-option input:focus-visible + span {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.timeline-composer-category-option input:disabled + span {
+  opacity: 0.5;
+  cursor: default;
+}
+.timeline-composer-check {
+  width: 12px !important;
+}
+.timeline-composer-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--muted);
+}
+.timeline-composer-type select {
+  min-width: 0;
+  flex: 1;
+  appearance: none;
+  border: 0;
+  outline-offset: 3px;
+  background: transparent;
+  font-size: 12px;
+  text-align: right;
+  padding: 3px;
+}
+.timeline-composer select option {
+  background: var(--modal);
+  color: var(--foreground);
+}
+.timeline-composer-when {
+  padding: 20px 0 22px;
+  border-top: 1px solid var(--border);
+}
+.timeline-composer-dates {
+  clear: both;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.timeline-composer-date-label,
+.timeline-composer-detail-label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.timeline-composer-date-label input,
+.timeline-composer-detail-label input {
+  height: 38px;
+  font-size: 12px;
+  font-weight: 400;
+}
+.timeline-composer-add-end {
+  align-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 38px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.timeline-composer-add-end span {
+  font-size: 10px;
+  margin-left: 3px;
+}
+.timeline-composer-add-end:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.timeline-composer-details {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.timeline-composer-when > legend,
+.timeline-composer-details > legend {
+  float: left;
+  width: 100%;
+}
+.timeline-composer-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  clear: both;
+}
+.timeline-composer-detail-label select {
+  height: 38px;
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 400;
+}
+.timeline-composer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  gap: 12px;
+  min-height: 38px;
+  align-self: end;
+  margin-top: 22px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.timeline-composer-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.timeline-composer-switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--muted);
+}
+.timeline-composer-switch::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  transition: transform 120ms;
+}
+.timeline-composer-toggle input:checked + span {
+  background: var(--foreground);
+  border-color: var(--foreground);
+}
+.timeline-composer-toggle input:checked + span::after {
+  transform: translateX(12px);
+  background: var(--background);
+}
+.timeline-composer-toggle input:focus-visible + span {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.timeline-composer-error {
+  margin-top: 16px;
+  color: var(--destructive);
+  font-size: 12px;
+}
+.timeline-composer-footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+.timeline-composer-footer-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.timeline-composer-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+}
+.timeline-composer button:focus-visible,
+.timeline-composer select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .timeline-composer {
+    max-height: calc(100dvh - 24px);
+  }
+  .timeline-composer-header {
+    padding: 20px 18px 16px;
+  }
+  .timeline-composer-body {
+    padding: 4px 18px 20px;
+  }
+  .timeline-composer-title {
+    font-size: 21px;
+  }
+  .timeline-composer-dates,
+  .timeline-composer-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .timeline-composer-toggle {
+    margin-top: 0;
+  }
+  .timeline-composer-footer {
+    padding: 14px 18px;
+  }
+  .timeline-composer-footer-note {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timeline-composer *,
+  .timeline-composer *::after {
+    transition: none;
+    animation: none;
+  }
+}

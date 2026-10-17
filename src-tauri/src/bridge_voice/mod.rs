@@ -25,24 +25,39 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 pub struct BridgeVoiceState {
     muted: AtomicBool,
     microphone: Mutex<Option<String>>,
-    microphone_switch: Mutex<Option<mpsc::Sender<(Option<String>, oneshot::Sender<Result<(), String>>)>>> ,
+    microphone_switch:
+        Mutex<Option<mpsc::Sender<(Option<String>, oneshot::Sender<Result<(), String>>)>>>,
     text: Mutex<Option<mpsc::Sender<String>>>,
 }
 #[tauri::command]
 pub fn list_microphones() -> Result<Vec<String>, String> {
-    let devices = cpal::default_host().input_devices().map_err(|e| e.to_string())?;
+    let devices = cpal::default_host()
+        .input_devices()
+        .map_err(|e| e.to_string())?;
     Ok(devices.filter_map(|device| device.name().ok()).collect())
 }
 
 #[tauri::command]
-pub async fn select_microphone(state: State<'_, BridgeVoiceState>, name: Option<String>) -> Result<(), String> {
+pub async fn select_microphone(
+    state: State<'_, BridgeVoiceState>,
+    name: Option<String>,
+) -> Result<(), String> {
     if let Some(ref name) = name {
-        if !list_microphones()?.contains(name) { return Err("Microphone is no longer available".into()); }
+        if !list_microphones()?.contains(name) {
+            return Err("Microphone is no longer available".into());
+        }
     }
-    let sender = state.microphone_switch.lock().map_err(|_| "Voice unavailable")?.clone();
+    let sender = state
+        .microphone_switch
+        .lock()
+        .map_err(|_| "Voice unavailable")?
+        .clone();
     if let Some(sender) = sender {
         let (reply, response) = oneshot::channel();
-        sender.send((name.clone(), reply)).await.map_err(|_| "Session ended")?;
+        sender
+            .send((name.clone(), reply))
+            .await
+            .map_err(|_| "Session ended")?;
         response.await.map_err(|_| "Session ended")??;
     }
     *state.microphone.lock().map_err(|_| "Voice unavailable")? = name;
@@ -185,7 +200,10 @@ pub async fn run_session_loop(
     is_running.store(false, Ordering::SeqCst);
     vox_playing.store(false, Ordering::SeqCst);
     *app.state::<BridgeVoiceState>().text.lock().unwrap() = None;
-    *app.state::<BridgeVoiceState>().microphone_switch.lock().unwrap() = None;
+    *app.state::<BridgeVoiceState>()
+        .microphone_switch
+        .lock()
+        .unwrap() = None;
     if let Some(tx) = ready.take() {
         let _ = tx.send(result.clone());
     }

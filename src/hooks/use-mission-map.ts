@@ -119,7 +119,11 @@ export function useMissionMap(reaction: {
         <div><dt>Coordinates</dt><dd class="vox-location-card__coords"></dd></div></dl>
       </section>
     `;
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      const marker = new maplibregl.Marker({
+        element: el,
+        anchor: "bottom",
+        subpixelPositioning: true,
+      })
         .setLngLat(initialCenter)
         .addTo(map);
       markerRef.current = marker;
@@ -283,7 +287,7 @@ export function useMissionMap(reaction: {
           return;
         }
         const ip = loc.ip?.trim();
-        write(".vox-hud-marker__label", ip || loc.city || "Your location");
+        write(".vox-hud-marker__label", loc.city || "Your location");
         write(
           ".vox-location-card__title",
           loc.city || "Your location",

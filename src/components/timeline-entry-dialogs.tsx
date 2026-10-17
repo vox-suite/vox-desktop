@@ -1,5 +1,22 @@
-import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { useId, useState } from "react";
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Clock3,
+  Dumbbell,
+  Gamepad2,
+  Heart,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  Wallet,
+  Briefcase,
+  UserRound,
+  X,
+} from "lucide-react";
+import "./timeline-entry-dialog.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,7 +90,7 @@ function formatValue(
   return String(value);
 }
 
-type SchemaProp = { type?: string | string[] };
+type SchemaProp = { type?: string | string[]; enum?: string[] };
 function requiredFields(type: TimelineEventType | undefined) {
   const schema = (type?.content_schema ?? {}) as {
     required?: string[];
@@ -83,7 +100,7 @@ function requiredFields(type: TimelineEventType | undefined) {
     const raw = schema.properties?.[name]?.type;
     const kind =
       (Array.isArray(raw) ? raw.find((t) => t !== "null") : raw) ?? "string";
-    return { name, kind };
+    return { name, kind, options: schema.properties?.[name]?.enum };
   });
 }
 
@@ -285,6 +302,16 @@ export function TimelineEntryDialog({
   );
 }
 
+function CategoryIcon({ value }: { value: string }) {
+  if (/finance|expense|money/.test(value)) return <Wallet aria-hidden="true" />;
+  if (/work|meeting/.test(value)) return <Briefcase aria-hidden="true" />;
+  if (/health/.test(value)) return <Heart aria-hidden="true" />;
+  if (/activity|fitness/.test(value)) return <Dumbbell aria-hidden="true" />;
+  if (/entertainment|gaming|music/.test(value))
+    return <Gamepad2 aria-hidden="true" />;
+  return <UserRound aria-hidden="true" />;
+}
+
 export function AddTimelineEntryDialog({
   open,
   types,
@@ -301,22 +328,78 @@ export function AddTimelineEntryDialog({
   const [typeId, setTypeId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const type = types.find((t) => t.id === typeId) ?? types[0];
+  const [hasEnd, setHasEnd] = useState(false);
+  const [start, setStart] = useState(() =>
+    toLocalInput(new Date().toISOString()),
+  );
+  const id = useId();
+  const activeTypes = types.filter((t) => t.state === "active");
+  const type = activeTypes.find((t) => t.id === typeId) ?? activeTypes[0];
+  const group = groups.find((g) => g.id === type?.group_id);
   const fields = requiredFields(type);
+  const close = () => {
+    if (!busy) {
+      setError("");
+      onClose();
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add to timeline</DialogTitle>
-          <DialogDescription>Record something that happened.</DialogDescription>
+    <Dialog open={open} onOpenChange={(next) => !next && close()}>
+      <DialogContent
+        className="timeline-composer"
+        showCloseButton={false}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          document.getElementById(`${id}-title`)?.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (busy) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (busy) event.preventDefault();
+        }}
+      >
+        <DialogHeader className="timeline-composer-header">
+          <div className="timeline-composer-mark" aria-hidden="true">
+            <CalendarDays />
+          </div>
+          <div>
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              Add to timeline
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              Record something that happened.
+            </DialogDescription>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto self-start"
+            aria-label="Close"
+            disabled={busy}
+            onClick={close}
+          >
+            <X />
+          </Button>
         </DialogHeader>
         <form
-          className="space-y-3"
+          className="timeline-composer-form"
           onSubmit={async (ev) => {
             ev.preventDefault();
-            if (!type) return;
+            if (!type || busy) return;
             const form = new FormData(ev.currentTarget);
+            const title = String(form.get("title")).trim();
+            const end = String(form.get("ended_at") ?? "");
+            if (!title) {
+              setError("Give your entry a title.");
+              return;
+            }
+            if (end && new Date(end) < new Date(start)) {
+              setError("End time must be after the start time.");
+              return;
+            }
             const content: Record<string, unknown> = {};
             for (const { name, kind } of fields) {
               const raw = form.get(`field_${name}`);
@@ -327,16 +410,15 @@ export function AddTimelineEntryDialog({
                     ? Number(raw)
                     : String(raw ?? "");
             }
-            const end = String(form.get("ended_at") ?? "");
             setBusy(true);
             setError("");
             try {
               await timelineApi.create({
                 event_type_id: type.id,
                 group_id: type.group_id,
-                title: String(form.get("title")),
+                title,
                 summary: String(form.get("summary")) || null,
-                occurred_at: fromLocalInput(String(form.get("occurred_at"))),
+                occurred_at: fromLocalInput(start),
                 ended_at: end ? fromLocalInput(end) : null,
                 time_precision: "minute",
                 source_timezone:
@@ -344,6 +426,9 @@ export function AddTimelineEntryDialog({
                 content,
                 evidence: [{ source_type: "manual", observation_metadata: {} }],
               });
+              setTypeId("");
+              setHasEnd(false);
+              setStart(toLocalInput(new Date().toISOString()));
               onCreated();
               onClose();
             } catch (err) {
@@ -353,89 +438,263 @@ export function AddTimelineEntryDialog({
             }
           }}
         >
-          <label className="block text-xs text-muted-foreground">
-            Type
-            <select
-              value={type?.id ?? ""}
-              onChange={(e) => setTypeId(e.target.value)}
-              className="mt-1 h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
-            >
-              {groups.map((g) => (
-                <optgroup key={g.id} label={g.label}>
-                  {types
-                    .filter((t) => t.group_id === g.id && t.state === "active")
+          <fieldset disabled={busy} className="timeline-composer-body">
+            <div className="timeline-composer-story">
+              <label
+                htmlFor={`${id}-title`}
+                className="timeline-composer-label"
+              >
+                What happened?
+              </label>
+              <Input
+                id={`${id}-title`}
+                name="title"
+                placeholder="Give this moment a title"
+                required
+                maxLength={500}
+                className="timeline-composer-title"
+              />
+              <label htmlFor={`${id}-notes`} className="sr-only">
+                Notes (optional)
+              </label>
+              <Textarea
+                id={`${id}-notes`}
+                name="summary"
+                placeholder="Add a little context… (optional)"
+                className="timeline-composer-notes"
+              />
+            </div>
+
+            <fieldset className="timeline-composer-category">
+              <legend className="timeline-composer-label">Category</legend>
+              <div className="timeline-composer-categories">
+                {groups
+                  .filter((g) => activeTypes.some((t) => t.group_id === g.id))
+                  .map((g) => {
+                    return (
+                      <label
+                        key={g.id}
+                        className="timeline-composer-category-option"
+                      >
+                        <input
+                          type="radio"
+                          name="category"
+                          value={g.id}
+                          checked={type?.group_id === g.id}
+                          onChange={() => {
+                            setTypeId(
+                              activeTypes.find((t) => t.group_id === g.id)!.id,
+                            );
+                            setError("");
+                          }}
+                        />
+                        <span>
+                          <CategoryIcon value={g.value} />
+                          {g.label}
+                          {type?.group_id === g.id && (
+                            <Check
+                              aria-hidden="true"
+                              className="timeline-composer-check"
+                            />
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+              </div>
+              <div className="timeline-composer-type">
+                <span className="text-muted-foreground [&>svg]:size-4">
+                  <CategoryIcon value={group?.value ?? ""} />
+                </span>
+                <label
+                  htmlFor={`${id}-type`}
+                  className="text-xs text-muted-foreground"
+                >
+                  Entry type
+                </label>
+                <select
+                  id={`${id}-type`}
+                  value={type?.id ?? ""}
+                  onChange={(e) => {
+                    setTypeId(e.target.value);
+                    setError("");
+                  }}
+                  disabled={!activeTypes.length}
+                  required
+                >
+                  {!activeTypes.length && (
+                    <option value="">No entry types available</option>
+                  )}
+                  {activeTypes
+                    .filter((t) => t.group_id === type?.group_id)
                     .map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.label}
                       </option>
                     ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-          <Input
-            name="title"
-            aria-label="Title"
-            placeholder="Title"
-            required
-            maxLength={500}
-          />
-          <Textarea
-            name="summary"
-            aria-label="Notes"
-            placeholder="Notes (optional)"
-          />
-          <label className="block text-xs text-muted-foreground">
-            When
-            <Input
-              name="occurred_at"
-              type="datetime-local"
-              required
-              defaultValue={toLocalInput(new Date().toISOString())}
-            />
-          </label>
-          <label className="block text-xs text-muted-foreground">
-            Ends (optional)
-            <Input name="ended_at" type="datetime-local" />
-          </label>
-          {fields.map(({ name, kind }) =>
-            kind === "boolean" ? (
-              <label
-                key={`${type?.id}-${name}`}
-                className="flex items-center gap-2 text-sm"
-              >
-                <input type="checkbox" name={`field_${name}`} /> {label(name)}
-              </label>
-            ) : (
-              <label
-                key={`${type?.id}-${name}`}
-                className="block text-xs text-muted-foreground"
-              >
-                {label(name)}
-                <Input
-                  name={`field_${name}`}
-                  required
-                  type={
-                    kind === "number" || kind === "integer" ? "number" : "text"
-                  }
-                  step="any"
+                </select>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="pointer-events-none size-3.5 text-muted-foreground"
                 />
-              </label>
-            ),
-          )}
-          {error && (
-            <p role="alert" className="text-xs text-destructive">
-              {error}
-            </p>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={onClose}>
+              </div>
+              {!activeTypes.length && (
+                <p role="status" className="mt-2 text-xs text-muted-foreground">
+                  Entry types are unavailable. Close and refresh the timeline to
+                  try again.
+                </p>
+              )}
+            </fieldset>
+
+            <fieldset className="timeline-composer-when">
+              <legend className="timeline-composer-label">
+                <Clock3 aria-hidden="true" />
+                When it happened
+              </legend>
+              <div className="timeline-composer-dates">
+                <label
+                  className="timeline-composer-date-label"
+                  htmlFor={`${id}-start`}
+                >
+                  Starts
+                  <Input
+                    id={`${id}-start`}
+                    name="occurred_at"
+                    type="datetime-local"
+                    required
+                    value={start}
+                    onChange={(e) => {
+                      setStart(e.target.value);
+                      setError("");
+                    }}
+                  />
+                </label>
+                {hasEnd ? (
+                  <label
+                    className="timeline-composer-date-label"
+                    htmlFor={`${id}-end`}
+                  >
+                    <span className="flex items-center justify-between">
+                      Ends{" "}
+                      <button
+                        type="button"
+                        aria-label="Remove end time"
+                        onClick={() => setHasEnd(false)}
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </span>
+                    <Input
+                      id={`${id}-end`}
+                      name="ended_at"
+                      type="datetime-local"
+                      min={start}
+                    />
+                  </label>
+                ) : (
+                  <button
+                    type="button"
+                    className="timeline-composer-add-end"
+                    onClick={() => setHasEnd(true)}
+                  >
+                    <Plus aria-hidden="true" className="size-3.5" />
+                    Add end time<span>Optional</span>
+                  </button>
+                )}
+              </div>
+            </fieldset>
+
+            {fields.length > 0 && (
+              <fieldset key={type?.id} className="timeline-composer-details">
+                <legend className="timeline-composer-label">
+                  {type?.label} details
+                </legend>
+                <div className="timeline-composer-fields">
+                  {fields.map(({ name, kind, options }) =>
+                    kind === "boolean" ? (
+                      <label key={name} className="timeline-composer-toggle">
+                        <span>{label(name)}</span>
+                        <input type="checkbox" name={`field_${name}`} />
+                        <span
+                          className="timeline-composer-switch"
+                          aria-hidden="true"
+                        />
+                      </label>
+                    ) : (
+                      <label
+                        key={name}
+                        className="timeline-composer-detail-label"
+                        htmlFor={`${id}-${name}`}
+                      >
+                        {label(name)}
+                        {options?.length ? (
+                          <select
+                            id={`${id}-${name}`}
+                            name={`field_${name}`}
+                            required
+                            defaultValue=""
+                          >
+                            <option value="" disabled>
+                              Select {label(name).toLowerCase()}
+                            </option>
+                            {options.map((value) => (
+                              <option key={value} value={value}>
+                                {label(value)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <Input
+                            id={`${id}-${name}`}
+                            name={`field_${name}`}
+                            required
+                            type={
+                              kind === "number" || kind === "integer"
+                                ? "number"
+                                : "text"
+                            }
+                            step={kind === "integer" ? "1" : "any"}
+                            placeholder={
+                              /amount|price|cost/.test(name)
+                                ? "0.00"
+                                : undefined
+                            }
+                          />
+                        )}
+                      </label>
+                    ),
+                  )}
+                </div>
+              </fieldset>
+            )}
+            {error && (
+              <p role="alert" className="timeline-composer-error">
+                {error}
+              </p>
+            )}
+          </fieldset>
+          <div className="timeline-composer-footer">
+            <span className="timeline-composer-footer-note">
+              <span aria-hidden="true" className="timeline-composer-dot" />
+              Manual entry
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={close}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={busy || !type}>
+              {busy ? (
+                <Loader2 className="animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Plus />
+              )}
               {busy ? "Adding…" : "Add entry"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

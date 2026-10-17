@@ -1,8 +1,8 @@
 pub mod agent;
-pub mod diagram;
 mod agent_gateway;
 mod agent_runtime;
 mod agent_tools;
+pub mod diagram;
 mod engine;
 mod graph;
 mod sources;

@@ -22,6 +22,9 @@ import {
 import "@/index.css";
 import "./screenshots.css";
 import { decorateScreenshot } from "./presentation";
+import { diagramDemo, diagramPort } from "./project-diagrams";
+const isDiagramDemo =
+  new URLSearchParams(location.search).get("screen") === "project-diagrams";
 if (!import.meta.env.DEV)
   throw new Error("Screenshot fixtures are development only");
 // Isolate all native, network, and cache calls from personal account data.
@@ -88,6 +91,7 @@ const connections = connectors.map((c) => ({
   account_label: "alex.morgan@example.com",
 }));
 const mock: Platform = {
+  ...(isDiagramDemo ? { projects: diagramPort } : {}),
   cache: {
     read: async () => null,
     write: async () => {},
@@ -98,6 +102,28 @@ const mock: Platform = {
     request: async (req) => {
       const { path, body } = req;
       const b = (body ?? {}) as Record<string, unknown>;
+      if (
+        isDiagramDemo &&
+        path.includes("/projects/") &&
+        !path.endsWith("/count")
+      ) {
+        if (req.method === "PUT") {
+          if (diagramDemo.failSave) {
+            diagramDemo.failSave = false;
+            throw new Error("503: The fixture could not save. Try again.");
+          }
+          if (b.revision !== diagramDemo.project.revision)
+            throw new Error("409: Project changed");
+          diagramDemo.project = {
+            ...diagramDemo.project,
+            name: String(b.name),
+            data: b.data as typeof project.data,
+            revision: diagramDemo.project.revision + 1,
+          };
+          diagramDemo.saves++;
+        }
+        return structuredClone(diagramDemo.project) as never;
+      }
       if (path.endsWith("/timeline/groups")) return groups as never;
       if (path.endsWith("/timeline/event-types")) return [] as never;
       if (path.endsWith("/timeline/events/days")) {
@@ -204,12 +230,14 @@ const tabs = {
   plans: "spaces",
   "plans-list": "spaces",
   project: "projects",
+  "project-diagrams": "projects",
   "projects-list": "projects",
 } as const;
 desktopStore.patch({
   page: tabs[page as keyof typeof tabs] ?? "agent",
   spaceId: page === "plans" ? plan.space.id : null,
-  projectId: page === "project" ? project.id : null,
+  projectId:
+    page === "project" || page === "project-diagrams" ? project.id : null,
   timezone: "America/Los_Angeles",
   timeline:
     page === "filter"

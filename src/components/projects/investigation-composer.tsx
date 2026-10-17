@@ -57,17 +57,17 @@ export function InvestigationComposer({
           onSubmit();
         }}
       >
-        <label htmlFor="project-question" className="project-question-label">
+        <label htmlFor="project-question" className="sr-only">
           Ask about your project
         </label>
         <Textarea
           id="project-question"
           name="question"
-          placeholder="How does the voice pipeline work?"
+          placeholder="Ask a question or describe a diagram."
           value={question}
           maxLength={12000}
           onChange={(e) => onChange(e.target.value)}
-          rows={2}
+          rows={3}
           disabled={!!status}
         />
         <div className="project-composer-actions">
@@ -136,10 +136,13 @@ export function InvestigationComposer({
           </details>
         )}
         {thinking && (
+          <details className="project-explanation">
+            <summary>Diagram explanation</summary>
           <p ref={stream} className="project-thinking-stream">
             {thinking}
             {status && <span className="project-thinking-caret" />}
           </p>
+          </details>
         )}
       </form>
     </div>

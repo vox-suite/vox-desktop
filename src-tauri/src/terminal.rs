@@ -1,13 +1,13 @@
+use base64::Engine;
 /**
 * Local PTY-backed shell session driven by commands received over the
 * device's real-time connection to Vox Core.
 */
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
-use base64::Engine;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter};
 use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter};
 
 const DONE_MARKER: &str = "__VOX_CMD_DONE__";
 const MAX_WAIT: Duration = Duration::from_secs(30 * 60);
@@ -95,7 +95,10 @@ impl TerminalManager {
             })
             .map_err(|e| e.to_string())?;
 
-        let child = pair.slave.spawn_command(shell_command()).map_err(|e| e.to_string())?;
+        let child = pair
+            .slave
+            .spawn_command(shell_command())
+            .map_err(|e| e.to_string())?;
         drop(pair.slave);
 
         let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
@@ -188,7 +191,10 @@ impl TerminalManager {
                 .writer
                 .write_all(command.as_bytes())
                 .map_err(|e| e.to_string())?;
-            session.writer.write_all(if cfg!(windows) { b"\r" } else { b"\n" }).map_err(|e| e.to_string())?;
+            session
+                .writer
+                .write_all(if cfg!(windows) { b"\r" } else { b"\n" })
+                .map_err(|e| e.to_string())?;
             session
                 .writer
                 .write_all(done_marker_command().as_bytes())

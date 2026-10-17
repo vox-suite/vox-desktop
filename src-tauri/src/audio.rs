@@ -424,20 +424,40 @@ impl Drop for AudioEngine {
     }
 }
 
-fn drain_output_f32(data: &mut [f32], queue: &Mutex<VecDeque<f32>>, played_at: &AtomicU64, clock: std::time::Instant) {
+fn drain_output_f32(
+    data: &mut [f32],
+    queue: &Mutex<VecDeque<f32>>,
+    played_at: &AtomicU64,
+    clock: std::time::Instant,
+) {
     let mut queue = queue.lock().unwrap();
     if !queue.is_empty() {
-        let _ = played_at.compare_exchange(u64::MAX, clock.elapsed().as_millis() as u64, Ordering::Relaxed, Ordering::Relaxed);
+        let _ = played_at.compare_exchange(
+            u64::MAX,
+            clock.elapsed().as_millis() as u64,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        );
     }
     for sample in data {
         *sample = queue.pop_front().unwrap_or(0.0);
     }
 }
 
-fn drain_output_i16(data: &mut [i16], queue: &Mutex<VecDeque<f32>>, played_at: &AtomicU64, clock: std::time::Instant) {
+fn drain_output_i16(
+    data: &mut [i16],
+    queue: &Mutex<VecDeque<f32>>,
+    played_at: &AtomicU64,
+    clock: std::time::Instant,
+) {
     let mut queue = queue.lock().unwrap();
     if !queue.is_empty() {
-        let _ = played_at.compare_exchange(u64::MAX, clock.elapsed().as_millis() as u64, Ordering::Relaxed, Ordering::Relaxed);
+        let _ = played_at.compare_exchange(
+            u64::MAX,
+            clock.elapsed().as_millis() as u64,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        );
     }
     for sample in data {
         *sample = (queue.pop_front().unwrap_or(0.0).clamp(-1.0, 1.0) * 32767.0) as i16;
@@ -451,7 +471,12 @@ mod bounded_capture_tests {
     fn output_preserves_pcm_and_pads_exhausted_queue_with_silence() {
         let queue = Mutex::new(VecDeque::from([0.25, -0.5]));
         let mut output = [1.0; 4];
-        drain_output_f32(&mut output, &queue, &AtomicU64::new(u64::MAX), std::time::Instant::now());
+        drain_output_f32(
+            &mut output,
+            &queue,
+            &AtomicU64::new(u64::MAX),
+            std::time::Instant::now(),
+        );
         assert_eq!(output, [0.25, -0.5, 0.0, 0.0]);
         assert!(queue.lock().unwrap().is_empty());
     }
@@ -460,7 +485,12 @@ mod bounded_capture_tests {
     fn integer_output_clamps_pcm_and_pads_with_silence() {
         let queue = Mutex::new(VecDeque::from([2.0, -2.0]));
         let mut output = [1; 3];
-        drain_output_i16(&mut output, &queue, &AtomicU64::new(u64::MAX), std::time::Instant::now());
+        drain_output_i16(
+            &mut output,
+            &queue,
+            &AtomicU64::new(u64::MAX),
+            std::time::Instant::now(),
+        );
         assert_eq!(output, [32767, -32767, 0]);
     }
 

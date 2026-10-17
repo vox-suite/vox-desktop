@@ -45,15 +45,24 @@ struct Tools {
 }
 impl Tools {
     fn current(&mut self) -> Result<Value, String> {
-        let base = self.base.clone().ok_or("No diagram is open; build a new one")?;
+        let base = self
+            .base
+            .clone()
+            .ok_or("No diagram is open; build a new one")?;
         let mut stale = 0;
         let mut proofs = |items: &Value, key: &str| -> Vec<Value> {
             let mut out = vec![];
             for (index, item) in items.as_array().into_iter().flatten().enumerate() {
                 let mut ids = vec![];
                 for value in item["citations"].as_array().into_iter().flatten() {
-                    let Ok(c) = serde_json::from_value::<Citation>(value.clone()) else { continue };
-                    let fresh = self.sources.iter().find(|s| s.id == c.source_id).is_some_and(|s| sources::read(s, &c).is_ok());
+                    let Ok(c) = serde_json::from_value::<Citation>(value.clone()) else {
+                        continue;
+                    };
+                    let fresh = self
+                        .sources
+                        .iter()
+                        .find(|s| s.id == c.source_id)
+                        .is_some_and(|s| sources::read(s, &c).is_ok());
                     if !fresh {
                         stale += 1;
                         continue;
@@ -63,14 +72,20 @@ impl Tools {
                     ids.push(id);
                 }
                 if !ids.is_empty() {
-                    out.push(if key == "id" { json!({"id":item["id"],"citations":ids}) } else { json!({"index":index,"citations":ids}) });
+                    out.push(if key == "id" {
+                        json!({"id":item["id"],"citations":ids})
+                    } else {
+                        json!({"index":index,"citations":ids})
+                    });
                 }
             }
             out
         };
         let node_evidence = proofs(&base["nodes"], "id");
         let edge_evidence = proofs(&base["edges"], "index");
-        Ok(json!({"diagram":base["diagram"],"node_evidence":node_evidence,"edge_evidence":edge_evidence,"gaps":base["gaps"],"stale_citations_dropped":stale}))
+        Ok(
+            json!({"diagram":base["diagram"],"node_evidence":node_evidence,"edge_evidence":edge_evidence,"gaps":base["gaps"],"stale_citations_dropped":stale}),
+        )
     }
     fn source(&self, args: &Value) -> Result<LocalSource, String> {
         let id = input(args, "source_id")?;
@@ -205,7 +220,11 @@ impl Tools {
         {
             return Err("Use at most 20 gaps of up to 1000 characters".into());
         }
-        let mode = if self.base.is_some() && args["mode"].as_str() != Some("new") { "update" } else { "new" };
+        let mode = if self.base.is_some() && args["mode"].as_str() != Some("new") {
+            "update"
+        } else {
+            "new"
+        };
         let flow = json!({"title":title,"nodes":nodes,"edges":edges,"gaps":gaps,"diagram":diagram,"mode":mode});
         super::agent::write_private(
             &self.run.join("diagram.json"),
