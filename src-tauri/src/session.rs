@@ -1,7 +1,7 @@
 use crate::auth::AuthManager;
 use crate::bridge_voice as client;
 use crate::types::CallStatus;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::State;
 use tokio::sync::oneshot;
@@ -18,11 +18,11 @@ struct ActiveSession {
     vox_playing: Arc<AtomicBool>,
 }
 
-pub struct SessionManager(Mutex<Option<ActiveSession>>);
+pub struct SessionManager(Mutex<Option<ActiveSession>>, AtomicU64);
 
 impl SessionManager {
     pub fn new() -> Self {
-        Self(Mutex::new(None))
+        Self(Mutex::new(None), AtomicU64::new(0))
     }
 }
 
@@ -56,6 +56,7 @@ pub async fn start_call(
     auth: State<'_, AuthManager>,
     state: State<'_, SessionManager>,
 ) -> Result<CallStatus, String> {
+    let attempt = state.1.fetch_add(1, Ordering::SeqCst) + 1;
     crate::device_link::emit_local_event(&app, "status", "Voice call connecting...");
     if let Err(err) = auth.refresh_if_expiring().await {
         eprintln!("Vox session refresh failed before call start: {err}");
@@ -81,6 +82,9 @@ pub async fn start_call(
 
     {
         let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
+        if state.1.load(Ordering::SeqCst) != attempt {
+            return Err("Voice session cancelled".into());
+        }
         if let Some(existing) = session_guard.take() {
             let _ = existing.stop_tx.send(());
             existing.phase.store(PHASE_IDLE, Ordering::SeqCst);
@@ -102,6 +106,9 @@ pub async fn start_call(
 
     {
         let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
+        if state.1.load(Ordering::SeqCst) != attempt {
+            return Err("Voice session cancelled".into());
+        }
         *session_guard = Some(ActiveSession {
             stop_tx,
             is_running,
@@ -132,6 +139,11 @@ pub async fn start_call(
 
     match ready_rx.await {
         Ok(Ok(())) => {
+            if state.1.load(Ordering::SeqCst) != attempt
+                || phase.load(Ordering::SeqCst) != PHASE_CONNECTING
+            {
+                return Err("Voice session cancelled".into());
+            }
             phase.store(PHASE_ACTIVE, Ordering::SeqCst);
             crate::device_link::emit_local_event(
                 &app,
@@ -142,8 +154,16 @@ pub async fn start_call(
         }
         Ok(Err(err)) => {
             let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
-            let _ = session_guard.take();
+            if session_guard
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(&current.phase, &phase))
+            {
+                let _ = session_guard.take();
+            }
             phase.store(PHASE_IDLE, Ordering::SeqCst);
+            if state.1.load(Ordering::SeqCst) != attempt || err == "Voice session cancelled" {
+                return Err(err);
+            }
             crate::device_link::emit_local_event(
                 &app,
                 "error",
@@ -153,8 +173,16 @@ pub async fn start_call(
         }
         Err(_) => {
             let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
-            let _ = session_guard.take();
+            if session_guard
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(&current.phase, &phase))
+            {
+                let _ = session_guard.take();
+            }
             phase.store(PHASE_IDLE, Ordering::SeqCst);
+            if state.1.load(Ordering::SeqCst) != attempt {
+                return Err("Voice session cancelled".into());
+            }
             crate::device_link::emit_local_event(&app, "error", "Call failed to start");
             Err("Call failed to start".to_string())
         }
@@ -167,6 +195,7 @@ pub fn end_call(
     state: State<'_, SessionManager>,
 ) -> Result<CallStatus, String> {
     let mut session_guard = state.0.lock().map_err(|e| e.to_string())?;
+    state.1.fetch_add(1, Ordering::SeqCst);
     if let Some(session) = session_guard.take() {
         session.phase.store(PHASE_IDLE, Ordering::SeqCst);
         session.is_running.store(false, Ordering::SeqCst);

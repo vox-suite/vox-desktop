@@ -1,8 +1,10 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, invokeErrorMessage } from "@/lib/tauri";
 
 export function useCallSession(signedIn: boolean) {
+  const operation = useRef(0);
+  const starting = useRef(false);
   const [callState, setCallState] = useState("idle");
   const [isActive, setIsActive] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -15,8 +17,15 @@ export function useCallSession(signedIn: boolean) {
     if (!signedIn) return;
     const delay = isActive ? 90 : 800;
     const id = window.setInterval(() => {
+      const current = operation.current;
+      const pendingStart = starting.current;
       void api.callStatus().then((status) => {
-        if (!status.state) return;
+        if (current !== operation.current) return;
+        if (
+          !status.state ||
+          ((pendingStart || starting.current) && status.state === "idle")
+        )
+          return;
         setCallState(status.state);
         setIsActive(status.active);
         setMicLevel(status.active ? status.mic_level : 0);
@@ -54,6 +63,8 @@ export function useCallSession(signedIn: boolean) {
   }, [signedIn]);
 
   async function endCall() {
+    operation.current += 1;
+    starting.current = false;
     await api.endCall();
     setCallState("idle");
     setIsActive(false);
@@ -65,16 +76,19 @@ export function useCallSession(signedIn: boolean) {
   }
 
   async function toggleCall() {
-    if (isActive) {
+    if (isActive || callState === "connecting") {
       await endCall();
       return;
     }
     if (isBusy || !signedIn) return;
+    const current = ++operation.current;
+    starting.current = true;
     setIsBusy(true);
     setCallError("");
     setCallState("connecting");
     try {
       const status = await api.startCall();
+      if (current !== operation.current) return;
       if (status.state === "active" || status.active) {
         setCallState("active");
         setIsActive(true);
@@ -84,17 +98,23 @@ export function useCallSession(signedIn: boolean) {
         setCallError(invokeErrorMessage(status));
       }
     } catch (err) {
+      if (current !== operation.current) return;
       setCallState("idle");
       setIsActive(false);
       setCallError(invokeErrorMessage(err));
     } finally {
-      setIsBusy(false);
+      if (current === operation.current) {
+        starting.current = false;
+        setIsBusy(false);
+      }
     }
   }
 
   // Local-only reset for sign-out: the server session is already gone, so
   // this must NOT call api.endCall() like endCall() does.
   function resetCallState() {
+    operation.current += 1;
+    starting.current = false;
     setIsActive(false);
     setIsBusy(false);
     setMicLevel(0);

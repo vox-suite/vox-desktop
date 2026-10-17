@@ -1,4 +1,5 @@
 mod codec;
+mod control;
 use crate::{
     app_control::AppControlState,
     audio::{AudioEngine, MicSender},
@@ -12,7 +13,7 @@ use serde_json::{json, Value};
 use std::{
     collections::VecDeque,
     sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
         Arc, Mutex,
     },
     time::Duration,
@@ -23,6 +24,7 @@ use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 #[derive(Default)]
 pub struct BridgeVoiceState {
+    generation: AtomicU64,
     muted: AtomicBool,
     microphone: Mutex<Option<String>>,
     microphone_switch:
@@ -73,16 +75,14 @@ pub async fn send_desktop_text(
     state: State<'_, BridgeVoiceState>,
     text: String,
 ) -> Result<(), String> {
-    if text.trim().is_empty() || text.len() > 8192 {
-        return Err("Enter a shorter message".into());
-    }
+    let frame = control::text_frame(&text)?;
     let sender = state
         .text
         .lock()
         .map_err(|_| "Voice unavailable")?
         .clone()
         .ok_or("Start Talk to Vox before sending a message")?;
-    sender.send(text).await.map_err(|_| "Session ended".into())
+    sender.send(frame).await.map_err(|_| "Session ended".into())
 }
 #[derive(Deserialize)]
 struct Bootstrap {
@@ -102,7 +102,12 @@ pub async fn run_session_loop(
 ) -> Result<(), String> {
     let session_started = std::time::Instant::now();
     let mut ready = Some(ready_tx);
-    let result=async {
+    let session_generation = app
+        .state::<BridgeVoiceState>()
+        .generation
+        .fetch_add(1, Ordering::SeqCst)
+        + 1;
+    let result=control::until_stopped(&mut stop_rx, async {
         let device_id=app.state::<AppControlState>().device_id();
         let bootstrap:reqwest::Response=reqwest::Client::new().post(format!("{}/v1/me/desktop-voice/sessions",api_url.trim_end_matches('/'))).bearer_auth(&session.vox_token).json(&json!({"device_id":device_id})).timeout(Duration::from_secs(10)).send().await.map_err(|_|"Vox could not start a voice session")?;
         if !bootstrap.status().is_success(){return Err(format!("Vox voice unavailable ({})",bootstrap.status()));}
@@ -143,7 +148,6 @@ pub async fn run_session_loop(
         loop {
             tokio::select! {
                 _=auth_tick.tick()=>{if app.state::<AuthManager>().current_session().as_ref().map(|s|&s.user_id)!=Some(&session.user_id){break;}},
-                _=&mut stop_rx=>{let _=send_frame(&mut sender,Message::Text(json!({"type":"stop"}).to_string().into())).await;break;},
                 selection=microphone_rx.recv()=>{
                     if let Some((name, reply))=selection {
                         let switched_at_ms=session_started.elapsed().as_millis() as u64;
@@ -165,7 +169,7 @@ pub async fn run_session_loop(
                     while input.len()>=2{let a=input.pop_front().unwrap();let b=input.pop_front().unwrap();frames.push_back(codec::encode((a+b)*0.5));}
                     while frames.len()>=160 {let bytes:Vec<u8>=frames.drain(..160).collect();send_frame(&mut sender,Message::Binary(bytes.into())).await.map_err(|_|"Voice disconnected")?;}
                 },
-                text=text_rx.recv()=>{if let Some(text)=text{send_frame(&mut sender,Message::Text(json!({"type":"text","text":text}).to_string().into())).await.map_err(|_|"Voice disconnected")?;}},
+                text=text_rx.recv()=>{if let Some(frame)=text{send_frame(&mut sender,Message::Text(frame.into())).await.map_err(|_|"Voice disconnected")?;}},
                 frame=receiver.next()=>match frame {
                     Some(Ok(Message::Binary(bytes)))=>{
                         if bytes.len()>8192 || engine.queued_playback_ms()>10_000.0{return Err("Voice playback stalled; reconnect".into());}
@@ -196,20 +200,28 @@ pub async fn run_session_loop(
             }
         }
         engine.clear_playback();let _=tokio::time::timeout(Duration::from_secs(1),sender.close()).await;Ok(())
-    }.await;
+    }).await;
     is_running.store(false, Ordering::SeqCst);
     vox_playing.store(false, Ordering::SeqCst);
-    *app.state::<BridgeVoiceState>().text.lock().unwrap() = None;
-    *app.state::<BridgeVoiceState>()
-        .microphone_switch
-        .lock()
-        .unwrap() = None;
+    let state = app.state::<BridgeVoiceState>();
+    if state.generation.load(Ordering::SeqCst) == session_generation {
+        *state.text.lock().unwrap() = None;
+        *app.state::<BridgeVoiceState>()
+            .microphone_switch
+            .lock()
+            .unwrap() = None;
+    }
     if let Some(tx) = ready.take() {
         let _ = tx.send(result.clone());
     }
+    if state.generation.load(Ordering::SeqCst) != session_generation {
+        return result;
+    }
     let _ = app.emit("vox-voice-status", "ended");
     if let Err(error) = &result {
-        let _ = app.emit("vox-voice-error", error);
+        if error != "Voice session cancelled" {
+            let _ = app.emit("vox-voice-error", error);
+        }
     }
     result
 }

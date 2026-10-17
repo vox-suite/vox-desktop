@@ -251,7 +251,6 @@ export function SidebarVoiceControls({
                   type="button"
                   aria-label="End session"
                   title="End session"
-                  disabled={connecting}
                   onClick={onToggleCall}
                   className={`${iconButton} bg-danger/10 text-danger hover:bg-danger/20 hover:text-danger`}
                 >
