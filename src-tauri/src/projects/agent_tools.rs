@@ -32,7 +32,7 @@ fn definitions() -> Value {
         tool("diagram_capabilities", "List the available diagram representations and their building blocks.", json!({}), &[]),
         tool("diagram_schema", "Get the complete schema and a syntax example for a representation. Examples are not project facts. External resources are disabled; attach citation IDs separately in submit_diagram.", json!({"kind":{"type":"string","enum":["architecture","workflow","sequence","dataflow","lifecycle"]}}), &["kind"]),
         tool("preview_diagram", "Validate and render a candidate to receive schema and composition feedback. Preview does not save.", json!({"diagram":{"type":"object"}}), &["diagram"]),
-        tool("submit_diagram", "Validate, render and save the diagram. node_evidence attaches read_source citation IDs to elements by id; edge_evidence attaches them to relationships by index in the diagram's relationship array. gaps names anything the answer needs that the sources do not contain.", json!({"diagram":{"type":"object"},"node_evidence":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"citations":{"type":"array","items":{"type":"string"}}},"required":["id","citations"]}},"edge_evidence":{"type":"array","items":{"type":"object","properties":{"index":{"type":"integer","minimum":0},"citations":{"type":"array","items":{"type":"string"}}},"required":["index","citations"]}},"gaps":{"type":"array","items":{"type":"string"}},"mode":{"type":"string","enum":["update","new"],"description":"update when this diagram extends or revises current_diagram; new when it replaces it with a different view"}}), &["diagram"])
+        tool("submit_diagram", "Validate, render and save the diagram. node_evidence attaches read_source citation IDs to elements by id; edge_evidence attaches them to relationships by index in the diagram's relationship array. gaps names anything the answer needs that the sources do not contain.", json!({"diagram":{"type":"object"},"node_evidence":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"citations":{"type":"array","items":{"type":"string"}}},"required":["id","citations"]}},"edge_evidence":{"type":"array","items":{"type":"object","properties":{"index":{"type":"integer","minimum":0},"citations":{"type":"array","items":{"type":"string"}}},"required":["index","citations"]}},"gaps":{"type":"array","items":{"type":"string"}},"replace_current":{"type":"boolean","description":"Set true ONLY when the user explicitly instructs replacing the entire open diagram. An unrelated question, adding a flow, expanding detail, or correcting a provider is NOT replacement permission. Keep mode update for the existing diagram lineage."},"removed_element_ids":{"type":"array","items":{"type":"string"},"description":"Existing element IDs intentionally removed because the user requested removal or replacement of those elements. Omit for expansion requests; retain all other existing IDs."},"mode":{"type":"string","enum":["update","new"],"description":"An open diagram must use update and retain its representation and existing element IDs unless the user explicitly requests replacement (replace_current). Use new only when no diagram is open."}}), &["diagram"])
 
     ])
 }
@@ -120,6 +120,7 @@ impl Tools {
         Ok(Value::Array(citations))
     }
     fn submit(&self, args: &Value) -> Result<Value, String> {
+        validate_revision(self.base.as_ref(), args)?;
         let rendered = super::diagram::render(&args["diagram"], &self.run.join("submitted"))?;
         let diagram = &rendered["diagram"];
         let kind = input(diagram, "diagram_type")?;
@@ -459,4 +460,162 @@ pub fn serve(run: PathBuf) -> Result<(), String> {
         out.flush().map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+fn validate_revision(base: Option<&Value>, args: &Value) -> Result<(), String> {
+    let Some(base) = base else {
+        return Ok(());
+    };
+    if args["mode"].as_str() == Some("new") {
+        return Err("A diagram is open: submit an update to it. Preserve the current view; a separate new diagram must start from the library.".into());
+    }
+    if args["replace_current"].as_bool() == Some(true) {
+        return Ok(());
+    }
+    let prior = &base["diagram"];
+    let kind = prior["diagram_type"]
+        .as_str()
+        .ok_or("Current diagram has no type")?;
+    if args["diagram"]["diagram_type"].as_str() != Some(kind) {
+        return Err(format!("Keep the open {kind} representation and expand it in place; do not replace it with another diagram type."));
+    }
+    let key = match kind {
+        "architecture" => "components",
+        "sequence" => "participants",
+        "lifecycle" => "states",
+        "dataflow" | "workflow" => "nodes",
+        _ => return Err("Unknown current diagram type".into()),
+    };
+    let ids = |diagram: &Value| -> BTreeSet<String> {
+        diagram[key]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|node| node["id"].as_str().map(str::to_owned))
+            .collect()
+    };
+    let previous = ids(prior);
+    let next = ids(&args["diagram"]);
+    let removed: BTreeSet<String> = match args.get("removed_element_ids") {
+        None => BTreeSet::new(),
+        Some(value) => value
+            .as_array()
+            .ok_or("removed_element_ids must be an array")?
+            .iter()
+            .map(|id| {
+                id.as_str()
+                    .map(str::to_owned)
+                    .ok_or("Removed element IDs must be strings")
+            })
+            .collect::<Result<_, _>>()?,
+    };
+    if removed
+        .iter()
+        .any(|id| !previous.contains(id) || next.contains(id))
+    {
+        return Err(
+            "Declare only existing element IDs that were actually removed at the user's request."
+                .into(),
+        );
+    }
+    let missing: Vec<_> = previous
+        .difference(&next)
+        .filter(|id| !removed.contains(*id))
+        .cloned()
+        .collect();
+    if !missing.is_empty() {
+        return Err(format!("The update dropped existing elements: {}. Restore their IDs and connect the new detail to the existing flow. Use removed_element_ids only for removals the user requested.", missing.join(", ")));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod revision_tests {
+    use super::*;
+
+    fn base() -> Value {
+        json!({"diagram":{"diagram_type":"dataflow","nodes":[{"id":"bridge"},{"id":"core"},{"id":"tts"}]}})
+    }
+    fn revision() -> Value {
+        json!({"mode":"update","diagram":{"diagram_type":"dataflow","nodes":[{"id":"bridge"},{"id":"core"},{"id":"tts"},{"id":"llm"}]}})
+    }
+    #[test]
+    fn submit_rejects_replacement_before_rendering_or_writing() {
+        let tools = Tools {
+            project: PathBuf::new(),
+            run: PathBuf::new(),
+            sources: vec![],
+            evidence: BTreeMap::new(),
+            base: Some(base()),
+        };
+        let mut args = revision();
+        args["mode"] = json!("new");
+        assert!(tools
+            .submit(&args)
+            .unwrap_err()
+            .contains("A diagram is open"));
+    }
+    #[test]
+    fn retention_applies_to_every_representation() {
+        for (kind, key) in [
+            ("architecture", "components"),
+            ("workflow", "nodes"),
+            ("sequence", "participants"),
+            ("dataflow", "nodes"),
+            ("lifecycle", "states"),
+        ] {
+            let mut diagram = json!({"diagram_type":kind});
+            diagram[key] = json!([{"id":"original"}]);
+            let base = json!({"diagram":diagram.clone()});
+            let mut args = json!({"diagram":diagram, "mode":"update"});
+            assert!(validate_revision(Some(&base), &args).is_ok());
+            args["diagram"][key] = json!([{"id":"replacement"}]);
+            assert!(validate_revision(Some(&base), &args).is_err());
+        }
+    }
+    #[test]
+    fn explicitly_requested_replacement_can_change_the_view() {
+        let args = json!({"mode":"update","replace_current":true,
+            "diagram":{"diagram_type":"architecture","components":[{"id":"new"}]}});
+        assert!(validate_revision(Some(&base()), &args).is_ok());
+    }
+    #[test]
+    fn unrelated_independent_nodes_are_additive() {
+        let mut args = revision();
+        args["diagram"]["nodes"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"id":"independent"}));
+        assert!(validate_revision(Some(&base()), &args).is_ok());
+    }
+    #[test]
+    fn expansion_keeps_existing_elements() {
+        assert!(validate_revision(Some(&base()), &revision()).is_ok());
+        assert!(validate_revision(None, &revision()).is_ok());
+    }
+    #[test]
+    fn open_diagram_cannot_be_replaced_by_new_view() {
+        let mut args = revision();
+        args["mode"] = json!("new");
+        assert!(validate_revision(Some(&base()), &args).is_err());
+        args["mode"] = json!("update");
+        args["diagram"]["diagram_type"] = json!("architecture");
+        assert!(validate_revision(Some(&base()), &args).is_err());
+    }
+    #[test]
+    fn expansion_cannot_silently_drop_pipeline_nodes() {
+        let mut args = revision();
+        args["diagram"]["nodes"] = json!([{"id":"core"},{"id":"llm"}]);
+        assert!(validate_revision(Some(&base()), &args).is_err());
+        args["removed_element_ids"] = json!(["bridge", "tts"]);
+        assert!(validate_revision(Some(&base()), &args).is_ok());
+    }
+    #[test]
+    fn declared_removals_must_be_existing_and_actually_removed() {
+        let mut args = revision();
+        args["removed_element_ids"] = json!(["unknown"]);
+        assert!(validate_revision(Some(&base()), &args).is_err());
+        args["removed_element_ids"] = json!(["bridge"]);
+        assert!(validate_revision(Some(&base()), &args).is_err());
+    }
 }

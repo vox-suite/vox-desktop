@@ -13,6 +13,7 @@ export function DiagramLibrary({
   busy,
   onOpen,
   onDraft,
+  onDeleteDraft,
   onDelete,
   onContext,
 }: {
@@ -21,6 +22,7 @@ export function DiagramLibrary({
   busy: boolean;
   onOpen: (id: string) => void;
   onDraft: () => void;
+  onDeleteDraft: () => void;
   onDelete: (message: ProjectMessage) => void;
   onContext: () => void;
 }) {
@@ -50,14 +52,25 @@ export function DiagramLibrary({
             <h3>{draft.flow.title}</h3>
             <p>{draft.question}</p>
           </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={busy}
-            onClick={onDraft}
-          >
-            Review draft <ArrowRight className="size-3.5" />
-          </Button>
+          <div className="project-diagram-draft-actions">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={onDraft}
+            >
+              Review draft <ArrowRight className="size-3.5" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={onDeleteDraft}
+              aria-label={`Delete draft ${draft.flow.title}`}
+            >
+              <Trash2 className="size-3.5" /> Delete
+            </Button>
+          </div>
         </div>
       )}
       {diagrams.length ? (

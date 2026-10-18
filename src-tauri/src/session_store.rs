@@ -2,7 +2,8 @@ use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-const SERVICE: &str = "com.voxagent.desktop";
+const SERVICE: &str = "in.callvox.desktop";
+const LEGACY_SERVICE: &str = "com.voxagent.desktop";
 const ACCOUNT: &str = "auth-session";
 const OAUTH_PENDING_ACCOUNT: &str = "oauth-pending";
 
@@ -39,12 +40,39 @@ fn oauth_pending_entry() -> Result<Entry, String> {
     Entry::new(SERVICE, OAUTH_PENDING_ACCOUNT).map_err(|e| format!("Keychain unavailable: {e}"))
 }
 
+// Preserve sign-in across the keychain service rename. File paths stay unchanged.
+fn read_credential(account: &str) -> Result<String, keyring::Error> {
+    let current = Entry::new(SERVICE, account)?;
+    match current.get_password() {
+        Err(keyring::Error::NoEntry) => {
+            let legacy = Entry::new(LEGACY_SERVICE, account)?;
+            let payload = legacy.get_password()?;
+            if current.set_password(&payload).is_ok() {
+                let _ = legacy.delete_credential();
+            }
+            Ok(payload)
+        }
+        result => result,
+    }
+}
+
+fn clear_credentials(account: &str) -> Result<(), String> {
+    let mut error = None;
+    for service in [SERVICE, LEGACY_SERVICE] {
+        match Entry::new(service, account).and_then(|entry| entry.delete_credential()) {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(e) => error = Some(format!("Could not clear stored credential: {e}")),
+        }
+    }
+    error.map_or(Ok(()), Err)
+}
+
 fn oauth_pending_file() -> PathBuf {
     let base = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
     base.join("Library/Application Support")
-        .join(SERVICE)
+        .join(LEGACY_SERVICE)
         .join("oauth-pending.json")
 }
 
@@ -66,8 +94,8 @@ pub fn save_pending_oauth(pending: &PersistedOauth) -> Result<(), String> {
 }
 
 pub fn load_pending_oauth() -> Result<Option<PersistedOauth>, String> {
-    if let Ok(entry) = oauth_pending_entry() {
-        match entry.get_password() {
+    {
+        match read_credential(OAUTH_PENDING_ACCOUNT) {
             Ok(payload) => {
                 let pending = serde_json::from_str(&payload)
                     .map_err(|e| format!("Stored sign-in state is corrupt: {e}"))?;
@@ -91,14 +119,7 @@ pub fn load_pending_oauth() -> Result<Option<PersistedOauth>, String> {
 
 pub fn clear_pending_oauth() -> Result<(), String> {
     let _ = std::fs::remove_file(oauth_pending_file());
-    match oauth_pending_entry() {
-        Ok(entry) => match entry.delete_credential() {
-            Ok(()) => Ok(()),
-            Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(format!("Could not clear sign-in state: {e}")),
-        },
-        Err(_) => Ok(()),
-    }
+    clear_credentials(OAUTH_PENDING_ACCOUNT)
 }
 
 fn session_file() -> PathBuf {
@@ -106,7 +127,7 @@ fn session_file() -> PathBuf {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."));
     base.join("Library/Application Support")
-        .join(SERVICE)
+        .join(LEGACY_SERVICE)
         .join("session.json")
 }
 
@@ -137,8 +158,8 @@ pub fn save_session(session: &StoredSession) -> Result<(), String> {
 }
 
 pub fn load_session() -> Result<Option<StoredSession>, String> {
-    if let Ok(entry) = entry() {
-        match entry.get_password() {
+    {
+        match read_credential(ACCOUNT) {
             Ok(payload) => match serde_json::from_str::<StoredSession>(&payload) {
                 Ok(session) => return Ok(Some(session)),
                 Err(e) => eprintln!("keychain session corrupt: {e}"),
@@ -162,13 +183,5 @@ pub fn load_session() -> Result<Option<StoredSession>, String> {
 
 pub fn clear_session() -> Result<(), String> {
     let _ = std::fs::remove_file(session_file());
-    if let Ok(entry) = entry() {
-        match entry.delete_credential() {
-            Ok(()) => Ok(()),
-            Err(keyring::Error::NoEntry) => Ok(()),
-            Err(e) => Err(format!("Could not clear stored session: {e}")),
-        }
-    } else {
-        Ok(())
-    }
+    clear_credentials(ACCOUNT)
 }

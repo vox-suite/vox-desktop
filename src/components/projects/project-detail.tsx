@@ -815,6 +815,7 @@ export function ProjectDetail({
                   busy={state.busy || !!traceStatus}
                   onOpen={setViewing}
                   onDraft={() => setViewing("draft")}
+                  onDeleteDraft={() => setDraft(null)}
                   onDelete={(message) => {
                     setDialogError("");
                     setPendingDelete(message);

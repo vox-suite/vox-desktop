@@ -771,8 +771,6 @@
 }
 .project-diagram-library {
   width: 100%;
-  max-width: 1080px;
-  margin: 0 auto;
   padding: 32px;
 }
 .project-diagram-library-heading {
@@ -868,6 +866,16 @@
 }
 .project-diagram-draft-row > div {
   min-width: 0;
+}
+.project-diagram-draft-row > div:first-child {
+  flex: 1;
+}
+.project-diagram-draft-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .project-diagram-draft-row h3 {
   margin-top: 8px;
