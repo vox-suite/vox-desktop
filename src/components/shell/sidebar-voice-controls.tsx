@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { desktopActions } from "@/features/desktop-control/action-state";
 import { VoxStatusLogo } from "@/components/vox-status-logo";
-import { LiveWaveform } from "@/components/elevenlabs/live-waveform";
+import { ConversationTape } from "@/components/conversation-tape";
 import {
   Conversation,
   ConversationContent,
@@ -226,25 +226,11 @@ export function SidebarVoiceControls({
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <div
-                  className="min-w-0 flex-1 text-violet/70 group-data-[collapsible=icon]:hidden"
-                  aria-label={
-                    muted ? "Microphone muted" : "Live microphone level"
-                  }
-                >
-                  <LiveWaveform
+                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                  <ConversationTape
                     active={isActive && !muted}
-                    audioLevel={muted ? 0 : micLevel}
-                    mode="scrolling"
-                    height={28}
-                    barWidth={2}
-                    barGap={2}
-                    barHeight={2}
-                    barRadius={1}
-                    fadeWidth={12}
-                    sensitivity={5}
-                    historySize={60}
-                    updateRate={90}
+                    micLevel={muted ? 0 : micLevel}
+                    voxSpeaking={speaking}
                   />
                 </div>
                 <button

@@ -169,16 +169,18 @@ function Callout({
 
 function Figure({
   label,
+  width = 560,
   height = 570,
   children,
 }: {
   label: string;
+  width?: number;
   height?: number;
   children: ReactNode;
 }) {
   return (
     <svg
-      viewBox={`0 0 560 ${height}`}
+      viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={label}
       fill="none"
@@ -1212,6 +1214,487 @@ export function UpdatesFigure({ loading = false }: { loading?: boolean }) {
           </g>
         );
       })}
+    </Figure>
+  );
+}
+
+const OUTPUTS: VoxColor[] = ["sky", "gold", "violet"];
+
+// The agents as one machine: connected sources drop work into a hopper, a
+// belt carries it into the Vox engine, and finished work is sorted out into
+// three trays (timeline, updates, plans). The flywheel runs faster during a
+// call and the lamp lights while Vox speaks.
+export function AgentsFigure({
+  sources,
+  active = false,
+  speaking = false,
+}: {
+  sources: string[];
+  active?: boolean;
+  speaking?: boolean;
+}) {
+  const t = useClock();
+  const P = at(108, 166);
+  const trace = makeTrace(P);
+  const face = (pts: V3[]) => trace(pts, true);
+  const quad = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z: number,
+  ): V3[] => [
+    [x0, y0, z],
+    [x1, y0, z],
+    [x1, y1, z],
+    [x0, y1, z],
+  ];
+  const top = 8;
+  const beltZ = 20;
+  const belt = { from: -88, to: 16 };
+  const hop = { x: -76, mouth: 38 };
+  const engine = { x: 42, w: 24, d: 22, z: 56 };
+  const step = 1.6;
+  const n = Math.floor(t / step);
+  const u = (t % step) / step;
+  const colors = sources.length
+    ? sources
+    : ["sky", "mint", "gold", "violet"].map((c) => token(c as VoxColor));
+  const chips = [0, 1, 2, 3].map((k) => {
+    const age = u + k;
+    const color =
+      colors[(((n - k) % colors.length) + colors.length) % colors.length];
+    const fall = Math.min(1, age / 0.25);
+    const x = hop.x + Math.max(0, age - 0.25) * 36;
+    const z =
+      fall < 1
+        ? hop.mouth - 2 - ease(fall) * (hop.mouth - 2 - beltZ - 3)
+        : beltZ + 3;
+    return { k, x, z, color, show: t > 0 && x < engine.x - engine.w + 3 };
+  });
+  const spin = t * (speaking ? 4.5 : active ? 2.4 : 0.8);
+  const lamp = speaking
+    ? 0.6 + 0.4 * Math.abs(Math.sin(t * 6))
+    : active
+      ? 0.35
+      : 0.12;
+  const tray = (i: number) => -18 + i * 18;
+  const out = n % 3;
+  const cardX = 70 + ease(u / 0.6) * 24;
+  const cardZ = 26 - ease((u - 0.35) / 0.4) * 13;
+  const cardY = tray(out) * ease(u / 0.5);
+  const ring = (r: number, y: number, cx: number, cz: number): V3[] =>
+    circle(r).map(([a, b]) => [cx + a, y, cz + b] as V3);
+  const fw = { x: engine.x - 2, z: 31, y: engine.d + 0.2 };
+
+  return (
+    <Figure
+      width={330}
+      height={206}
+      label="Your agents as one machine: connected sources drop work into a hopper, a belt carries it into Vox, and finished work is sorted into timeline, updates and plans"
+    >
+      <path
+        d={face(quad(-128, 140, -30, 44, 0))}
+        style={{ fill: alpha("ink", 4) }}
+      />
+      {[
+        [-118, -26],
+        [118, -26],
+        [-118, 26],
+        [118, 26],
+      ].map(([x, y]) => (
+        <Box
+          key={`f${x}${y}`}
+          trace={trace}
+          x={x}
+          y={y}
+          z={3}
+          w={5}
+          d={5}
+          depth={3}
+          fill={alpha("ink", 8)}
+        />
+      ))}
+      <Box trace={trace} z={top} w={130} d={34} depth={5} />
+      <path
+        d={face(quad(-125, 125, -29, 29, top))}
+        strokeWidth="0.5"
+        style={{ stroke: FAINT }}
+      />
+      {[
+        [-127, -31],
+        [127, -31],
+        [-127, 31],
+        [127, 31],
+      ].map(([x, y]) => {
+        const [sx, sy] = P([x, y, top]);
+        return (
+          <circle
+            key={`s${x}${y}`}
+            cx={sx}
+            cy={sy}
+            r="0.5"
+            style={{ fill: LINE }}
+          />
+        );
+      })}
+
+      {/* Hopper on two posts */}
+      {[-84, -68].map((x) => (
+        <Box
+          key={`hp${x}`}
+          trace={trace}
+          x={x}
+          y={-12}
+          z={hop.mouth + 10}
+          w={1.4}
+          d={1.4}
+          depth={hop.mouth + 10 - top}
+        />
+      ))}
+      <g strokeWidth="0.85" strokeLinejoin="round" style={{ stroke: LINE }}>
+        <path
+          d={face([
+            [hop.x - 4, 4, hop.mouth],
+            [hop.x + 4, 4, hop.mouth],
+            [hop.x + 11, 11, hop.mouth + 16],
+            [hop.x - 11, 11, hop.mouth + 16],
+          ])}
+          style={{ fill: SURFACE }}
+        />
+        <path
+          d={face([
+            [hop.x + 4, -4, hop.mouth],
+            [hop.x + 4, 4, hop.mouth],
+            [hop.x + 11, 11, hop.mouth + 16],
+            [hop.x + 11, -11, hop.mouth + 16],
+          ])}
+          style={{ fill: `color-mix(in srgb, ${LINE} 8%, ${SURFACE})` }}
+        />
+        <path
+          d={face(quad(hop.x - 11, hop.x + 11, -11, 11, hop.mouth + 16))}
+          style={{ fill: alpha("ink", 16) }}
+        />
+        <path
+          d={face(quad(hop.x - 8.5, hop.x + 8.5, -8.5, 8.5, hop.mouth + 16))}
+          strokeWidth="0.5"
+          style={{ fill: "none", stroke: FAINT }}
+        />
+      </g>
+      {colors.slice(0, 4).map((color, i) => {
+        const [sx, sy] = P([hop.x - 6 + i * 4, -2 + i * 2, hop.mouth + 16]);
+        return (
+          <circle
+            key={`hc${i}`}
+            cx={sx}
+            cy={sy}
+            r="1.6"
+            style={{ fill: color }}
+          />
+        );
+      })}
+
+      {/* Conveyor: frame, rollers, belt with moving cleats */}
+      <Box
+        trace={trace}
+        x={(belt.from + belt.to) / 2}
+        y={-11}
+        z={beltZ - 3}
+        w={(belt.to - belt.from) / 2}
+        d={1}
+        depth={beltZ - 3 - top}
+        fill={alpha("ink", 5)}
+      />
+      <Roller
+        P={P}
+        trace={trace}
+        x={belt.from}
+        z={beltZ - 3}
+        r={3}
+        y0={-10}
+        y1={10}
+        hub={1}
+      />
+      <Roller
+        P={P}
+        trace={trace}
+        x={belt.to}
+        z={beltZ - 3}
+        r={3}
+        y0={-10}
+        y1={10}
+        hub={1}
+      />
+      <path
+        d={face(quad(belt.from, belt.to, -10, 10, beltZ))}
+        strokeWidth="0.8"
+        style={{
+          stroke: LINE,
+          fill: `color-mix(in srgb, ${LINE} 6%, ${SURFACE})`,
+        }}
+      />
+      {Array.from({ length: 14 }, (_, i) => {
+        const x =
+          belt.from +
+          2 +
+          ((i * 8 + ((t * 36) % 8)) % (belt.to - belt.from - 4));
+        return (
+          <path
+            key={`cl${i}`}
+            d={trace([
+              [x, -10, beltZ],
+              [x, 10, beltZ],
+            ])}
+            strokeWidth="0.45"
+            style={{ stroke: FAINT }}
+          />
+        );
+      })}
+      <Box
+        trace={trace}
+        x={(belt.from + belt.to) / 2}
+        y={11}
+        z={beltZ - 3}
+        w={(belt.to - belt.from) / 2}
+        d={1}
+        depth={beltZ - 3 - top}
+      />
+      {[belt.from + 10, belt.to - 10].map((x) =>
+        [11.5].map((y) => {
+          const [sx, sy] = P([x, y, beltZ - 6]);
+          return (
+            <circle
+              key={`bs${x}`}
+              cx={sx}
+              cy={sy}
+              r="0.5"
+              style={{ fill: LINE }}
+            />
+          );
+        }),
+      )}
+
+      {chips.map(
+        (c) =>
+          c.show && (
+            <Box
+              key={`chip${c.k}`}
+              trace={trace}
+              x={c.x}
+              y={0}
+              z={c.z}
+              w={3.2}
+              d={3.2}
+              depth={3}
+              stroke={c.color}
+              top={`color-mix(in srgb, ${c.color} 45%, ${SURFACE})`}
+              fill={`color-mix(in srgb, ${c.color} 14%, ${SURFACE})`}
+            />
+          ),
+      )}
+
+      {/* The Vox engine */}
+      <Box
+        trace={trace}
+        x={engine.x}
+        z={engine.z}
+        w={engine.w}
+        d={engine.d}
+        depth={engine.z - top}
+      />
+      <path
+        d={face(
+          quad(
+            engine.x - engine.w + 3,
+            engine.x + engine.w - 3,
+            -engine.d + 3,
+            engine.d - 3,
+            engine.z,
+          ),
+        )}
+        strokeWidth="0.5"
+        style={{ stroke: FAINT }}
+      />
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([a, b]) => {
+        const [sx, sy] = P([
+          engine.x + a * (engine.w - 1.6),
+          b * (engine.d - 1.6),
+          engine.z,
+        ]);
+        return (
+          <circle
+            key={`es${a}${b}`}
+            cx={sx}
+            cy={sy}
+            r="0.5"
+            style={{ fill: LINE }}
+          />
+        );
+      })}
+      {Array.from({ length: 6 }, (_, i) => (
+        <path
+          key={`gr${i}`}
+          d={trace([
+            [engine.x + engine.w, -14, 36 + i * 3],
+            [engine.x + engine.w, 14, 36 + i * 3],
+          ])}
+          strokeWidth="1.1"
+          style={{
+            stroke: speaking
+              ? alpha("violet", Math.round(40 + 50 * lamp))
+              : FAINT,
+          }}
+        />
+      ))}
+      <g strokeWidth="0.8" style={{ stroke: LINE }}>
+        <path
+          d={trace(ring(13, fw.y, fw.x, fw.z), true)}
+          style={{ fill: SURFACE }}
+        />
+        <path
+          d={trace(ring(10.5, fw.y, fw.x, fw.z), true)}
+          strokeWidth="0.5"
+          style={{ fill: "none" }}
+        />
+        {Array.from({ length: 5 }, (_, i) => {
+          const a = spin + (i / 5) * Math.PI * 2;
+          return (
+            <path
+              key={`sp${i}`}
+              d={trace([
+                [fw.x + Math.cos(a) * 2.6, fw.y, fw.z + Math.sin(a) * 2.6],
+                [fw.x + Math.cos(a) * 10.5, fw.y, fw.z + Math.sin(a) * 10.5],
+              ])}
+              strokeWidth="0.9"
+            />
+          );
+        })}
+        <path
+          d={trace(ring(2.6, fw.y, fw.x, fw.z), true)}
+          style={{ fill: alpha("violet", 30), stroke: token("violet") }}
+        />
+      </g>
+      <text
+        transform={(() => {
+          const [ox, oy] = P([engine.x + 4, -8, engine.z]);
+          return `matrix(0.866 0.5 -0.866 0.5 ${fmt(ox)} ${fmt(oy)})`;
+        })()}
+        fontSize="7"
+        fontFamily="Inter, sans-serif"
+        fontWeight="700"
+        letterSpacing="2"
+        textAnchor="middle"
+        style={{ fill: alpha("ink", 45) }}
+      >
+        VOX
+      </text>
+      <Box
+        trace={trace}
+        x={engine.x + 10}
+        y={12}
+        z={engine.z + 3}
+        w={3}
+        d={3}
+        depth={3}
+      />
+      {(() => {
+        const [lx, ly] = P([engine.x + 10, 12, engine.z + 5]);
+        return (
+          <g>
+            <circle
+              cx={lx}
+              cy={ly}
+              r="7"
+              style={{ fill: alpha("violet", 22), opacity: lamp }}
+            />
+            <circle
+              cx={lx}
+              cy={ly - 1}
+              r="2.8"
+              strokeWidth="0.7"
+              style={{
+                stroke: token("violet"),
+                fill: `color-mix(in srgb, ${token("violet")} ${Math.round(lamp * 100)}%, ${SURFACE})`,
+              }}
+            />
+          </g>
+        );
+      })()}
+
+      {/* Out ledge and three trays */}
+      <Box
+        trace={trace}
+        x={engine.x + engine.w + 6}
+        z={beltZ + 4}
+        w={6}
+        d={20}
+        depth={2}
+      />
+      {OUTPUTS.map((color, i) => {
+        const y = tray(i);
+        const c = token(color);
+        const landing = i === out && t > 0 && u > 0.7;
+        return (
+          <g key={`tr${color}`}>
+            <path
+              d={face(quad(86, 104, y - 7, y + 7, top))}
+              style={{ fill: alpha(color, 10) }}
+            />
+            {[0, 1, 2].slice(0, landing ? 3 : 2).map((k) => (
+              <path
+                key={`st${k}`}
+                d={face(quad(89, 101, y - 5, y + 5, top + 1 + k * 1.5))}
+                strokeWidth="0.6"
+                style={{
+                  stroke: c,
+                  fill: `color-mix(in srgb, ${c} 22%, ${SURFACE})`,
+                }}
+              />
+            ))}
+            <g
+              strokeWidth="0.85"
+              strokeLinejoin="round"
+              style={{ stroke: c, fill: SURFACE }}
+            >
+              <path
+                d={face([
+                  [86, y + 7, top],
+                  [104, y + 7, top],
+                  [104, y + 7, top + 6],
+                  [86, y + 7, top + 6],
+                ])}
+              />
+              <path
+                d={face([
+                  [104, y - 7, top],
+                  [104, y + 7, top],
+                  [104, y + 7, top + 6],
+                  [104, y - 7, top + 6],
+                ])}
+                style={{ fill: alpha(color, 12) }}
+              />
+            </g>
+          </g>
+        );
+      })}
+      {t > 0 && u < 0.75 && (
+        <Box
+          trace={trace}
+          x={cardX}
+          y={cardY}
+          z={cardZ}
+          w={6}
+          d={5}
+          depth={1.2}
+          stroke={token(OUTPUTS[out])}
+          top={`color-mix(in srgb, ${token(OUTPUTS[out])} 30%, ${SURFACE})`}
+        />
+      )}
     </Figure>
   );
 }

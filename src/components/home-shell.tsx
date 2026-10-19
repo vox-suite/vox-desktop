@@ -10,6 +10,7 @@ import {
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AgentPane } from "@/components/shell/agent-pane";
 import { ActivityLogs } from "@/components/activity-logs";
+import { AgentsWorkshop } from "@/components/agents-workshop";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { type ShellTab } from "@/components/shell/shell-tabs";
@@ -17,7 +18,8 @@ import { UpdatesView } from "@/components/updates-view";
 import { TimelineView } from "@/components/timeline-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
-import { PageLoading } from "@/components/ui/page-loading"; import type { VoxColor } from "@/lib/theme";
+import { PageLoading } from "@/components/ui/page-loading";
+import type { VoxColor } from "@/lib/theme";
 
 // Charts (recharts) and the canvas (xyflow) are large, so they ship in their
 // own chunks. The shell preloads them after first paint so opening a page
@@ -152,6 +154,9 @@ export function HomeShell({
             <div ref={mapNode} className="vox-map-host size-full" />
           </div>
           {activeTab === "agent" && <ActivityLogs />}
+          {activeTab === "agent" && (
+            <AgentsWorkshop active={isActive} speaking={voxSpeaking} />
+          )}
           {body}
           <DesktopActionOverlay />
           <TerminalPanel />
