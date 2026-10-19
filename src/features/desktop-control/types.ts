@@ -2,6 +2,7 @@ export type DesktopPage =
   | "agent"
   | "timeline"
   | "pulse"
+  | "usage"
   | "spaces"
   | "projects"
   | "connections"

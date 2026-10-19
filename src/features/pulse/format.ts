@@ -37,7 +37,13 @@ export function formatTotal(value: number, unit: string) {
     .replace(/K$/, "k");
   if (SYMBOLS[unit]) return { text: `${SYMBOLS[unit]}${number}`, unit: "" };
   const label =
-    unit === "hours" ? "hrs" : value === 1 && unit === "events" ? "event" : unit;
+    unit === "hours"
+      ? "hrs"
+      : unit === "minutes"
+        ? "min"
+        : value === 1 && unit === "events"
+          ? "event"
+          : unit;
   return { text: number, unit: label };
 }
 

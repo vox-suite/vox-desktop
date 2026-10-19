@@ -8,6 +8,7 @@ import {
   GanttChart,
   Workflow,
   Folder,
+  Gauge,
   LogOut,
   Monitor,
   Moon,
@@ -96,6 +97,13 @@ const NAV_ITEMS = [
     icon: Activity,
     activeColor:
       "data-[active=true]:text-mint data-[active=true]:hover:text-mint",
+  },
+  {
+    id: "usage",
+    label: "Usage",
+    icon: Gauge,
+    activeColor:
+      "data-[active=true]:text-violet data-[active=true]:hover:text-violet",
   },
   {
     id: "updates",

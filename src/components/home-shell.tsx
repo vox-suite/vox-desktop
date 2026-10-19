@@ -26,6 +26,7 @@ import type { VoxColor } from "@/lib/theme";
 const loadPulse = () => import("@/components/pulse/pulse-view");
 const loadSpaces = () => import("@/components/spaces/spaces-view");
 const loadProjects = () => import("@/components/projects/projects-view");
+const loadUsage = () => import("@/components/usage/usage-page");
 const PulseView = lazy(() =>
   loadPulse().then((m) => ({ default: m.PulseView })),
 );
@@ -34,6 +35,9 @@ const SpacesView = lazy(() =>
 );
 const ProjectsView = lazy(() =>
   loadProjects().then((m) => ({ default: m.ProjectsView })),
+);
+const UsagePage = lazy(() =>
+  loadUsage().then((m) => ({ default: m.UsagePage })),
 );
 
 export function HomeShell({
@@ -98,6 +102,12 @@ export function HomeShell({
     body = (
       <Suspense fallback={<PageLoadingFrame title="Insights" accent="mint" />}>
         <PulseView />
+      </Suspense>
+    );
+  } else if (activeTab === "usage") {
+    body = (
+      <Suspense fallback={<PageLoadingFrame title="Usage" accent="violet" />}>
+        <UsagePage />
       </Suspense>
     );
   } else if (activeTab === "projects") {

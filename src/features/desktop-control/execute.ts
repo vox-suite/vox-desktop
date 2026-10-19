@@ -14,6 +14,7 @@ const pages = new Set([
   "agent",
   "timeline",
   "pulse",
+  "usage",
   "spaces",
   "projects",
   "connections",
