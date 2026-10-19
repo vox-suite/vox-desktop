@@ -17,10 +17,9 @@ export function GenerationAtmosphere({ active }: { active: boolean }) {
       data-active={active}
       aria-hidden="true"
     >
-      <span className="project-atmosphere-blue" />
-      <span className="project-atmosphere-violet" />
-      <span className="project-atmosphere-rose" />
-      <span className="project-atmosphere-indigo" />
+      <span className="project-atmosphere-aura" />
+      <span className="project-atmosphere-sheen" />
+      <span className="project-atmosphere-rim" />
     </div>
   );
 }

@@ -1101,7 +1101,12 @@
   }
 }
 
-/* Corner light stays at the inner edges, leaving the graph center clear. */
+/* A slow aura that hugs the stage edges, leaving the graph center clear. */
+@property --aura-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
 .project-generation-atmosphere {
   position: absolute;
   inset: 0;
@@ -1109,70 +1114,85 @@
   pointer-events: none;
   z-index: 0;
   opacity: 0;
-  transition: opacity 600ms ease-out;
-  --atmosphere-strength: 48%;
-  box-shadow: inset 0 0 30px -18px #8b5cf680;
+  transition: opacity 700ms ease-out;
+  --aura: conic-gradient(
+    from var(--aura-angle) at 50% 50%,
+    #4285f4,
+    #8b5cf6 22%,
+    #d873bd 45%,
+    #f2a65a 62%,
+    #6366f1 80%,
+    #4285f4
+  );
+  animation: project-aura-spin 9s linear infinite;
 }
 .project-generation-atmosphere[data-active="true"] {
   opacity: 1;
 }
-.project-generation-atmosphere span {
+.project-atmosphere-aura {
+  position: absolute;
+  inset: -48px;
+  background: var(--aura);
+  filter: blur(36px) saturate(1.35);
+  opacity: 0.5;
+  mask-image:
+    linear-gradient(
+      to right,
+      black,
+      transparent 270px,
+      transparent calc(100% - 270px),
+      black
+    ),
+    linear-gradient(
+      to bottom,
+      black,
+      transparent 236px,
+      transparent calc(100% - 236px),
+      black
+    );
+  mask-composite: add;
+  -webkit-mask-composite: source-over;
+}
+.project-atmosphere-rim {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    ellipse at var(--corner),
-    color-mix(
-      in srgb,
-      var(--atmosphere-color) var(--atmosphere-strength),
-      transparent
-    ),
-    color-mix(in srgb, var(--atmosphere-color) 18%, transparent) 12%,
-    transparent 36%
+  padding: 1px;
+  background: var(--aura);
+  opacity: 0.7;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+}
+.project-atmosphere-sheen {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 38%;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #8b5cf6 10%, transparent),
+    transparent
   );
-  animation: project-atmosphere-drift 6s ease-in-out infinite;
 }
-.project-generation-atmosphere .project-atmosphere-blue {
-  --atmosphere-color: #4285f4;
-  --corner: 0% 0%;
-  animation-delay: -2s;
+@keyframes project-aura-spin {
+  to {
+    --aura-angle: 360deg;
+  }
 }
-.project-generation-atmosphere .project-atmosphere-violet {
-  --atmosphere-color: #8b5cf6;
-  --corner: 100% 0%;
-  animation-delay: -4s;
-}
-.project-generation-atmosphere .project-atmosphere-rose {
-  --atmosphere-color: #d873bd;
-  --corner: 100% 100%;
-  animation-delay: 0s;
-}
-.project-generation-atmosphere .project-atmosphere-indigo {
-  --atmosphere-color: #6366f1;
-  --corner: 0% 100%;
-  animation-delay: -3s;
-}
-.project-generation-atmosphere[data-active="false"] span,
-.project-generation-atmosphere[data-paused="true"] span {
+.project-generation-atmosphere[data-active="false"],
+.project-generation-atmosphere[data-paused="true"] {
   animation-play-state: paused;
 }
-@keyframes project-atmosphere-drift {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
+[data-theme="light"] .project-atmosphere-aura {
+  opacity: 0.38;
 }
-[data-theme="light"] .project-generation-atmosphere {
-  --atmosphere-strength: 42%;
+[data-theme="light"] .project-atmosphere-rim {
+  opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
   .project-generation-atmosphere {
     transition: none;
-  }
-  .project-generation-atmosphere span {
     animation: none;
-    opacity: 0.65;
   }
 }
