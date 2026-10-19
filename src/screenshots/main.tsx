@@ -1,3 +1,4 @@
+import App from "@/app";
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
 import { OriginalMonth } from "./original-month";
@@ -30,11 +31,32 @@ if (!import.meta.env.DEV)
 // Isolate all native, network, and cache calls from personal account data.
 const internals = {
   invoke: async (cmd: string) =>
-    cmd === "get_native_location"
-      ? { lat: 37.4143, lng: -122.0775 }
-      : cmd.includes("listen")
-        ? 1
-        : null,
+    new URLSearchParams(location.search).get("screen") === "verification" &&
+    cmd === "get_auth_state"
+      ? {
+          signed_in: true,
+          user_id: "fixture-user",
+          email: "alex.morgan@example.com",
+          user_name: "Alex Morgan",
+          avatar_url: null,
+          bridge_url: "",
+          api_url: "",
+          has_phone: true,
+          phone_verified: false,
+        }
+      : cmd === "call_status"
+        ? {
+            state: "idle",
+            active: false,
+            mic_level: 0,
+            is_speaking: false,
+            is_vox_speaking: false,
+          }
+        : cmd === "get_native_location"
+          ? { lat: 37.4143, lng: -122.0775 }
+          : cmd.includes("listen")
+            ? 1
+            : null,
   transformCallback: () => 1,
   unregisterCallback: () => {},
 };
@@ -260,6 +282,7 @@ export default function Capture() {
     document.body.dataset.screen = page;
     return decorateScreenshot(page);
   }, []);
+  if (page === "verification") return <App />;
   return (
     <>
       <HomeShell

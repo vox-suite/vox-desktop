@@ -212,6 +212,7 @@ a,
   background-clip: padding-box;
 }
 
+.sidebar-resizing > [data-slot="sidebar"],
 .sidebar-resizing [data-slot="sidebar-gap"],
 .sidebar-resizing [data-slot="sidebar-container"] {
   transition: none;
@@ -354,3 +355,6 @@ a,
 .xterm .xterm-viewport::-webkit-scrollbar {
   display: none;
 }
+
+/* Keep the themed host visible while the WebGL style is still initializing. */
+.vox-map-host[data-ready="false"] .maplibregl-canvas { visibility: hidden; }

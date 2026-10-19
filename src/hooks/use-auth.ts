@@ -1,12 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 import { resetUserCaches } from "@/features/cache-reset";
-import {
-  animateWindowSize,
-  api,
-  invokeErrorMessage,
-  type AuthState,
-} from "@/lib/tauri";
+import { api, invokeErrorMessage, type AuthState } from "@/lib/tauri";
 
 const emptyAuth: AuthState = {
   signed_in: false,
@@ -87,8 +82,8 @@ export function useAuth() {
   useEffect(() => {
     if (authLoading) return;
     if (auth.signed_in)
-      void animateWindowSize(1290, 800).catch(() => undefined);
-    else void animateWindowSize(800, 600).catch(() => undefined);
+      void api.setWindowSize(1290, 800).catch(() => undefined);
+    else void api.setWindowSize(800, 600).catch(() => undefined);
   }, [auth.signed_in, authLoading]);
 
   useEffect(() => {

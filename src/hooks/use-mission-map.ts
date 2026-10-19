@@ -62,12 +62,21 @@ export function useMissionMap(reaction: {
     if (!mapNode.current || mapRef.current) return;
 
     // Worker blob must be set before creating the Map instance.
-    void workerReady.then(() => init());
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    void workerReady.then(() => {
+      if (!disposed) cleanup = init();
+    });
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
 
     function init() {
       if (!mapNode.current || mapRef.current) return;
 
       const container = mapNode.current;
+      container.dataset.ready = "false";
 
       type CachedPos = { lng: number; lat: number };
       let cachedPos: CachedPos | null = null;
@@ -91,6 +100,9 @@ export function useMissionMap(reaction: {
         bearing: -28,
         attributionControl: false,
         interactive: false,
+        // Own resize timing so CSS cannot stretch an old frame between the
+        // built-in observer's throttled updates during a live sidebar drag.
+        trackResize: false,
         maxPitch: 70,
         minPitch: 45,
         // Helps WebGL composite correctly over Tauri's transparent window.
@@ -161,26 +173,27 @@ export function useMissionMap(reaction: {
 
       const resize = () => {
         try {
-          map.resize();
+          map.resize(undefined, false);
+          map.redraw();
         } catch {
           /* map may be removed */
         }
       };
 
-      // A live window drag can fire the observer dozens of times per second;
-      // resizing the WebGL canvas on every tick is what causes the flicker on
-      // this transparent, undecorated window. Coalesce to once per frame.
-      let resizeRaf: number | null = null;
-      const scheduleResize = () => {
-        if (resizeRaf != null) return;
-        resizeRaf = requestAnimationFrame(() => {
-          resizeRaf = null;
-          resize();
-        });
-      };
-
-      const ro = new ResizeObserver(() => scheduleResize());
-      ro.observe(container);
+      // ResizeObserver runs after layout and before paint. Resize and redraw
+      // together here, without the built-in 50ms throttle or another rAF delay.
+      let lastWidth = container.clientWidth;
+      let lastHeight = container.clientHeight;
+      const resizeObserver = new ResizeObserver(() => {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (!width || !height || (width === lastWidth && height === lastHeight))
+          return;
+        lastWidth = width;
+        lastHeight = height;
+        resize();
+      });
+      resizeObserver.observe(container);
 
       const pauseOrbit = (ms = 4500) => {
         orbitPausedUntil.current = performance.now() + ms;
@@ -277,7 +290,7 @@ export function useMissionMap(reaction: {
       el.addEventListener("focusout", () => pauseOrbit(2200));
       const runLocate = async () => {
         const loc = await resolveDeviceLocation();
-        if (!container.isConnected) return;
+        if (disposed || !container.isConnected) return;
         const write = (selector: string, value: string) => {
           const node = el.querySelector(selector);
           if (node) node.textContent = value;
@@ -288,10 +301,7 @@ export function useMissionMap(reaction: {
         }
         const ip = loc.ip?.trim();
         write(".vox-hud-marker__label", loc.city || "Your location");
-        write(
-          ".vox-location-card__title",
-          loc.city || "Your location",
-        );
+        write(".vox-location-card__title", loc.city || "Your location");
         write(
           ".vox-location-card__source",
           loc.source === "gps"
@@ -308,6 +318,9 @@ export function useMissionMap(reaction: {
         applyPosition(loc.lng, loc.lat);
       };
 
+      // Style paint must be themed before its first tile frame, not only after
+      // the load event (which is emitted after a dark frame can be painted).
+      map.on("style.load", () => ensureMissionControlLook(map));
       map.on("load", () => {
         ensureMissionControlLook(map);
         ensure3dBuildings(map);
@@ -349,7 +362,13 @@ export function useMissionMap(reaction: {
         resize();
         window.setTimeout(resize, 100);
         window.setTimeout(resize, 500);
-        setMapReady(true);
+        map.once("render", () => {
+          if (!disposed) {
+            container.dataset.ready = "true";
+            setMapReady(true);
+          }
+        });
+        map.triggerRepaint();
         startOrbit();
         void runLocate();
       });
@@ -362,9 +381,8 @@ export function useMissionMap(reaction: {
       });
 
       return () => {
+        resizeObserver.disconnect();
         stopOrbit();
-        ro.disconnect();
-        if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
         map.off("dragstart", onUserGesture);
         map.off("zoomstart", onUserGesture);
         map.off("pitchstart", onUserGesture);

@@ -23,12 +23,6 @@ export function decorateScreenshot(screen: string) {
         }
         card.insertBefore(row, card.lastElementChild);
       }
-    if (screen === "project") {
-      const tab = [...document.querySelectorAll("button")].find(
-        (el) => el.textContent === "Canvas",
-      );
-      if (tab) tab.textContent = "Context";
-    }
     if (screen === "insights") {
       const chart = document.querySelector(".pulse-chart");
       if (chart && !chart.querySelector(".capture-comparison")) {

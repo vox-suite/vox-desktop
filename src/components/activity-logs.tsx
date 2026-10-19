@@ -38,7 +38,7 @@ export function ActivityLogs() {
   return (
     <Card
       aria-label="Activity Logs"
-      className="pointer-events-auto fixed right-2 top-2 z-[5] w-85 max-w-[calc(100vw-1rem)] gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 select-text"
+      className="pointer-events-auto absolute right-2 top-2 z-[5] w-85 max-w-[calc(100%-1rem)] gap-0 rounded-none border-0 bg-transparent p-0 shadow-none ring-0 select-text"
     >
       <ScrollArea className="max-h-[50vh] [mask-image:linear-gradient(to_bottom,black_55%,transparent)]">
         <div className="flex flex-col gap-1 p-1 font-mono text-[9px] leading-snug">

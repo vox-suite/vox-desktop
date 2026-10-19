@@ -60,7 +60,6 @@ import {
   removeDiagram,
   titleDiagram,
 } from "@/features/projects/diagrams";
-import { ProjectContext } from "./project-context";
 import { ProjectSources } from "./project-sources";
 import { ContextEditor } from "./context-editor";
 import { CodeExplorer, SourcePreview } from "./code-explorer";
@@ -142,7 +141,7 @@ export function ProjectDetail({
   };
   const activeDraft = viewing === "draft" ? draft : null;
   const shown = activeDraft?.flow ?? viewed?.flow;
-  const libraryOpen = !traceStatus && !liveFlow && !shown?.diagram && viewing !== "context";
+  const libraryOpen = !traceStatus && !liveFlow && !shown?.diagram;
   const selectTab = (next: string) => {
     if (next === "context") setViewing(null);
     setTab(next);
@@ -663,8 +662,18 @@ export function ProjectDetail({
             {tab === "context" &&
               (traceStatus || (liveFlow ?? shown)?.diagram ? (
                 <DiagramCanvas
-                  flow={liveFlow ?? shown ?? { title: "New diagram", nodes: [], edges: [], gaps: [] }}
+                  flow={
+                    liveFlow ??
+                    shown ?? {
+                      title: "New diagram",
+                      nodes: [],
+                      edges: [],
+                      gaps: [],
+                    }
+                  }
                   generating={traceStatus}
+                  response={traceText}
+                  activity={traceLog}
                   draft={!!traceStatus}
                   onBack={() => setViewing(null)}
                   backDisabled={!!traceStatus}
@@ -672,11 +681,7 @@ export function ProjectDetail({
                   actions={
                     !liveFlow && activeDraft ? (
                       <>
-                        <span className="project-draft-badge">
-                          {activeDraft.mode === "update"
-                            ? "Draft · unsaved changes"
-                            : "Draft · unsaved new diagram"}
-                        </span>
+                        <span className="project-draft-badge">Draft</span>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -787,27 +792,6 @@ export function ProjectDetail({
                     )
                   }
                 />
-              ) : viewing === "context" ? (
-                <div className="flex h-full min-h-0 flex-col">
-                  <div className="border-b px-5 py-3">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setViewing(null)}
-                    >
-                      <ArrowLeft className="size-3.5" /> Diagrams
-                    </Button>
-                  </div>
-                  <ProjectContext
-                    project={p}
-                    onAddSources={() => setTab("sources")}
-                    investigating={!!traceStatus}
-                    onSelect={(n) => {
-                      if (!traceStatus) setEditing(n);
-                    }}
-                    onSource={(id) => setExplorer(id)}
-                  />
-                </div>
               ) : (
                 <DiagramLibrary
                   messages={messages}
@@ -820,19 +804,53 @@ export function ProjectDetail({
                     setDialogError("");
                     setPendingDelete(message);
                   }}
-                  onContext={() => setViewing("context")}
+                  onAsk={(question) => {
+                    setIntent(question);
+                    document.getElementById("project-question")?.focus();
+                  }}
                 />
               ))}
             {tab === "sources" && (
-              <ProjectSources
-                project={p}
-                busy={state.busy}
-                changes={state.changes}
-                onIndex={state.index}
-                onStatus={setImportStatus}
-                onRemove={removeSource}
-                onExplore={setExplorer}
-              />
+              <>
+                <ProjectSources
+                  project={p}
+                  busy={state.busy}
+                  changes={state.changes}
+                  onIndex={state.index}
+                  onStatus={setImportStatus}
+                  onRemove={removeSource}
+                  onExplore={setExplorer}
+                />
+                {p.data.nodes.length > 0 && (
+                  <details className="project-knowledge">
+                    <summary>
+                      Project knowledge <span>{p.data.nodes.length}</span>
+                    </summary>
+                    <p>Source summaries and decisions used by your plans.</p>
+                    <ul>
+                      {p.data.nodes.map((node) => (
+                        <li key={node.id}>
+                          <button
+                            disabled={state.busy || !!traceStatus}
+                            onClick={() => setEditing(node)}
+                          >
+                            <span>
+                              <strong>{node.title}</strong>
+                              <span>{node.body}</span>
+                            </span>
+                            {node.stale && (
+                              <span className="project-knowledge-stale">
+                                Needs review
+                              </span>
+                            )}
+                            <ChevronRight className="size-4 shrink-0" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </>
             )}
             {tab === "activity" && (
               <div className="project-content-page">
@@ -948,10 +966,9 @@ export function ProjectDetail({
               onSources={() => setTab("sources")}
               onStop={() => void cancelTrace()}
               status={traceStatus}
-              log={traceLog}
-              thinking={traceText}
               disabled={state.busy || creating}
               sourceCount={p.data.sources.length}
+              editingDiagram={!!shown?.diagram}
             />
           )}
         </div>
@@ -1162,9 +1179,11 @@ export function ProjectDetail({
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
-            {agentStatus?.authenticated
-              ? `Connected through ${agentStatus.auth_method === "api-key" ? "your API key" : "Vox’s Gemini connection"}.`
-              : "Vox’s Gemini connection is used by default."}{" "}
+            {agentStatus?.auth_method === "keychain"
+              ? "Your model connection will be checked when you start an investigation."
+              : agentStatus?.authenticated
+                ? `Connected through ${agentStatus.auth_method === "api-key" ? "your API key" : "Vox’s Gemini connection"}.`
+                : "Vox’s Gemini connection is used by default."}{" "}
             The engine downloads automatically on first use.
           </p>
           <label className="grid gap-2 text-xs">
@@ -1195,7 +1214,8 @@ export function ProjectDetail({
           >
             {agentSetupBusy ? "Saving…" : "Save connection"}
           </Button>
-          {agentStatus?.auth_method === "api-key" && (
+          {(agentStatus?.auth_method === "api-key" ||
+            agentStatus?.auth_method === "keychain") && (
             <Button
               variant="ghost"
               disabled={agentSetupBusy}

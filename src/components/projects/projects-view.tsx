@@ -15,6 +15,7 @@ import {
   PageBody,
 } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -120,7 +121,7 @@ export function ProjectsView() {
           </span>
           <div className="leading-tight">
             <h1 className="text-base font-semibold tracking-tight">Projects</h1>
-            {count === null ? (
+            {count === null && !error ? (
               <span
                 role="status"
                 aria-label="Loading"
@@ -128,7 +129,9 @@ export function ProjectsView() {
               />
             ) : (
               <p className="mt-0.5 font-mono text-[10.5px] leading-4 text-muted-foreground">
-                {`${count} ${count === 1 ? "project" : "projects"}`}
+                {count === null
+                  ? "Projects unavailable"
+                  : `${count} ${count === 1 ? "project" : "projects"}`}
               </p>
             )}
           </div>
@@ -180,7 +183,34 @@ export function ProjectsView() {
             {error}
           </p>
         )}
-        {items.length === 0 ? (
+        {loading && items.length === 0 ? (
+          <div role="status" aria-label="Loading projects" aria-busy="true">
+            <span className="sr-only">Loading projects…</span>
+            <div
+              aria-hidden="true"
+              className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3"
+            >
+              {Array.from({ length: 6 }, (_, index) => (
+                <div
+                  key={index}
+                  className="project-list-row motion-reduce:[&_[data-slot=skeleton]]:animate-none"
+                >
+                  <Skeleton className="size-12 shrink-0 rounded-xl" />
+                  <div className="min-w-0 flex-1 py-1">
+                    <Skeleton className="h-5 w-3/5" />
+                    <Skeleton className="mt-3 h-4 w-full" />
+                    <Skeleton className="mt-2 h-4 w-4/5" />
+                    <div className="mt-8 flex gap-4">
+                      <Skeleton className="h-3 w-12" />
+                      <Skeleton className="h-3 w-14" />
+                      <Skeleton className="ml-auto h-3 w-10" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : items.length === 0 && !error ? (
           <div className="start">
             <header className="start-head">
               <div>
@@ -276,16 +306,37 @@ export function ProjectsView() {
                   <ProjectCard key={p.id} project={p} onOpen={() => open(p)} />
                 ))}
             </div>
-            {items.every(
-              (p) =>
-                !`${p.name} ${p.data.notes}`
-                  .toLowerCase()
-                  .includes(search.toLowerCase()),
-            ) && (
-              <p className="project-quiet-empty py-16 text-center text-sm text-muted-foreground">
-                No projects match “{search}”.
-              </p>
-            )}
+            {items.length > 0 &&
+              items.every(
+                (p) =>
+                  !`${p.name} ${p.data.notes}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+              ) && (
+                <div
+                  role="status"
+                  className="flex flex-col items-center py-10 text-center"
+                >
+                  <div aria-hidden="true" className="w-56 max-w-full">
+                    <ProjectIllustration />
+                  </div>
+                  <h2 className="mt-4 text-base font-medium">
+                    No matching projects
+                  </h2>
+                  <p className="mt-2 max-w-sm break-words text-sm text-muted-foreground">
+                    No projects match “{search}”. Try another name or clear your
+                    search.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mt-5"
+                    onClick={() => setSearch("")}
+                  >
+                    Clear search
+                  </Button>
+                </div>
+              )}
             {next && (
               <Button
                 variant="ghost"

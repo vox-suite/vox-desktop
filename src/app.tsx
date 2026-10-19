@@ -17,7 +17,7 @@ export default function App() {
   const context = useDesktopControl(auth.auth.signed_in);
   const activeTab = context.page;
   const setActiveTab = desktopStore.navigate.bind(desktopStore);
-  const [verifySkipped, setVerifySkipped] = useState(false);
+  const [verifySkippedFor, setVerifySkippedFor] = useState<string | null>(null);
 
   const {
     auth: authState,
@@ -107,46 +107,54 @@ export default function App() {
     );
   }
 
-  if (!authState.phone_verified && !verifySkipped) {
-    return (
-      <PhoneVerifyScreen
-        autoSend={phoneJustLinked}
-        onSend={startPhoneVerification}
-        onConfirm={confirmPhoneVerification}
-        onSkip={() => setVerifySkipped(true)}
-      />
-    );
-  }
+  const showVerification =
+    !authState.phone_verified && verifySkippedFor !== authState.user_id;
 
   return (
     <main
       className="relative h-full w-full overflow-hidden bg-background"
       tabIndex={0}
     >
-      <HomeShell
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        accountLabel={authState.email ?? authState.user_id ?? "Signed in"}
-        userName={
-          authState.user_name ??
-          (authState.email ? authState.email.replace(/@.*/, "") : "User")
-        }
-        avatarUrl={authState.avatar_url ?? null}
-        onSignOut={() => void signOut()}
-        isActive={isActive}
-        voxSpeaking={isVoxSpeaking}
-        micLevel={micLevel}
-        callState={callState}
-        callError={callError}
-        onToggleCall={() => void toggleCall()}
-        collections={[]}
-      />
-      <PlanReadyPrompt
-        plan={announcer.prompt}
-        onTellMe={announcer.tellMe}
-        onView={announcer.view}
-        onDismiss={announcer.dismiss}
-      />
+      <div
+        className="h-full"
+        inert={showVerification}
+        aria-hidden={showVerification || undefined}
+      >
+        <HomeShell
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          accountLabel={authState.email ?? authState.user_id ?? "Signed in"}
+          userName={
+            authState.user_name ??
+            (authState.email ? authState.email.replace(/@.*/, "") : "User")
+          }
+          avatarUrl={authState.avatar_url ?? null}
+          onSignOut={() => void signOut()}
+          isActive={isActive}
+          voxSpeaking={isVoxSpeaking}
+          micLevel={micLevel}
+          callState={callState}
+          callError={callError}
+          onToggleCall={() => void toggleCall()}
+          collections={[]}
+        />
+        <PlanReadyPrompt
+          plan={announcer.prompt}
+          onTellMe={announcer.tellMe}
+          onView={announcer.view}
+          onDismiss={announcer.dismiss}
+        />
+      </div>
+      {showVerification && (
+        <div className="absolute inset-0 z-50">
+          <PhoneVerifyScreen
+            autoSend={phoneJustLinked}
+            onSend={startPhoneVerification}
+            onConfirm={confirmPhoneVerification}
+            onSkip={() => setVerifySkippedFor(authState.user_id)}
+          />
+        </div>
+      )}
     </main>
   );
 }

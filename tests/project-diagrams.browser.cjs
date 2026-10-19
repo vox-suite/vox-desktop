@@ -57,25 +57,26 @@ const output = require("node:path").resolve(
     await expect(
       page.getByRole("heading", { name: "Diagrams", exact: true }),
     ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Project context", exact: true })
-      .click();
-    await expect(page.locator(".project-context-card").first()).toBeVisible();
-    await page.getByRole("button", { name: "Diagrams", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Project context", exact: true })).toHaveCount(0);
+    await page.getByRole("tab", { name: "Sources", exact: true }).click();
+    await page.locator(".project-knowledge summary").click();
+    await expect(page.locator(".project-knowledge li").first()).toBeVisible();
+    await expect(page.locator(".react-flow")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Canvas", exact: true }).click();
     await page
       .getByLabel("Ask about your project")
       .fill("How does place search work?");
     await page
       .getByRole("button", { name: "Draw diagram", exact: true })
       .click();
-    await expect(page.getByText("Draft · unsaved new diagram")).toBeVisible();
+    await expect(page.getByText("Draft")).toBeVisible();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     const title = page.getByLabel("Diagram title", { exact: true });
     await expect(title).toHaveValue("Place search request flow");
     await expect(title).toBeFocused();
     await title.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.getByText("Draft · unsaved new diagram")).toBeVisible();
+    await expect(page.getByText("Draft")).toBeVisible();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(title).toBeFocused();
     await title.press("Tab");
@@ -154,9 +155,9 @@ const output = require("node:path").resolve(
       .getByLabel("Ask about your project")
       .fill("Show the cache interaction");
     await page
-      .getByRole("button", { name: "Draw diagram", exact: true })
+      .getByRole("button", { name: "Update diagram", exact: true })
       .click();
-    await expect(page.getByText("Draft · unsaved changes")).toBeVisible();
+    await expect(page.getByText("Draft")).toBeVisible();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await title.fill("Place search architecture revised");
     await page
@@ -201,7 +202,7 @@ const output = require("node:path").resolve(
       .getByRole("button", { name: "Delete diagram", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "No saved diagrams yet", exact: true }),
+      page.getByRole("heading", { name: "Understand your project", exact: true }),
     ).toBeVisible();
     await page.screenshot({ path: output + "/empty-dark.png" });
     await page.goto(

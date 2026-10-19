@@ -8,8 +8,15 @@ import {
   type RefObject,
 } from "react";
 import DOMPurify from "dompurify";
-import { ReactFlow, Controls, useNodesInitialized, useReactFlow, type NodeProps, type Node } from "@xyflow/react";
-import { ArrowLeft, Download, Loader2, FileCode2 } from "lucide-react";
+import {
+  ReactFlow,
+  Controls,
+  useNodesInitialized,
+  useReactFlow,
+  type NodeProps,
+  type Node,
+} from "@xyflow/react";
+import { ArrowLeft, Download, Loader2, FileCode2, X } from "lucide-react";
 import type {
   Citation,
   ProjectFlow,
@@ -18,6 +25,8 @@ import type {
 import { latestRenderer } from "@/features/projects/render-queue";
 import { diagramKinds } from "@/features/projects/diagrams";
 import { localProjects } from "@/features/projects/api";
+import { GenerationAtmosphere } from "./generation-atmosphere";
+import { CanvasAgentActivity } from "./canvas-agent-activity";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,7 +52,9 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
   const host = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const selectRef = useRef(data.onSelect);
-  useEffect(() => { selectRef.current = data.onSelect; }, [data.onSelect]);
+  useEffect(() => {
+    selectRef.current = data.onSelect;
+  }, [data.onSelect]);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -56,13 +67,15 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
     const style = document.createElement("style");
     style.textContent =
       data.rendered.css +
-      ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised);background:var(--vox-surface-raised);display:block}svg{display:block;width:100%;height:100%;font-family:'Geist Mono',monospace}svg [data-node-id]{cursor:pointer}svg [data-node-id]:focus{outline:2px solid var(--vox-cyan);outline-offset:3px}svg [data-edge-from]{cursor:pointer}svg [data-edge-from]:focus{outline:1px solid var(--vox-mint)}";
+      ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised);background:transparent;display:block}svg{background:transparent!important;display:block;width:100%;height:100%;font-family:'Geist Mono',monospace}svg [data-node-id]{cursor:pointer}svg [data-node-id]:focus{outline:2px solid var(--vox-cyan);outline-offset:3px}svg [data-edge-from]{cursor:pointer}svg [data-edge-from]:focus{outline:1px solid var(--vox-mint)}";
     root.replaceChildren(style);
     const template = document.createElement("template");
     template.innerHTML = svg;
     // The pinned legend owns the key; remove the embedded copy rather than
     // relying on renderer CSS, which can override display rules.
-    template.content.querySelectorAll("[data-legend]").forEach((legend) => legend.remove());
+    template.content
+      .querySelectorAll("[data-legend]")
+      .forEach((legend) => legend.remove());
     // Theme selectors inside the shadow root cannot see the app's root attribute.
     const diagram = template.content.querySelector("svg");
     if (diagram) {
@@ -109,9 +122,14 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
           edge.getAttribute("data-edge-to") ?? undefined,
           edge.getAttribute("data-edge-label") ?? undefined,
         );
+      else selectRef.current(null);
     };
     const keyboard = (event: Event) => {
       const key = event as KeyboardEvent;
+      if (key.key === "Escape") {
+        key.preventDefault();
+        selectRef.current(null);
+      }
       if (key.key === "Enter" || key.key === " ") {
         key.preventDefault();
         select(event);
@@ -127,12 +145,18 @@ function Scene({ data }: NodeProps<Node<SceneData>>) {
   useEffect(() => {
     const root = host.current?.shadowRoot;
     if (!root) return;
-    root.querySelectorAll<SVGElement>("[data-node-id], [data-edge-from]").forEach((element) => {
-      const relevant = !data.focused || element.getAttribute("data-node-id") === data.focused ||
-        element.getAttribute("data-edge-from") === data.focused || element.getAttribute("data-edge-to") === data.focused;
-      element.style.opacity = relevant ? "1" : "0.18";
-      element.dataset.highlighted = data.focused && relevant ? "true" : "false";
-    });
+    root
+      .querySelectorAll<SVGElement>("[data-node-id], [data-edge-from]")
+      .forEach((element) => {
+        const relevant =
+          !data.focused ||
+          element.getAttribute("data-node-id") === data.focused ||
+          element.getAttribute("data-edge-from") === data.focused ||
+          element.getAttribute("data-edge-to") === data.focused;
+        element.style.opacity = relevant ? "1" : "0.18";
+        element.dataset.highlighted =
+          data.focused && relevant ? "true" : "false";
+      });
   }, [data.focused, data.rendered]);
   return (
     <div
@@ -165,14 +189,21 @@ function PinnedLegend({ rendered }: { rendered: RenderedDiagram }) {
     svg.style.colorScheme = theme;
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Diagram legend");
-    template.content.querySelectorAll("defs").forEach((defs) => svg.append(defs.cloneNode(true)));
+    template.content
+      .querySelectorAll("defs")
+      .forEach((defs) => svg.append(defs.cloneNode(true)));
     svg.append(legend);
     const style = document.createElement("style");
-    style.textContent = rendered.css + ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised)}svg{display:block;width:100%;height:auto;font-family:'Geist Mono',monospace}";
+    style.textContent =
+      rendered.css +
+      ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised)}svg{display:block;width:100%;height:auto;font-family:'Geist Mono',monospace}";
     root.append(style, svg);
     element.hidden = false;
     const bounds = legend.getBBox();
-    svg.setAttribute("viewBox", `${bounds.x - 4} ${bounds.y - 4} ${bounds.width + 8} ${bounds.height + 8}`);
+    svg.setAttribute(
+      "viewBox",
+      `${bounds.x - 4} ${bounds.y - 4} ${bounds.width + 8} ${bounds.height + 8}`,
+    );
     svg.setAttribute("width", String(bounds.width + 8));
     svg.setAttribute("height", String(bounds.height + 8));
     element.style.width = `${bounds.width + 8}px`;
@@ -184,8 +215,14 @@ function FitScene({ width, height }: { width: number; height: number }) {
   const ready = useNodesInitialized();
   const { fitView } = useReactFlow();
   useEffect(() => {
-    if (ready) void fitView({ padding: 0.12, maxZoom: 1.3,
-      duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 180 });
+    if (ready)
+      void fitView({
+        padding: 0.12,
+        maxZoom: 1.3,
+        duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : 180,
+      });
   }, [ready, width, height, fitView]);
   return null;
 }
@@ -197,6 +234,8 @@ export function DiagramCanvas({
   onBack,
   backDisabled = false,
   generating = "",
+  response = "",
+  activity = [],
 }: {
   flow: ProjectFlow;
   onRead: (citation: Citation) => void;
@@ -205,6 +244,8 @@ export function DiagramCanvas({
   onBack?: () => void;
   backDisabled?: boolean;
   generating?: string;
+  response?: string;
+  activity?: string[];
 }) {
   const seen = useRef(new Set<string>());
 
@@ -226,16 +267,9 @@ export function DiagramCanvas({
   const [exportError, setExportError] = useState("");
   const inspector = useRef<HTMLDetailsElement>(null);
   type RenderInput = { flow: ProjectFlow; draft: boolean };
-  const renderer = useRef<ReturnType<typeof latestRenderer<RenderInput, RenderedDiagram>> | null>(null);
-  const glow = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const visibility = () => {
-      if (glow.current) glow.current.style.animationPlayState = document.hidden ? "paused" : "running";
-    };
-    visibility();
-    document.addEventListener("visibilitychange", visibility);
-    return () => document.removeEventListener("visibilitychange", visibility);
-  }, [generating]);
+  const renderer = useRef<ReturnType<
+    typeof latestRenderer<RenderInput, RenderedDiagram>
+  > | null>(null);
   useEffect(() => {
     const queue = latestRenderer<RenderInput, RenderedDiagram>(
       ({ flow, draft }) => localProjects().renderDiagram(flow.diagram!, draft),
@@ -243,15 +277,22 @@ export function DiagramCanvas({
         const count = (rendered.svg.match(/data-node-id=/g) ?? []).length;
         if (draft && count === 0) return;
         setResult((previous) => {
-          const previousCount = (previous?.rendered?.svg.match(/data-node-id=/g) ?? []).length;
-          if (draft && previous?.draft && count < previousCount) return previous;
+          const previousCount = (
+            previous?.rendered?.svg.match(/data-node-id=/g) ?? []
+          ).length;
+          if (draft && previous?.draft && count < previousCount)
+            return previous;
           return { flow, rendered, draft };
         });
         setSelected(null);
         setFocused(null);
       },
       ({ flow, draft }, error) => {
-        if (!draft) setResult((previous) => ({ ...(previous ?? { flow }), error: String(error) }));
+        if (!draft)
+          setResult((previous) => ({
+            ...(previous ?? { flow }),
+            error: String(error),
+          }));
       },
     );
     renderer.current = queue;
@@ -264,7 +305,13 @@ export function DiagramCanvas({
   const displayedFlow = result?.rendered ? result.flow : flow;
   const onSelect = useCallback(
     (id: string | null, from?: string, to?: string, label?: string) => {
+      if ((!id && !from && !to) || (id && focused === id)) {
+        setFocused(null);
+        setSelected(null);
+        return;
+      }
       setFocused(id);
+      setSelected(null);
       if (inspector.current) inspector.current.open = false;
       if (id) {
         const node = displayedFlow.nodes.find((n) => n.id === id);
@@ -281,7 +328,7 @@ export function DiagramCanvas({
           citations: edge.citations,
         });
     },
-    [displayedFlow],
+    [displayedFlow, focused],
   );
   const sceneNodes = useMemo(
     () =>
@@ -314,7 +361,16 @@ export function DiagramCanvas({
     }
   };
   return (
-    <div className="project-architecture">
+    <div
+      className="project-architecture"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          setSelected(null);
+          setFocused(null);
+        }
+      }}
+    >
       <div className="project-flow-header">
         <div className="project-diagram-heading">
           {onBack && (
@@ -330,15 +386,25 @@ export function DiagramCanvas({
           <div>
             <h2>{flow.title || "New diagram"}</h2>
             <span className="project-diagram-kind">
-              {flow.diagram ? diagramKinds[flow.diagram.diagram_type] : "Canvas"}
+              {flow.diagram
+                ? diagramKinds[flow.diagram.diagram_type]
+                : "Canvas"}
             </span>
           </div>
         </div>
         <div className="project-flow-coverage">
-          {generating ? (
-            <span className="project-generation-label" role="status">Generating diagram…</span>
-          ) : (
-            <span>{flow.nodes.length} elements</span>
+          {!generating && <span>{flow.nodes.length} elements</span>}
+          {(focused || selected) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setSelected(null);
+                setFocused(null);
+              }}
+            >
+              <X className="size-3" /> Clear focus
+            </Button>
           )}
           {!!flow.gaps.length && (
             <details>
@@ -385,7 +451,12 @@ export function DiagramCanvas({
         </p>
       )}
       <div className="project-architecture-stage" aria-busy={!!generating}>
-        {!!generating && <div ref={glow} className="project-generation-glow" aria-hidden="true" />}
+        <GenerationAtmosphere active={!!generating} />
+        <CanvasAgentActivity
+          status={generating}
+          response={response}
+          activity={activity}
+        />
         {rendered ? (
           <ReactFlow
             nodes={sceneNodes}
@@ -399,7 +470,10 @@ export function DiagramCanvas({
             maxZoom={3}
             proOptions={{ hideAttribution: true }}
             colorMode={theme}
-            onPaneClick={() => { setSelected(null); setFocused(null); }}
+            onPaneClick={() => {
+              setSelected(null);
+              setFocused(null);
+            }}
           >
             <FitScene width={rendered.width} height={rendered.height} />
             <Controls showInteractive={false} />
@@ -419,51 +493,68 @@ export function DiagramCanvas({
               </>
             ) : (
               <>
-                <Loader2 className="size-4 animate-spin" />
-                {generating
-                  ? "Your diagram will appear here when it is ready."
-                  : "Rendering the diagram…"}
+                {!generating && (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Rendering the
+                    diagram…
+                  </>
+                )}
               </>
             )}
           </div>
         )}
         {rendered && <PinnedLegend rendered={rendered} />}
       </div>
-        {selected && (
-          <details
-            ref={inspector}
-            className="project-flow-inspector"
-            aria-label="Diagram details"
-            onKeyDown={(event) => {
-              if (event.key === "Escape") { setSelected(null); setFocused(null); }
-            }}
-          >
-            <summary>{selected.title}<span>Details & source evidence</span></summary>
-            {selected.detail && <p>{selected.detail}</p>}
-            <div className="project-inspector-sources">
-              <h4>Source references</h4>
-              {selected.citations.length ? (
-                selected.citations.map((citation, i) => (
-                  <button key={i} onClick={() => onRead(citation)}>
-                    <FileCode2 className="size-3.5" />
-                    <span>
-                      {citation.path}
-                      <small>
-                        Lines {citation.start_line}–{citation.end_line}
-                      </small>
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p>No source reference available.</p>
-              )}
-            </div>
-          </details>
-        )}
+      {selected && (
+        <details
+          ref={inspector}
+          className="project-flow-inspector"
+          aria-label="Diagram details"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setSelected(null);
+              setFocused(null);
+            }
+          }}
+        >
+          <summary>
+            {selected.title}
+            <span>Details & source evidence</span>
+          </summary>
+          {selected.detail && <p>{selected.detail}</p>}
+          <div className="project-inspector-sources">
+            <h4>Source references</h4>
+            {selected.citations.length ? (
+              selected.citations.map((citation, i) => (
+                <button key={i} onClick={() => onRead(citation)}>
+                  <FileCode2 className="size-3.5" />
+                  <span>
+                    {citation.path}
+                    <small>
+                      Lines {citation.start_line}–{citation.end_line}
+                    </small>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p>No source reference available.</p>
+            )}
+          </div>
+        </details>
+      )}
       {result?.error && rendered && (
-        <div role="alert" className="flex items-center justify-between px-4 py-2 text-xs text-destructive">
+        <div
+          role="alert"
+          className="flex items-center justify-between px-4 py-2 text-xs text-destructive"
+        >
           Could not render the updated diagram.
-          <Button size="sm" variant="ghost" onClick={() => setRetry((n) => n + 1)}>Retry rendering</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setRetry((n) => n + 1)}
+          >
+            Retry rendering
+          </Button>
         </div>
       )}
     </div>

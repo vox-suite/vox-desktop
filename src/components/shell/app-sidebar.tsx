@@ -115,7 +115,11 @@ const THEMES = [
   { pref: "auto", label: "Auto", icon: Monitor },
   { pref: "light", label: "Light", icon: Sun },
   { pref: "dark", label: "Dark", icon: Moon },
-] as const satisfies readonly { pref: ThemePref; label: string; icon: unknown }[];
+] as const satisfies readonly {
+  pref: ThemePref;
+  label: string;
+  icon: unknown;
+}[];
 
 const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";
 
@@ -154,6 +158,7 @@ export function AppSidebar({
 
   return (
     <Sidebar
+      inline
       collapsible="icon"
       variant="sidebar"
       onMouseDown={(event) => {
@@ -281,7 +286,9 @@ export function AppSidebar({
             <SidebarMenuButton
               tooltip={`Theme: ${theme.label}`}
               aria-label={`Theme: ${theme.label}. Change theme`}
-              onClick={() => setThemePref(THEMES[(themeIndex + 1) % THEMES.length].pref)}
+              onClick={() =>
+                setThemePref(THEMES[(themeIndex + 1) % THEMES.length].pref)
+              }
             >
               <theme.icon />
               <span>Theme: {theme.label}</span>

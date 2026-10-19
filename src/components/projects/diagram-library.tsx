@@ -1,4 +1,4 @@
-import { ArrowRight, FileText, Layers, Trash2 } from "lucide-react";
+import { ArrowRight, Layers, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   diagramKinds,
@@ -15,7 +15,7 @@ export function DiagramLibrary({
   onDraft,
   onDeleteDraft,
   onDelete,
-  onContext,
+  onAsk,
 }: {
   messages: ProjectMessage[];
   draft: { flow: ProjectFlow; question: string } | null;
@@ -24,7 +24,7 @@ export function DiagramLibrary({
   onDraft: () => void;
   onDeleteDraft: () => void;
   onDelete: (message: ProjectMessage) => void;
-  onContext: () => void;
+  onAsk: (question: string) => void;
 }) {
   const diagrams = latestDiagrams(messages);
   return (
@@ -32,19 +32,18 @@ export function DiagramLibrary({
       className="project-diagram-library"
       aria-labelledby="diagram-library-title"
     >
-      <header className="project-diagram-library-heading">
-        <div>
-          <h2 id="diagram-library-title">Diagrams</h2>
-          <p>
-            {diagrams.length
-              ? `${diagrams.length} saved ${diagrams.length === 1 ? "diagram" : "diagrams"}. Open one to explore its canvas.`
-              : "Ask about your project below to draw your first diagram."}
-          </p>
-        </div>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={onContext}>
-          <FileText className="size-3.5" /> Project context
-        </Button>
-      </header>
+      {(diagrams.length > 0 || draft) && (
+        <header className="project-diagram-library-heading">
+          <div>
+            <h2 id="diagram-library-title">Diagrams</h2>
+            <p>
+              {diagrams.length
+                ? `${diagrams.length} saved ${diagrams.length === 1 ? "diagram" : "diagrams"}`
+                : "Review your draft, then save it to this project."}
+            </p>
+          </div>
+        </header>
+      )}
       {draft && (
         <div className="project-diagram-draft-row">
           <div>
@@ -126,11 +125,44 @@ export function DiagramLibrary({
       ) : (
         !draft && (
           <div className="project-diagram-library-empty">
-            <Layers className="size-7" aria-hidden="true" />
-            <h3>No saved diagrams yet</h3>
+            <svg
+              className="project-diagram-empty-art"
+              viewBox="0 0 240 112"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <g fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M62 56h34m48 0h34M120 32V16h58v20M120 80v16H62V76" />
+                <rect x="18" y="36" width="44" height="40" rx="8" />
+                <rect x="178" y="36" width="44" height="40" rx="8" />
+                <rect
+                  x="96"
+                  y="32"
+                  width="48"
+                  height="48"
+                  rx="10"
+                  className="project-diagram-empty-focus"
+                />
+                <path
+                  d="m112 56 6 6 11-12"
+                  className="project-diagram-empty-check"
+                />
+              </g>
+            </svg>
+            <h2 id="diagram-library-title">Understand your project</h2>
             <p>
-              Trace a flow, review the diagram, then save it here with a title.
+              Ask how something works. Vox traces your sources into a diagram.
             </p>
+            <button
+              className="project-diagram-example"
+              disabled={busy}
+              onClick={() =>
+                onAsk("How does a request move through this project?")
+              }
+            >
+              Try “How does a request move through this project?”{" "}
+              <ArrowRight className="size-3.5" />
+            </button>
           </div>
         )
       )}

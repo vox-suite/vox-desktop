@@ -118,13 +118,10 @@ export function HomeShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <SidebarProvider className="relative min-h-0 flex-1 overflow-hidden">
-        <div className="absolute inset-0">
-          <div ref={mapNode} className="vox-map-host size-full" />
-        </div>
-
-        <ActivityLogs />
-
+      <SidebarProvider
+        mobileMode="inline"
+        className="relative min-h-0 flex-1 overflow-hidden"
+      >
         <AppSidebar
           activeTab={activeTab}
           onTabChange={onTabChange}
@@ -150,6 +147,10 @@ export function HomeShell({
               : "relative z-10 min-w-0 overflow-hidden"
           }
         >
+          <div className="pointer-events-auto absolute inset-0">
+            <div ref={mapNode} className="vox-map-host size-full" />
+          </div>
+          {activeTab === "agent" && <ActivityLogs />}
           {body}
           <DesktopActionOverlay />
           <TerminalPanel />
