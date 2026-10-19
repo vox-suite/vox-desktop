@@ -1586,6 +1586,15 @@ export function AgentsFigure({
       })()}
 
       {/* Belt A under the source rack */}
+      <Box
+        trace={trace}
+        x={-60}
+        y={-31.5}
+        z={27}
+        w={1.2}
+        d={1.2}
+        depth={27 - top}
+      />
       {beltX(A, 4, "A")}
       {chipsA.map(
         (c) =>
@@ -1607,6 +1616,53 @@ export function AgentsFigure({
           ),
       )}
       {beltFront(A, 4)}
+      {/* Scanner arch: each incoming event is read as it passes */}
+      {(() => {
+        const near = chipsA.some((c) => c.show && Math.abs(c.x + 60) < 3);
+        return (
+          <g>
+            <path
+              d={face([
+                [-60.6, A.y - 4, A.z + 0.1],
+                [-59.4, A.y - 4, A.z + 0.1],
+                [-59.4, A.y + 4, A.z + 0.1],
+                [-60.6, A.y + 4, A.z + 0.1],
+              ])}
+              style={{ fill: raw, opacity: near ? 0.9 : 0.25 }}
+            />
+            {near && (
+              <path
+                d={face([
+                  [-60, A.y - 4, A.z],
+                  [-60, A.y + 4, A.z],
+                  [-60, A.y + 4, 25],
+                  [-60, A.y - 4, 25],
+                ])}
+                style={{ fill: alpha("danger", 12), stroke: "none" }}
+              />
+            )}
+            <Box
+              trace={trace}
+              x={-60}
+              y={-16.5}
+              z={27}
+              w={1.2}
+              d={1.2}
+              depth={27 - top}
+            />
+            <Box
+              trace={trace}
+              x={-60}
+              y={-24}
+              z={29}
+              w={2}
+              d={8.7}
+              depth={2.5}
+            />
+            {dot([-60, -24, 29], 1.3, near ? raw : alpha("danger", 35))}
+          </g>
+        );
+      })()}
 
       {/* Source rack: a shelf on legs, one canister per source */}
       {[-116, -60].map((x) => (
@@ -1661,6 +1717,143 @@ export function AgentsFigure({
           {dot([c.x, -26, 45], 1, c.color)}
         </g>
       ))}
+
+      {/* Receiver dish: where events arrive from the cloud */}
+      {(() => {
+        const c: V3 = [-70, 2, 26];
+        const nrm = [0.25, 0.25, 0.935];
+        const u = [0.707, -0.707, 0];
+        const v = [
+          nrm[1] * u[2] - nrm[2] * u[1],
+          nrm[2] * u[0] - nrm[0] * u[2],
+          nrm[0] * u[1] - nrm[1] * u[0],
+        ];
+        const disc = (r: number, lift = 0): V3[] =>
+          Array.from({ length: 41 }, (_, i) => {
+            const a = (i / 40) * Math.PI * 2;
+            return [0, 1, 2].map(
+              (k) =>
+                c[k] +
+                r * (Math.cos(a) * u[k] + Math.sin(a) * v[k]) +
+                nrm[k] * lift,
+            ) as V3;
+          });
+        const horn: V3 = [
+          c[0] + nrm[0] * 7,
+          c[1] + nrm[1] * 7,
+          c[2] + nrm[2] * 7,
+        ];
+        return (
+          <g strokeLinejoin="round">
+            <Can
+              P={P}
+              trace={trace}
+              x={-70}
+              y={2}
+              z0={top}
+              z1={top + 3}
+              r={5}
+              fill={alpha("ink", 6)}
+            />
+            <Can
+              P={P}
+              trace={trace}
+              x={-70}
+              y={2}
+              z0={top + 3}
+              z1={21}
+              r={1.6}
+            />
+            <path
+              d={trace(disc(9.5), true)}
+              strokeWidth="0.85"
+              style={{ stroke: LINE, fill: SURFACE }}
+            />
+            <path
+              d={trace(disc(6.5, -1.2), true)}
+              strokeWidth="0.45"
+              style={{ stroke: FAINT, fill: alpha("ink", 4) }}
+            />
+            <path
+              d={trace(disc(3, -2), true)}
+              strokeWidth="0.45"
+              style={{ stroke: FAINT, fill: "none" }}
+            />
+            {[0, 2.1, 4.2].map((a) => (
+              <path
+                key={`strut${a}`}
+                d={trace([
+                  disc(9.5)[Math.round((a / (Math.PI * 2)) * 40)],
+                  horn,
+                ])}
+                strokeWidth="0.5"
+                style={{ stroke: LINE }}
+              />
+            ))}
+            {dot(horn, 1.4, raw)}
+            {t > 0 &&
+              [0, 1].map((k) => {
+                const ph = (run * 0.8 + k / 2) % 1;
+                const ring = disc(2 + ph * 9, 9 + ph * 10);
+                return (
+                  <path
+                    key={`in${k}`}
+                    d={trace(ring, true)}
+                    strokeWidth="0.6"
+                    strokeDasharray="1.5 2"
+                    style={{
+                      stroke: raw,
+                      fill: "none",
+                      opacity: ph * (1 - ph) * 3,
+                    }}
+                  />
+                );
+              })}
+          </g>
+        );
+      })()}
+      {/* Event counter */}
+      <Box trace={trace} x={-96} y={2} z={top + 9} w={9} d={5} depth={9} />
+      <path
+        d={face([
+          [-103, 7.05, top + 2.5],
+          [-89, 7.05, top + 2.5],
+          [-89, 7.05, top + 7],
+          [-103, 7.05, top + 7],
+        ])}
+        strokeWidth="0.6"
+        style={{ stroke: LINE, fill: alpha("ink", 10) }}
+      />
+      {[-100.5, -97, -93.5].map((x) => (
+        <path
+          key={`cd${x}`}
+          d={trace([
+            [x + 1.75, 7.05, top + 2.5],
+            [x + 1.75, 7.05, top + 7],
+          ])}
+          strokeWidth="0.4"
+          style={{ stroke: LINE }}
+        />
+      ))}
+      {String(Math.max(0, n) % 10000)
+        .padStart(4, "0")
+        .split("")
+        .map((d, i) => {
+          const [ox, oy] = P([-101.25 + i * 3.5, 7.05, top + 3.3]);
+          return (
+            <text
+              key={`dg${i}`}
+              transform={`matrix(0.866 0.5 0 1 ${fmt(ox)} ${fmt(oy)})`}
+              fontSize="4"
+              fontWeight="600"
+              textAnchor="middle"
+              style={{ fill: i === 3 ? raw : LABEL }}
+            >
+              {d}
+            </text>
+          );
+        })}
+      {dot([-96, 2, top + 9], 1, raw)}
 
       {/* Memory tank behind the engine, with bands and a level window */}
       <Can
