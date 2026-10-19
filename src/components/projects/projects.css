@@ -811,17 +811,14 @@
   text-align: center;
 }
 .project-diagram-empty-art {
-  width: 240px;
+  width: 380px;
   max-width: 100%;
-  margin-bottom: 24px;
-  color: var(--border);
+  margin-bottom: 20px;
 }
-.project-diagram-empty-focus {
-  fill: var(--card);
-  stroke: var(--muted-foreground);
-}
-.project-diagram-empty-check {
-  stroke: var(--foreground);
+.project-diagram-empty-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .project-diagram-library-empty h2 {
   font-size: 22px;

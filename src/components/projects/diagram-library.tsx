@@ -1,3 +1,4 @@
+import { TracingFigure } from "@/components/empty-figures";
 import { ArrowRight, Layers, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,30 +126,9 @@ export function DiagramLibrary({
       ) : (
         !draft && (
           <div className="project-diagram-library-empty">
-            <svg
-              className="project-diagram-empty-art"
-              viewBox="0 0 240 112"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <g fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M62 56h34m48 0h34M120 32V16h58v20M120 80v16H62V76" />
-                <rect x="18" y="36" width="44" height="40" rx="8" />
-                <rect x="178" y="36" width="44" height="40" rx="8" />
-                <rect
-                  x="96"
-                  y="32"
-                  width="48"
-                  height="48"
-                  rx="10"
-                  className="project-diagram-empty-focus"
-                />
-                <path
-                  d="m112 56 6 6 11-12"
-                  className="project-diagram-empty-check"
-                />
-              </g>
-            </svg>
+            <div className="project-diagram-empty-art">
+              <TracingFigure />
+            </div>
             <h2 id="diagram-library-title">Understand your project</h2>
             <p>
               Ask how something works. Vox traces your sources into a diagram.

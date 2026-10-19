@@ -2752,3 +2752,350 @@ export function DraftingFigure() {
     </Figure>
   );
 }
+
+const TRACE_CARDS: { x: number; z: number; color: VoxColor }[] = [
+  { x: 2, z: 50, color: "sky" },
+  { x: 38, z: 50, color: "mint" },
+  { x: 20, z: 28, color: "violet" },
+];
+const CODE_LINES = [18, 12, 21, 9, 16, 22, 11];
+
+// A tracing bench: a loupe on an articulated arm reads the source sheets
+// line by line, and a thread carries each line it reads up to the diagram
+// pinned on the board behind, lighting the card it explains.
+export function TracingFigure() {
+  const t = useClock();
+  const P = at(90, 132);
+  const trace = makeTrace(P);
+  const face = (pts: V3[]) => trace(pts, true);
+  const quad = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z: number,
+  ): V3[] => [
+    [x0, y0, z],
+    [x1, y0, z],
+    [x1, y1, z],
+    [x0, y1, z],
+  ];
+  const onBoard = (x0: number, x1: number, z0: number, z1: number): V3[] => [
+    [x0, boardY, z0],
+    [x1, boardY, z0],
+    [x1, boardY, z1],
+    [x0, boardY, z1],
+  ];
+  const top = 8;
+  const sheetTop = top + 3.6;
+  const boardY = -28.4;
+  const step = 1.3;
+  const k = t > 0 ? Math.floor(t / step) : 2;
+  const u = t > 0 ? (t % step) / step : 0.6;
+  const line = k % CODE_LINES.length;
+  const card = TRACE_CARDS[k % TRACE_CARDS.length];
+  const lineY = 3 + line * 3;
+  const lens: V3 = [-40 + Math.sin(t * 0.9) * 3, lineY, sheetTop + 14];
+  const from: V3 = [-50 + CODE_LINES[line], lineY, sheetTop];
+  const to: V3 = [card.x, boardY, card.z];
+  const thread: V3[] = Array.from({ length: 25 }, (_, i) => {
+    const s = (i / 24) * Math.min(1, u / 0.5);
+    const mid: V3 = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, 74];
+    const m = (a: number, b: number, c: number) =>
+      (1 - s) * (1 - s) * a + 2 * (1 - s) * s * b + s * s * c;
+    return [
+      m(from[0], mid[0], to[0]),
+      m(from[1], mid[1], to[1]),
+      m(from[2], mid[2], to[2]),
+    ];
+  });
+  const lit = u > 0.45 ? ease((u - 0.45) / 0.2) : 0;
+  const dot = (p: V3, r: number, fill: string, key?: string) => {
+    const [x, y] = P(p);
+    return <circle key={key} cx={x} cy={y} r={r} style={{ fill }} />;
+  };
+
+  return (
+    <Figure
+      width={264}
+      height={160}
+      label="A tracing bench: a loupe reads your source line by line and a thread carries each line to the part of the diagram it explains"
+    >
+      <path
+        d={face(quad(-84, 84, -40, 50, 0))}
+        style={{ fill: alpha("ink", 4) }}
+      />
+      {[
+        [-74, -36],
+        [74, -36],
+        [-74, 40],
+        [74, 40],
+      ].map(([x, y]) => (
+        <Box
+          key={`f${x}${y}`}
+          trace={trace}
+          x={x}
+          y={y}
+          z={3}
+          w={4}
+          d={4}
+          depth={3}
+          fill={alpha("ink", 8)}
+        />
+      ))}
+      <Box trace={trace} x={0} y={2} z={top} w={80} d={44} depth={5} />
+      <path
+        d={face(quad(-76, 76, -38, 42, top))}
+        strokeWidth="0.45"
+        style={{ stroke: FAINT }}
+      />
+      {[
+        [-78, -40],
+        [78, -40],
+        [-78, 44],
+        [78, 44],
+      ].map(([x, y]) => dot([x, y, top], 0.55, LINE, `s${x}${y}`))}
+      {/* Ruler along the front edge */}
+      <path
+        d={face(quad(-20, 70, 36, 41, top))}
+        strokeWidth="0.5"
+        style={{ stroke: FAINT, fill: alpha("ink", 4) }}
+      />
+      {Array.from({ length: 19 }, (_, i) => (
+        <path
+          key={`r${i}`}
+          d={trace([
+            [-18 + i * 4.8, 36, top],
+            [-18 + i * 4.8, i % 5 === 0 ? 39.5 : 38, top],
+          ])}
+          strokeWidth="0.45"
+          style={{ stroke: i % 5 === 0 ? LINE : FAINT }}
+        />
+      ))}
+
+      {/* Pegboard with the diagram pinned to it */}
+      {[-22, 66].map((x) => (
+        <Box
+          key={`leg${x}`}
+          trace={trace}
+          x={x}
+          y={-30}
+          z={top + 4}
+          w={3}
+          d={4}
+          depth={4}
+          fill={alpha("ink", 6)}
+        />
+      ))}
+      <Box
+        trace={trace}
+        x={22}
+        y={-30}
+        z={top + 54}
+        w={46}
+        d={1.6}
+        depth={50}
+      />
+      {Array.from({ length: 10 }, (_, i) =>
+        Array.from({ length: 6 }, (_, j) =>
+          dot(
+            [-18 + i * 8.8, boardY, top + 10 + j * 8],
+            0.45,
+            alpha("ink", 22),
+            `h${i}-${j}`,
+          ),
+        ),
+      )}
+      <g strokeWidth="0.8" style={{ stroke: alpha("ink", 40) }}>
+        <path
+          d={trace([
+            [TRACE_CARDS[0].x + 8, boardY, 50],
+            [TRACE_CARDS[1].x - 8, boardY, 50],
+          ])}
+        />
+        <path
+          d={trace([
+            [TRACE_CARDS[0].x, boardY, 45],
+            [TRACE_CARDS[0].x, boardY, 28],
+            [TRACE_CARDS[2].x - 8, boardY, 28],
+          ])}
+          fill="none"
+        />
+        <path
+          d={trace([
+            [TRACE_CARDS[1].x, boardY, 45],
+            [TRACE_CARDS[1].x, boardY, 28],
+            [TRACE_CARDS[2].x + 8, boardY, 28],
+          ])}
+          fill="none"
+        />
+      </g>
+      {TRACE_CARDS.map((c) => {
+        const on = c === card ? lit : 0;
+        const color = token(c.color);
+        return (
+          <g key={`card${c.color}`}>
+            <path
+              d={face(onBoard(c.x - 8, c.x + 8, c.z - 5, c.z + 5))}
+              strokeWidth={0.8 + on * 0.4}
+              style={{
+                stroke: color,
+                fill: `color-mix(in srgb, ${color} ${Math.round(10 + on * 30)}%, ${SURFACE})`,
+              }}
+            />
+            {[2, -0.5].map((dz, i) => (
+              <path
+                key={`cl${i}`}
+                d={trace([
+                  [c.x - 5, boardY, c.z + dz],
+                  [c.x + (i ? 1 : 5), boardY, c.z + dz],
+                ])}
+                strokeWidth="0.5"
+                style={{ stroke: alpha("ink", 30) }}
+              />
+            ))}
+            {dot([c.x, boardY, c.z + 5], 1.3, color)}
+          </g>
+        );
+      })}
+
+      {/* Pin cup */}
+      <Can
+        P={P}
+        trace={trace}
+        x={56}
+        y={-12}
+        z0={top}
+        z1={top + 7}
+        r={4.5}
+        fill={alpha("ink", 5)}
+      />
+      {(["sky", "mint", "violet", "gold"] as VoxColor[]).map((c, i) => {
+        const base: V3 = [54 + i * 1.4, -13 + (i % 2) * 2.4, top + 6];
+        const tip: V3 = [
+          base[0] + (i - 1.5) * 1.2,
+          base[1],
+          top + 12 + (i % 2),
+        ];
+        return (
+          <g key={`pin${c}`}>
+            <path
+              d={trace([base, tip])}
+              strokeWidth="0.6"
+              style={{ stroke: LINE }}
+            />
+            {dot(tip, 1.3, token(c))}
+          </g>
+        );
+      })}
+      {/* Loupe arm, pivoting from a weighted base */}
+      <Can
+        P={P}
+        trace={trace}
+        x={-66}
+        y={30}
+        z0={top}
+        z1={top + 3}
+        r={6}
+        fill={alpha("ink", 6)}
+      />
+      <Can
+        P={P}
+        trace={trace}
+        x={-66}
+        y={30}
+        z0={top + 3}
+        z1={top + 26}
+        r={1.3}
+      />
+
+      {/* Source sheets */}
+      {[2, 1, 0].map((i) => (
+        <Box
+          key={`sheet${i}`}
+          trace={trace}
+          x={-38 + i * 1.6}
+          y={13 - i * 1.6}
+          z={top + 1.2 * (3 - i)}
+          w={14}
+          d={14}
+          depth={1.2}
+          fill={SURFACE}
+          width={0.7}
+        />
+      ))}
+      <path
+        d={face(quad(-51, -25, lineY - 1.2, lineY + 1.2, sheetTop + 0.05))}
+        style={{ fill: alpha("violet", 18) }}
+      />
+      {CODE_LINES.map((len, i) => (
+        <path
+          key={`code${i}`}
+          d={trace([
+            [-50 + (i % 3 === 1 ? 3 : 0), 3 + i * 3, sheetTop + 0.1],
+            [-50 + len, 3 + i * 3, sheetTop + 0.1],
+          ])}
+          strokeWidth={i === line ? 1.1 : 0.8}
+          style={{
+            stroke:
+              i === line
+                ? token("violet")
+                : i % 3 === 0
+                  ? alpha("sky", 70)
+                  : alpha("ink", 35),
+          }}
+        />
+      ))}
+
+      {/* Arm to the lens */}
+      {(() => {
+        const pivot: V3 = [-66, 30, top + 26];
+        const elbow: V3 = [-60, 18, top + 38];
+        return (
+          <g>
+            <path
+              d={trace([pivot, elbow, [lens[0] - 8, lens[1] + 3, lens[2]]])}
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+              fill="none"
+              style={{ stroke: LINE }}
+            />
+            {dot(pivot, 1.6, LINE)}
+            {dot(elbow, 1.6, LINE)}
+          </g>
+        );
+      })()}
+      <path
+        d={trace(circle(8, lens[0], lens[1], lens[2]), true)}
+        strokeWidth="1.4"
+        style={{ stroke: LINE, fill: alpha("sky", 12) }}
+      />
+      <path
+        d={trace(circle(6.6, lens[0], lens[1], lens[2]), true)}
+        strokeWidth="0.45"
+        style={{ stroke: FAINT, fill: "none" }}
+      />
+      <path
+        d={trace([
+          [lens[0], lens[1], lens[2]],
+          [lens[0], lens[1], sheetTop + 0.2],
+        ])}
+        strokeWidth="0.5"
+        strokeDasharray="1 1.5"
+        style={{ stroke: alpha("violet", 60) }}
+      />
+
+      {/* The thread from the line being read to its card */}
+      <path
+        d={trace(thread)}
+        fill="none"
+        strokeWidth="0.9"
+        strokeDasharray="2 2"
+        strokeDashoffset={-t * 8}
+        style={{ stroke: token("violet") }}
+      />
+      {dot(from, 1.3, token("violet"))}
+      {u > 0.5 && dot(to, 1.6, token(card.color))}
+    </Figure>
+  );
+}
