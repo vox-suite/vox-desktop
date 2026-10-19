@@ -1101,12 +1101,122 @@
   }
 }
 
-/* A slow aura that hugs the stage edges, leaving the graph center clear. */
-@property --aura-angle {
-  syntax: "<angle>";
-  inherits: true;
-  initial-value: 0deg;
+/* While the canvas is empty, the activity log sits in the middle as a reel:
+   the current step is largest and the steps around it shrink and fade. */
+.project-agent-reel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 18%,
+    black 40%,
+    black 60%,
+    transparent 82%
+  );
 }
+.project-agent-reel ol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  text-align: center;
+  color: var(--foreground);
+}
+.project-agent-reel li {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition:
+    font-size 500ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 500ms ease-out;
+}
+.project-agent-reel li small {
+  font-size: 0.75em;
+  opacity: 0.5;
+}
+.project-agent-reel li[data-distance="0"] {
+  font-size: 17px;
+  font-weight: 500;
+  opacity: 0.95;
+  animation: project-reel-in 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.project-agent-reel li[data-distance="1"] {
+  font-size: 13px;
+  opacity: 0.5;
+}
+.project-agent-reel li[data-distance="2"] {
+  font-size: 11px;
+  opacity: 0.3;
+}
+.project-agent-reel li[data-distance="3"] {
+  font-size: 10px;
+  opacity: 0.18;
+}
+.project-agent-reel li[data-distance="4"] {
+  font-size: 9px;
+  opacity: 0.1;
+}
+.project-agent-reel li[data-pending] span {
+  display: block;
+  height: 0.6em;
+  width: 16em;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--foreground) 60%, transparent),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: project-reel-shimmer 1.8s linear infinite;
+}
+.project-agent-reel li[data-pending][data-distance="2"] span {
+  width: 11em;
+}
+.project-agent-reel li[data-pending][data-distance="3"] span {
+  width: 7em;
+}
+.project-agent-reel .animate-spin {
+  animation-duration: 1.6s;
+  opacity: 0.6;
+}
+@keyframes project-reel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+@keyframes project-reel-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-agent-reel li {
+    transition: none;
+    animation: none !important;
+  }
+  .project-agent-reel li[data-pending] span {
+    animation: none;
+  }
+}
+
+/* While a diagram is drafted: a blueprint grid that breathes in from the
+   edges, a slow scan line, and a plotter drafting in the corner. */
 .project-generation-atmosphere {
   position: absolute;
   inset: 0;
@@ -1115,84 +1225,96 @@
   z-index: 0;
   opacity: 0;
   transition: opacity 700ms ease-out;
-  --aura: conic-gradient(
-    from var(--aura-angle) at 50% 50%,
-    #4285f4,
-    #8b5cf6 22%,
-    #d873bd 45%,
-    #f2a65a 62%,
-    #6366f1 80%,
-    #4285f4
-  );
-  animation: project-aura-spin 9s linear infinite;
 }
 .project-generation-atmosphere[data-active="true"] {
   opacity: 1;
 }
-.project-atmosphere-aura {
-  position: absolute;
-  inset: -48px;
-  background: var(--aura);
-  filter: blur(36px) saturate(1.35);
-  opacity: 0.5;
-  mask-image:
-    linear-gradient(
-      to right,
-      black,
-      transparent 270px,
-      transparent calc(100% - 270px),
-      black
-    ),
-    linear-gradient(
-      to bottom,
-      black,
-      transparent 236px,
-      transparent calc(100% - 236px),
-      black
-    );
-  mask-composite: add;
-  -webkit-mask-composite: source-over;
-}
-.project-atmosphere-rim {
+.project-atmosphere-grid {
   position: absolute;
   inset: 0;
-  padding: 1px;
-  background: var(--aura);
-  opacity: 0.7;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-}
-.project-atmosphere-sheen {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 38%;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, #8b5cf6 10%, transparent),
-    transparent
+  background-image:
+    radial-gradient(
+      color-mix(in srgb, var(--foreground) 22%, transparent) 0.8px,
+      transparent 1px
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--vox-violet) 7%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--vox-violet) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size:
+    16px 16px,
+    80px 80px,
+    80px 80px;
+  background-position: center;
+  mask-image: radial-gradient(
+    ellipse 75% 70% at 50% 50%,
+    transparent 18%,
+    black 70%
   );
 }
-@keyframes project-aura-spin {
+.project-atmosphere-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -120px;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--vox-violet) 5%, transparent) 70%,
+    color-mix(in srgb, var(--vox-violet) 16%, transparent) 97%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 25%,
+    black 75%,
+    transparent
+  );
+  animation: project-atmosphere-sweep 8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.project-generation-atmosphere[data-empty="false"] .project-atmosphere-sweep {
+  opacity: 0.4;
+}
+.project-atmosphere-figure {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  width: min(360px, 38%);
+  opacity: 0.92;
+  animation: project-atmosphere-figure-in 700ms ease-out;
+}
+.project-atmosphere-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@keyframes project-atmosphere-sweep {
   to {
-    --aura-angle: 360deg;
+    top: 100%;
   }
 }
-.project-generation-atmosphere[data-active="false"],
-.project-generation-atmosphere[data-paused="true"] {
+@keyframes project-atmosphere-figure-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.project-generation-atmosphere[data-active="false"] *,
+.project-generation-atmosphere[data-paused="true"] * {
   animation-play-state: paused;
-}
-[data-theme="light"] .project-atmosphere-aura {
-  opacity: 0.38;
-}
-[data-theme="light"] .project-atmosphere-rim {
-  opacity: 0.55;
 }
 @media (prefers-reduced-motion: reduce) {
   .project-generation-atmosphere {
     transition: none;
-    animation: none;
+  }
+  .project-atmosphere-sweep {
+    display: none;
   }
 }

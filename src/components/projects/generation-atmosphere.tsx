@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react";
+import { DraftingFigure } from "@/components/empty-figures";
 
-export function GenerationAtmosphere({ active }: { active: boolean }) {
+export function GenerationAtmosphere({
+  active,
+  empty,
+}: {
+  active: boolean;
+  empty: boolean;
+}) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const update = () => {
@@ -15,11 +22,16 @@ export function GenerationAtmosphere({ active }: { active: boolean }) {
       ref={host}
       className="project-generation-atmosphere"
       data-active={active}
+      data-empty={empty}
       aria-hidden="true"
     >
-      <span className="project-atmosphere-aura" />
-      <span className="project-atmosphere-sheen" />
-      <span className="project-atmosphere-rim" />
+      <span className="project-atmosphere-grid" />
+      <span className="project-atmosphere-sweep" />
+      {active && empty && (
+        <div className="project-atmosphere-figure">
+          <DraftingFigure />
+        </div>
+      )}
     </div>
   );
 }

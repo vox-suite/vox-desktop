@@ -248,7 +248,11 @@ export function ProjectContext({
         }}
         colorMode={theme}
       >
-        <Background bgColor={token("surface-raised")} color={token("border-strong")} gap={22} />
+        <Background
+          bgColor={token("surface-raised")}
+          color={token("border-strong")}
+          gap={22}
+        />
         <Controls showInteractive={false} />
       </ReactFlow>
 

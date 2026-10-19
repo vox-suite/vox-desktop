@@ -2423,3 +2423,332 @@ export function AgentsFigure({
     </Figure>
   );
 }
+
+type Seg = { a: V3; b: V3; draw: boolean; node?: number; len: number };
+const DRAFT_NODES: { x: number; y: number; color: VoxColor }[] = [
+  { x: -36, y: -14, color: "sky" },
+  { x: -4, y: -18, color: "violet" },
+  { x: 28, y: -8, color: "mint" },
+  { x: -22, y: 14, color: "gold" },
+  { x: 16, y: 16, color: "pink" },
+];
+const DRAFT_EDGES: [number, number][] = [
+  [0, 1],
+  [1, 2],
+  [0, 3],
+  [1, 4],
+  [3, 4],
+];
+
+// A desktop pen plotter drafting a diagram: a bridge rides two rails, the
+// pen carriage rides the bridge, and the pen draws each component as a box
+// before wiring them together. The sheet clears and the drawing starts over.
+export function DraftingFigure() {
+  const t = useClock();
+  const P = at(90, 120);
+  const trace = makeTrace(P);
+  const face = (pts: V3[]) => trace(pts, true);
+  const quad = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z: number,
+  ): V3[] => [
+    [x0, y0, z],
+    [x1, y0, z],
+    [x1, y1, z],
+    [x0, y1, z],
+  ];
+  const top = 10;
+  const sheet = top + 0.6;
+  const W = 7;
+  const H = 4;
+
+  // The pen's program: each box, then each wire, joined by pen-up moves.
+  const segs: Seg[] = [];
+  let at0: V3 = [-56, -30, sheet];
+  const move = (b: V3, draw: boolean, node?: number) => {
+    const len = Math.hypot(b[0] - at0[0], b[1] - at0[1]);
+    segs.push({ a: at0, b, draw, node, len });
+    at0 = b;
+  };
+  DRAFT_NODES.forEach((n, i) => {
+    const c: V3[] = [
+      [n.x - W, n.y - H, sheet],
+      [n.x + W, n.y - H, sheet],
+      [n.x + W, n.y + H, sheet],
+      [n.x - W, n.y + H, sheet],
+    ];
+    move(c[0], false);
+    [1, 2, 3, 0].forEach((k) => move(c[k], true, i));
+  });
+  DRAFT_EDGES.forEach(([i, j]) => {
+    const a = DRAFT_NODES[i];
+    const b = DRAFT_NODES[j];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const k = Math.min(W / Math.abs(dx || 1e-6), H / Math.abs(dy || 1e-6));
+    move([a.x + dx * k, a.y + dy * k, sheet], false);
+    move([b.x - dx * k, b.y - dy * k, sheet], true);
+  });
+  move([-56, -30, sheet], false);
+  const total = segs.reduce((sum, s) => sum + s.len, 0);
+  const cycle = 16;
+  const phase = (t % cycle) / cycle;
+  const done = t > 0 ? Math.min(1, phase / 0.85) * total : total * 0.62;
+  const fade = t > 0 ? 1 - ease((phase - 0.92) / 0.08) : 1;
+
+  let left = done;
+  let pen: V3 = segs[0].a;
+  let down = false;
+  const drawn: { a: V3; b: V3; node?: number }[] = [];
+  const boxes = new Set<number>();
+  const sides = new Map<number, number>();
+  for (const s of segs) {
+    if (left <= 0) break;
+    const f = Math.min(1, left / (s.len || 1));
+    const b: V3 = [
+      s.a[0] + (s.b[0] - s.a[0]) * f,
+      s.a[1] + (s.b[1] - s.a[1]) * f,
+      sheet,
+    ];
+    if (s.draw) drawn.push({ a: s.a, b, node: s.node });
+    if (f >= 1 && s.node !== undefined) {
+      sides.set(s.node, (sides.get(s.node) ?? 0) + 1);
+      if (sides.get(s.node) === 4) boxes.add(s.node);
+    }
+    pen = b;
+    down = s.draw && f < 1;
+    left -= s.len;
+  }
+  const lift = down ? 0 : 2.5;
+  const rail = { y: 34, z: top + 6 };
+  const bridgeZ = top + 14;
+  const ink = (node?: number) =>
+    node === undefined ? LINE : token(DRAFT_NODES[node].color);
+
+  return (
+    <Figure
+      width={240}
+      height={162}
+      label="A pen plotter drafting a diagram: it draws each component as a box and then wires them together"
+    >
+      <path
+        d={face(quad(-78, 82, -46, 52, 0))}
+        style={{ fill: alpha("ink", 5) }}
+      />
+      {[
+        [-70, -38],
+        [70, -38],
+        [-70, 40],
+        [70, 40],
+      ].map(([x, y]) => (
+        <Box
+          key={`f${x}${y}`}
+          trace={trace}
+          x={x}
+          y={y}
+          z={3}
+          w={4}
+          d={4}
+          depth={3}
+          fill={alpha("ink", 8)}
+        />
+      ))}
+      <Box trace={trace} z={top} w={76} d={44} depth={7} />
+      {[
+        [-73, -41],
+        [73, -41],
+        [-73, 41],
+        [73, 41],
+      ].map(([x, y]) => {
+        const [sx, sy] = P([x, y, top]);
+        return (
+          <circle
+            key={`s${x}${y}`}
+            cx={sx}
+            cy={sy}
+            r="0.6"
+            style={{ fill: LINE }}
+          />
+        );
+      })}
+
+      {/* The sheet with its dot grid and corner clips */}
+      <path
+        d={face(quad(-60, 60, -30, 30, sheet))}
+        strokeWidth="0.7"
+        style={{ stroke: LINE, fill: SURFACE }}
+      />
+      {Array.from({ length: 11 }, (_, i) =>
+        Array.from({ length: 6 }, (_, j) => {
+          const [sx, sy] = P([-50 + i * 10, -25 + j * 10, sheet]);
+          return (
+            <circle
+              key={`g${i}-${j}`}
+              cx={sx}
+              cy={sy}
+              r="0.45"
+              style={{ fill: alpha("ink", 18) }}
+            />
+          );
+        }),
+      )}
+      {[
+        [-60, -30],
+        [60, -30],
+        [-60, 30],
+        [60, 30],
+      ].map(([x, y]) => (
+        <Box
+          key={`clip${x}${y}`}
+          trace={trace}
+          x={x + (x < 0 ? 3 : -3)}
+          y={y + (y < 0 ? 2.5 : -2.5)}
+          z={sheet + 1}
+          w={3}
+          d={2.5}
+          depth={1}
+          fill={alpha("ink", 8)}
+        />
+      ))}
+
+      {/* What has been drawn */}
+      <g opacity={fade}>
+        {[...boxes].map((i) => {
+          const n = DRAFT_NODES[i];
+          return (
+            <path
+              key={`fill${i}`}
+              d={face(quad(n.x - W, n.x + W, n.y - H, n.y + H, sheet))}
+              style={{ fill: alpha(n.color, 16) }}
+            />
+          );
+        })}
+        {drawn.map((s, i) => (
+          <path
+            key={`ink${i}`}
+            d={trace([s.a, s.b])}
+            strokeWidth={s.node === undefined ? 0.7 : 1}
+            strokeDasharray={s.node === undefined ? "2 1.6" : undefined}
+            style={{ stroke: ink(s.node) }}
+          />
+        ))}
+      </g>
+
+      {/* Rails along x, with end stops */}
+      {[-rail.y, rail.y].map((y) => (
+        <g key={`rail${y}`}>
+          <Box
+            trace={trace}
+            y={y}
+            z={rail.z}
+            w={70}
+            d={2.2}
+            depth={rail.z - top}
+            fill={alpha("ink", 5)}
+          />
+          {[-70, 70].map((x) => (
+            <Box
+              key={`stop${x}`}
+              trace={trace}
+              x={x}
+              y={y}
+              z={rail.z + 3}
+              w={2}
+              d={3}
+              depth={3}
+            />
+          ))}
+        </g>
+      ))}
+
+      {/* Bridge riding the rails, pen carriage riding the bridge */}
+      {[-rail.y, rail.y].map((y) => (
+        <Box
+          key={`truck${y}`}
+          trace={trace}
+          x={pen[0]}
+          y={y}
+          z={bridgeZ}
+          w={5}
+          d={3.4}
+          depth={bridgeZ - rail.z}
+        />
+      ))}
+      <Box
+        trace={trace}
+        x={pen[0]}
+        z={bridgeZ + 3}
+        w={3}
+        d={rail.y + 3}
+        depth={3}
+        fill={alpha("ink", 4)}
+      />
+      <path
+        d={trace([
+          [pen[0] + 3, -rail.y, bridgeZ + 1.5],
+          [pen[0] + 3, rail.y, bridgeZ + 1.5],
+        ])}
+        strokeWidth="0.4"
+        style={{ stroke: FAINT }}
+      />
+      <path
+        d={trace([
+          [pen[0], pen[1], sheet + lift],
+          [pen[0], pen[1], bridgeZ - 4],
+        ])}
+        strokeWidth="1.2"
+        style={{ stroke: LINE }}
+      />
+      {down && (
+        <circle
+          cx={P(pen)[0]}
+          cy={P(pen)[1]}
+          r="1.5"
+          style={{ fill: token("violet") }}
+        />
+      )}
+      <Box
+        trace={trace}
+        x={pen[0]}
+        y={pen[1]}
+        z={bridgeZ + 6}
+        w={4.5}
+        d={4.5}
+        depth={10}
+        stroke={token("violet")}
+        top={alpha("violet", 14)}
+      />
+      {(() => {
+        const [lx, ly] = P([pen[0], pen[1], bridgeZ + 6]);
+        return (
+          <circle
+            cx={lx}
+            cy={ly}
+            r="1"
+            style={{ fill: token("violet"), opacity: down ? 1 : 0.35 }}
+          />
+        );
+      })()}
+
+      {/* Controller with a status lamp */}
+      <Box trace={trace} x={62} y={40} z={top + 6} w={8} d={4} depth={6} />
+      {(() => {
+        const [lx, ly] = P([58, 44, top + 3]);
+        return (
+          <circle
+            cx={lx}
+            cy={ly}
+            r="1.1"
+            style={{
+              fill: token("mint"),
+              opacity: t > 0 ? 0.5 + 0.5 * Math.abs(Math.sin(t * 3)) : 1,
+            }}
+          />
+        );
+      })()}
+    </Figure>
+  );
+}

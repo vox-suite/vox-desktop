@@ -302,6 +302,7 @@ export function DiagramCanvas({
     if (flow.diagram) renderer.current?.push({ flow, draft });
   }, [flow, retry, draft]);
   const rendered = result?.rendered;
+  const empty = !rendered?.svg.includes("data-node-id=");
   const displayedFlow = result?.rendered ? result.flow : flow;
   const onSelect = useCallback(
     (id: string | null, from?: string, to?: string, label?: string) => {
@@ -451,11 +452,12 @@ export function DiagramCanvas({
         </p>
       )}
       <div className="project-architecture-stage" aria-busy={!!generating}>
-        <GenerationAtmosphere active={!!generating} />
+        <GenerationAtmosphere active={!!generating} empty={empty} />
         <CanvasAgentActivity
           status={generating}
           response={response}
           activity={activity}
+          centered={empty}
         />
         {rendered ? (
           <ReactFlow
