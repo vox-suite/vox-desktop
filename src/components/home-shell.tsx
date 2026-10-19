@@ -10,7 +10,6 @@ import {
 import { AppSidebar } from "@/components/shell/app-sidebar";
 import { AgentPane } from "@/components/shell/agent-pane";
 import { ActivityLogs } from "@/components/activity-logs";
-import { AgentsWorkshop } from "@/components/agents-workshop";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { type ShellTab } from "@/components/shell/shell-tabs";
@@ -154,9 +153,6 @@ export function HomeShell({
             <div ref={mapNode} className="vox-map-host size-full" />
           </div>
           {activeTab === "agent" && <ActivityLogs />}
-          {activeTab === "agent" && (
-            <AgentsWorkshop active={isActive} speaking={voxSpeaking} />
-          )}
           {body}
           <DesktopActionOverlay />
           <TerminalPanel />
