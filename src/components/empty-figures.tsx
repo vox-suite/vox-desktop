@@ -190,246 +190,723 @@ function Figure({
   );
 }
 
-const ENTRIES: { color: VoxColor; x: number; w: number; h: number }[] = [
-  { color: "gold", x: -82, w: 12, h: 18 },
-  { color: "mint", x: -32, w: 14, h: 28 },
-  { color: "sky", x: 18, w: 12, h: 20 },
-  { color: "violet", x: 66, w: 14, h: 32 },
-  { color: "coral", x: 114, w: 11, h: 16 },
-];
+// Convex outline of a set of screen points (monotone chain).
+function hull(pts: [number, number][]) {
+  const s = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: number[], a: number[], b: number[]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: [number, number][]) => {
+    const out: [number, number][] = [];
+    for (const p of list) {
+      while (
+        out.length > 1 &&
+        cross(out[out.length - 2], out[out.length - 1], p) <= 0
+      )
+        out.pop();
+      out.push(p);
+    }
+    return out.slice(0, -1);
+  };
+  const h = [...half(s), ...half([...s].reverse())];
+  return (
+    h.map(([x, y], i) => `${i ? "L" : "M"}${fmt(x)},${fmt(y)}`).join("") + "Z"
+  );
+}
 
-// A day laid out as a track: today's date at the start, hours along the
-// edge, and a Now gate that records entries as it passes.
-export function TimelineFigure({ loading = false }: { loading?: boolean }) {
-  const t = useClock() * (loading ? 2.2 : 1);
-  const P = at(172, 300);
-  const trace = makeTrace(P);
-  const L = 150;
-  const D = 24;
-  const top = 8;
-  const span = { from: -112, to: 146 };
-  const cycle = (t % 10) / 10;
-  const nowX = t > 0 ? span.from + cycle * (span.to - span.from) : 34;
-  const red = token("danger");
-  const sky = token("sky");
-  const gateH = 58;
-  const face = (pts: V3[]) => trace(pts, true);
-  const [px, py] = P([nowX, 0, top + gateH]);
-  const [cx, cy] = P([-131, 0, top + 22]);
-
-  const gate = (
-    <g key="gate">
+// A roller lying along y: its body as one outline, its front end as a disc.
+function Roller({
+  P,
+  trace,
+  x,
+  z,
+  r,
+  y0,
+  y1,
+  stroke = LINE,
+  fill = SURFACE,
+  cap = alpha("ink", 4),
+  hub = 0,
+}: {
+  P: (p: V3) => [number, number];
+  trace: (pts: V3[], close?: boolean) => string;
+  x: number;
+  z: number;
+  r: number;
+  y0: number;
+  y1: number;
+  stroke?: string;
+  fill?: string;
+  cap?: string;
+  hub?: number;
+}) {
+  const ring = (y: number, rr = r): V3[] =>
+    Array.from({ length: 33 }, (_, i) => {
+      const a = (i / 32) * Math.PI * 2;
+      return [x + Math.cos(a) * rr, y, z + Math.sin(a) * rr];
+    });
+  return (
+    <g strokeWidth="0.85" strokeLinejoin="round" style={{ stroke }}>
+      <path d={hull([...ring(y0), ...ring(y1)].map(P))} style={{ fill }} />
       <path
-        d={face([
-          [nowX, -D - 6, top],
-          [nowX, D + 6, top],
-          [nowX, D + 6, top + gateH],
-          [nowX, -D - 6, top + gateH],
-        ])}
-        style={{ fill: alpha("danger", 5), stroke: "none" }}
+        d={trace(ring(y1), true)}
+        style={{ fill: `color-mix(in srgb, ${cap}, ${fill})` }}
       />
-      <path
-        d={trace([
-          [nowX, -D - 6, top],
-          [nowX, -D - 6, top + gateH],
-          [nowX, D + 6, top + gateH],
-          [nowX, D + 6, top],
-        ])}
-        strokeWidth="1.1"
-        strokeLinejoin="round"
-        style={{ stroke: red }}
-      />
-      <path
-        d={trace([
-          [nowX, -D, top],
-          [nowX, D, top],
-        ])}
-        strokeWidth="1.4"
-        style={{ stroke: red }}
-      />
-      <rect
-        x={px - 14}
-        y={py - 19}
-        width="28"
-        height="13"
-        rx="6.5"
-        style={{ fill: red }}
-      />
-      <text
-        x={px}
-        y={py - 9.6}
-        textAnchor="middle"
-        fontSize="7.5"
-        fontFamily="Inter, sans-serif"
-        fontWeight="600"
-        style={{ fill: token("on-accent") }}
-      >
-        Now
-      </text>
+      {hub > 0 && (
+        <>
+          <path
+            d={trace(ring(y1, hub), true)}
+            strokeWidth="0.7"
+            style={{ fill }}
+          />
+          <circle
+            cx={P([x, y1, z])[0]}
+            cy={P([x, y1, z])[1]}
+            r="0.9"
+            style={{ fill: stroke, stroke: "none" }}
+          />
+        </>
+      )}
     </g>
   );
+}
 
-  const entries = ENTRIES.map((b) => {
-    const done = b.x + b.w < nowX;
-    return {
-      key: b.x,
-      node: done ? (
-        <Box
-          key={b.x}
-          trace={trace}
-          x={b.x}
-          z={top + b.h}
-          w={b.w}
-          d={12}
-          depth={b.h}
-          stroke={token(b.color)}
-          fill={`color-mix(in srgb, ${token(b.color)} 8%, ${SURFACE})`}
-          top={`color-mix(in srgb, ${token(b.color)} 24%, ${SURFACE})`}
-          width={0.9}
-        />
-      ) : (
-        <path
-          key={b.x}
-          d={face([
-            [b.x - b.w, -12, top],
-            [b.x + b.w, -12, top],
-            [b.x + b.w, 12, top],
-            [b.x - b.w, 12, top],
-          ])}
-          strokeWidth="0.7"
-          strokeDasharray="2 2.5"
-          style={{ stroke: alpha("ink", 32) }}
-        />
-      ),
-    };
-  });
-  const scene = [...entries, { key: nowX, node: gate }].sort(
-    (a, b) => a.key - b.key,
+// Text lying in a face of the figure: "front" is the x–z plane, "top" x–y.
+const faceMatrix = (
+  P: (p: V3) => [number, number],
+  o: V3,
+  plane: "front" | "top",
+) => {
+  const [ox, oy] = P(o);
+  return plane === "front"
+    ? `matrix(0.866 0.5 0 1 ${fmt(ox)} ${fmt(oy)})`
+    : `matrix(0.866 0.5 -0.866 0.5 ${fmt(ox)} ${fmt(oy)})`;
+};
+
+// Four pens, one lane each on the paper.
+const PENS: { color: VoxColor; y: number }[] = [
+  { color: "gold", y: -19 },
+  { color: "mint", y: -10 },
+  { color: "sky", y: -1 },
+  { color: "violet", y: 8 },
+];
+
+// What the day records, as [lane, start hour, end hour].
+const MARKS: [number, number, number][] = [
+  [2, 0.6, 2.4],
+  [0, 3.2, 4.6],
+  [1, 6.4, 8.8],
+  [2, 9.5, 12.2],
+  [3, 10.6, 11.4],
+  [0, 13.0, 14.0],
+  [3, 15.2, 17.8],
+  [1, 18.4, 19.6],
+  [2, 20.5, 23.2],
+];
+
+// A strip-chart recorder: a day of paper runs from the supply roll to the
+// take-up roll, and a pen carriage on the gantry (now) inks each entry into
+// its category's lane as the hours pass.
+export function TimelineFigure({ loading = false }: { loading?: boolean }) {
+  const t = useClock() * (loading ? 2.2 : 1);
+  const P = at(168, 288);
+  const trace = makeTrace(P);
+  const face = (pts: V3[]) => trace(pts, true);
+  const quad = (
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    z: number,
+  ): V3[] => [
+    [x0, y0, z],
+    [x1, y0, z],
+    [x1, y1, z],
+    [x0, y1, z],
+  ];
+  const red = token("danger");
+  const today = new Date();
+
+  // World plan: base, platen, paper, drums, gantry.
+  const top = 12;
+  const bed = 24;
+  const paper = { y0: -26, y1: 14 };
+  const span = { from: -96, to: 96 };
+  const xOf = (hour: number) => span.from + (hour / 24) * (span.to - span.from);
+  const realHour = today.getHours() + today.getMinutes() / 60;
+  const cycle = 12;
+  const phase = (t % cycle) / cycle;
+  const hour = t > 0 ? phase * 24 : realHour;
+  const nowX = xOf(hour);
+  const ink = t > 0 ? 1 - ease((phase - 0.93) / 0.07) : 1;
+  const railZ = 58;
+
+  const carriage = { w: 7, y: -36 };
+  const writing = MARKS.filter(([, a, b]) => hour >= a && hour <= b).map(
+    ([lane]) => lane,
   );
 
   return (
     <Figure
-      height={300}
-      label="A day laid out as a track: today's date, the hours of the day, and a Now gate recording entries as it moves along"
+      height={286}
+      label="A strip-chart recorder: today's date on a flip counter, a day of paper marked hour by hour, and a pen carriage inking each entry in its category's colour as the day goes on"
     >
-      <Box trace={trace} z={top} w={L} d={D} depth={9} />
       <path
-        d={trace([
-          [-L + 4, -D + 4, top],
-          [L - 4, -D + 4, top],
+        d={face([
+          [-132, -38, 0],
+          [140, -38, 0],
+          [140, 52, 0],
+          [-132, 52, 0],
         ])}
+        style={{ fill: alpha("ink", 4) }}
+      />
+
+      {/* Feet and base */}
+      {[
+        [-136, -30],
+        [136, -30],
+        [-136, 34],
+        [136, 34],
+      ].map(([x, y]) => (
+        <Box
+          key={`${x},${y}`}
+          trace={trace}
+          x={x}
+          y={y}
+          z={4}
+          w={7}
+          d={6}
+          depth={4}
+          fill={alpha("ink", 8)}
+        />
+      ))}
+      <Box trace={trace} y={2} z={top} w={150} d={42} depth={8} />
+      <path
+        d={face(quad(-144, 144, -36, 40, top))}
         strokeWidth="0.6"
-        strokeDasharray="2 4"
         style={{ stroke: FAINT }}
       />
+      {[
+        [-147, -37],
+        [147, -37],
+        [-147, 41],
+        [147, 41],
+      ].map(([x, y]) => {
+        const [sx, sy] = P([x, y, top]);
+        return (
+          <g key={`s${x},${y}`}>
+            <circle
+              cx={sx}
+              cy={sy}
+              r="1.3"
+              strokeWidth="0.5"
+              style={{ stroke: LINE, fill: SURFACE }}
+            />
+            <circle cx={sx} cy={sy} r="0.45" style={{ fill: LINE }} />
+          </g>
+        );
+      })}
+
+      {/* Hour ruler along the front of the base */}
+      <path
+        d={face(quad(span.from - 4, span.to + 4, 22, 30, top))}
+        strokeWidth="0.6"
+        style={{ stroke: FAINT, fill: alpha("ink", 4) }}
+      />
       {Array.from({ length: 25 }, (_, i) => {
-        const x = span.from + (i / 24) * (span.to - span.from);
+        const x = xOf(i);
         const major = i % 6 === 0;
         return (
           <path
-            key={i}
+            key={`t${i}`}
             d={trace([
-              [x, D, top],
-              [x, D - (major ? 9 : 5), top],
+              [x, 22, top],
+              [x, major ? 28 : 25, top],
             ])}
-            strokeWidth="0.7"
+            strokeWidth={major ? 0.8 : 0.55}
             style={{ stroke: major ? LINE : FAINT }}
           />
         );
       })}
-      {["12a", "6a", "12p", "6p"].map((label, i) => {
-        const [x, y] = P([span.from + (i / 4) * (span.to - span.from), D, 0]);
-        return (
-          <text
-            key={i}
-            x={x - 8}
-            y={y + 12}
-            fontSize="7"
-            textAnchor="middle"
-            style={{ fill: token("text-dim") }}
-          >
-            {label}
-          </text>
-        );
-      })}
-
-      <Box
-        trace={trace}
-        x={-131}
-        z={top + 22}
-        w={14}
-        d={18}
-        depth={22}
-        stroke={sky}
-        top={`color-mix(in srgb, ${sky} 16%, ${SURFACE})`}
-      />
+      {["12a", "6a", "12p", "6p", "12a"].map((label, i) => (
+        <text
+          key={`l${i}`}
+          transform={faceMatrix(P, [xOf(i * 6), 31, top], "top")}
+          y="4.4"
+          fontSize="5.2"
+          textAnchor="middle"
+          style={{ fill: token("text-dim") }}
+        >
+          {label}
+        </text>
+      ))}
       <path
         d={face([
-          [-145, -18, top + 22],
-          [-117, -18, top + 22],
-          [-117, -10, top + 22],
-          [-145, -10, top + 22],
+          [nowX, 21.5, top],
+          [nowX - 2.2, 18, top],
+          [nowX + 2.2, 18, top],
         ])}
+        style={{ fill: red }}
+      />
+
+      <path
+        d={face(quad(104, 128, 32, 41, top))}
+        strokeWidth="0.6"
+        style={{ stroke: LINE, fill: alpha("ink", 5) }}
+      />
+      {[34.5, 36.5, 38.5].map((y, i) => (
+        <path
+          key={`plate${y}`}
+          d={trace([
+            [107, y, top],
+            [i === 2 ? 117 : 125, y, top],
+          ])}
+          strokeWidth="0.45"
+          style={{ stroke: FAINT }}
+        />
+      ))}
+      {[105.4, 126.6].map((x) =>
+        [33.2, 39.8].map((y) => {
+          const [sx, sy] = P([x, y, top]);
+          return (
+            <circle
+              key={`ps${x}${y}`}
+              cx={sx}
+              cy={sy}
+              r="0.45"
+              style={{ fill: LINE }}
+            />
+          );
+        }),
+      )}
+      <Box trace={trace} x={139} y={36} z={top + 3} w={5} d={4} depth={3} />
+      {(() => {
+        const [lx, ly] = P([139, 36, top + 3]);
+        const on = t > 0 ? 0.35 + 0.65 * ((Math.sin(t * 4) + 1) / 2) : 1;
+        return (
+          <g>
+            <circle
+              cx={lx}
+              cy={ly}
+              r="3.4"
+              style={{ fill: alpha("danger", 18), opacity: on }}
+            />
+            <circle
+              cx={lx}
+              cy={ly}
+              r="1.5"
+              style={{ fill: red, opacity: 0.4 + on * 0.6 }}
+            />
+          </g>
+        );
+      })()}
+      {/* Gantry: posts and rail behind the platen */}
+      {[-110, 110].map((x) => (
+        <g key={`p${x}`}>
+          <Box
+            trace={trace}
+            x={x}
+            y={-36}
+            z={top + 2}
+            w={6}
+            d={5}
+            depth={2}
+            fill={alpha("ink", 6)}
+          />
+          <Box
+            trace={trace}
+            x={x}
+            y={-36}
+            z={railZ + 4}
+            w={2.5}
+            d={2.5}
+            depth={railZ + 4 - top - 2}
+          />
+        </g>
+      ))}
+      <Box
+        trace={trace}
+        y={-36}
+        z={railZ + 3}
+        w={107.5}
+        d={2}
+        depth={5}
+        fill={alpha("ink", 5)}
+      />
+      <path
+        d={trace([
+          [-107.5, -34, railZ + 0.5],
+          [107.5, -34, railZ + 0.5],
+        ])}
+        strokeWidth="0.5"
+        style={{ stroke: FAINT }}
+      />
+
+      {/* Back brackets, drums and platen */}
+      {[-122, 122].map((x) => (
+        <Box
+          key={`bb${x}`}
+          trace={trace}
+          x={x}
+          y={-30}
+          z={top + 6}
+          w={3}
+          d={1}
+          depth={6}
+        />
+      ))}
+      {[-122, 122].map((x) => (
+        <path
+          key={`slot${x}`}
+          d={face(quad(x - 10, x + 10, -29, 17, top))}
+          strokeWidth="0.6"
+          style={{ stroke: LINE, fill: alpha("ink", 14) }}
+        />
+      ))}
+      <Roller
+        P={P}
+        trace={trace}
+        x={-122}
+        z={bed - 9}
+        r={9}
+        y0={-29}
+        y1={17}
+        hub={3.2}
+      />
+      <Roller
+        P={P}
+        trace={trace}
+        x={122}
+        z={bed - 9}
+        r={9}
+        y0={-29}
+        y1={17}
+        hub={3.2}
+      />
+      {[0, 1, 2, 3].map((i) => (
+        <path
+          key={`ring${i}`}
+          d={trace(
+            circle(4.6 + i * 1.1, 0, 0).map(
+              ([cx, cz]) => [122 + cx, 17, bed - 9 + cz] as V3,
+            ),
+            true,
+          )}
+          strokeWidth="0.45"
+          style={{ stroke: token(PENS[i].color), opacity: 0.7 }}
+        />
+      ))}
+      <Box
+        trace={trace}
+        x={0}
+        y={-6}
+        z={bed}
+        w={118}
+        d={24}
+        depth={bed - top}
+      />
+
+      {/* Paper: one day, with hour rules and sprocket holes */}
+      <path
+        d={face(quad(-122, 122, paper.y0, paper.y1, bed + 0.2))}
+        strokeWidth="0.75"
+        style={{ stroke: LINE, fill: SURFACE }}
+      />
+      {Array.from({ length: 25 }, (_, i) => (
+        <path
+          key={`h${i}`}
+          d={trace([
+            [xOf(i), paper.y0 + 3.5, bed + 0.2],
+            [xOf(i), paper.y1 - 3.5, bed + 0.2],
+          ])}
+          strokeWidth={i % 6 === 0 ? 0.6 : 0.4}
+          style={{ stroke: i % 6 === 0 ? FAINT : alpha("ink", 12) }}
+        />
+      ))}
+      {[paper.y0 + 1.8, paper.y1 - 1.8].map((y) => (
+        <path
+          key={`e${y}`}
+          d={trace([
+            [-122, y + (y < 0 ? 1.7 : -1.7), bed + 0.2],
+            [122, y + (y < 0 ? 1.7 : -1.7), bed + 0.2],
+          ])}
+          strokeWidth="0.4"
+          style={{ stroke: alpha("ink", 12) }}
+        />
+      ))}
+      {Array.from({ length: 31 }, (_, i) =>
+        [paper.y0 + 1.8, paper.y1 - 1.8].map((y) => {
+          const [sx, sy] = P([-120 + i * 8, y, bed + 0.2]);
+          return (
+            <circle
+              key={`k${i}${y}`}
+              cx={sx}
+              cy={sy}
+              r="0.7"
+              style={{ fill: alpha("ink", 22) }}
+            />
+          );
+        }),
+      )}
+
+      {PENS.map((pen) => (
+        <path
+          key={`key${pen.y}`}
+          d={face(
+            quad(
+              span.from - 9,
+              span.from - 4,
+              pen.y - 2.5,
+              pen.y + 2.5,
+              bed + 0.3,
+            ),
+          )}
+          strokeWidth="0.6"
+          style={{ stroke: token(pen.color), fill: token(pen.color) }}
+        />
+      ))}
+      {/* Ink: what has been recorded so far */}
+      <g opacity={ink}>
+        {MARKS.map(([lane, a, b], i) => {
+          const x0 = xOf(a);
+          const x1 = Math.min(xOf(b), nowX);
+          if (x1 <= x0) return null;
+          const pen = PENS[lane];
+          return (
+            <path
+              key={`m${i}`}
+              d={face(quad(x0, x1, pen.y - 2.6, pen.y + 2.6, bed + 0.3))}
+              strokeWidth="0.7"
+              style={{
+                stroke: token(pen.color),
+                fill: `color-mix(in srgb, ${token(pen.color)} 38%, ${SURFACE})`,
+              }}
+            />
+          );
+        })}
+      </g>
+      <path
+        d={trace([
+          [nowX, paper.y0, bed + 0.3],
+          [nowX, paper.y1, bed + 0.3],
+        ])}
+        strokeWidth="0.8"
+        style={{ stroke: alpha("danger", 70) }}
+      />
+
+      {/* Front brackets and the take-up crank */}
+      {[-122, 122].map((x) => (
+        <Box
+          key={`fb${x}`}
+          trace={trace}
+          x={x}
+          y={18.5}
+          z={top + 6}
+          w={3}
+          d={1}
+          depth={6}
+        />
+      ))}
+      {[-122, 122].map((x) => {
+        const [sx, sy] = P([x, 19.5, bed - 9]);
+        return (
+          <circle
+            key={`ax${x}`}
+            cx={sx}
+            cy={sy}
+            r="1.4"
+            strokeWidth="0.6"
+            style={{ stroke: LINE, fill: alpha("ink", 10) }}
+          />
+        );
+      })}
+      <Roller
+        P={P}
+        trace={trace}
+        x={122}
+        z={bed - 9}
+        r={3.5}
+        y0={19.5}
+        y1={24}
+        hub={1.6}
+      />
+
+      {/* Pen carriage on the rail, its arm and four pens */}
+      <Box
+        trace={trace}
+        x={nowX}
+        y={carriage.y}
+        z={railZ + 8}
+        w={carriage.w}
+        d={5}
+        depth={14}
+        stroke={red}
+        top={alpha("danger", 10)}
+      />
+      {[-4.5, 4.5].map((dx) => {
+        const [sx, sy] = P([nowX + dx, carriage.y + 5, railZ + 5]);
+        return (
+          <circle
+            key={`cs${dx}`}
+            cx={sx}
+            cy={sy}
+            r="0.6"
+            style={{ fill: red }}
+          />
+        );
+      })}
+      <Box
+        trace={trace}
+        x={nowX}
+        y={-11}
+        z={railZ + 4}
+        w={2.6}
+        d={20}
+        depth={3.5}
+        stroke={red}
+      />
+      {PENS.map((pen, lane) => {
+        const down = writing.includes(lane);
+        const tip = down ? bed + 0.3 : bed + 5;
+        const color = token(pen.color);
+        return (
+          <g key={`pen${lane}`}>
+            <Box
+              trace={trace}
+              x={nowX}
+              y={pen.y}
+              z={railZ + 0.5}
+              w={1.8}
+              d={1.8}
+              depth={railZ + 0.5 - tip - 6}
+              stroke={color}
+              top={alpha(pen.color, 40)}
+            />
+            <path
+              d={trace([
+                [nowX, pen.y, tip + 6],
+                [nowX, pen.y, tip],
+              ])}
+              strokeWidth="1"
+              style={{ stroke: color }}
+            />
+            {down && (
+              <circle
+                cx={P([nowX, pen.y, tip])[0]}
+                cy={P([nowX, pen.y, tip])[1]}
+                r="1.4"
+                style={{ fill: color }}
+              />
+            )}
+          </g>
+        );
+      })}
+      {(() => {
+        const [px, py] = P([nowX, carriage.y, railZ + 8]);
+        return (
+          <g>
+            <rect
+              x={px - 14}
+              y={py - 22}
+              width="28"
+              height="13"
+              rx="6.5"
+              style={{ fill: red }}
+            />
+            <text
+              x={px}
+              y={py - 12.6}
+              textAnchor="middle"
+              fontSize="7.5"
+              fontFamily="Inter, sans-serif"
+              fontWeight="600"
+              style={{ fill: token("on-accent") }}
+            >
+              Now
+            </text>
+          </g>
+        );
+      })()}
+
+      {/* Flip-date counter on the front corner */}
+      <Box
+        trace={trace}
+        x={-132}
+        y={33}
+        z={top + 18}
+        w={12}
+        d={8}
+        depth={18}
+        top={alpha("sky", 12)}
+        stroke={token("sky")}
+      />
+      <path
+        d={face(
+          quad(-140, -124, 41, 41, 0).map(
+            ([x, y], i) => [x, y, i < 2 ? top + 4 : top + 15] as V3,
+          ),
+        )}
         strokeWidth="0.7"
-        style={{ stroke: sky, fill: alpha("sky", 40) }}
+        style={{ stroke: token("sky"), fill: SURFACE }}
+      />
+      <path
+        d={trace([
+          [-140, 41, top + 9.5],
+          [-124, 41, top + 9.5],
+        ])}
+        strokeWidth="0.5"
+        style={{ stroke: alpha("sky", 50) }}
       />
       <text
-        x={cx + 2}
-        y={cy + 6}
+        transform={faceMatrix(P, [-132, 41, top + 6.2], "front")}
         textAnchor="middle"
-        fontSize="10"
+        fontSize="9"
         fontFamily="Inter, sans-serif"
         fontWeight="600"
-        style={{ fill: sky }}
+        style={{ fill: token("sky") }}
       >
-        15
+        {String(today.getDate()).padStart(2, "0")}
       </text>
-      <g className="figure-float">
-        <Box
-          trace={trace}
-          x={-131}
-          z={top + 44}
-          w={14}
-          d={18}
-          depth={2}
-          stroke={alpha("ink", 32)}
-          dash="2 2.5"
-          fill="transparent"
-        />
-      </g>
-
-      {scene.map((item) => item.node)}
+      <text
+        transform={faceMatrix(P, [-132, 37, top + 18], "top")}
+        textAnchor="middle"
+        fontSize="4.6"
+        letterSpacing="0.8"
+        style={{ fill: token("sky") }}
+      >
+        {today.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}
+      </text>
 
       <Callout
-        from={P([-131, 18, top + 12])}
-        ex={28}
-        ey={122}
+        from={P([-144, 41, top + 10])}
+        ex={20}
+        ey={170}
         id="TODAY"
-        title="Thursday, 15"
+        title={`${today.toLocaleDateString(undefined, { weekday: "long" })}, ${today.getDate()}`}
         note="Opens on the current day"
-        dot={sky}
+        dot={token("sky")}
       />
       <Callout
-        from={P([-60, D, top - 4])}
-        ex={28}
-        ey={196}
+        from={P([span.from - 6.5, PENS[0].y, bed + 0.3])}
+        ex={20}
+        ey={74}
         id="03 · CATEGORIES"
-        title="Colour by kind"
+        title="A pen for each kind"
         note="Finance, activity, work, health"
+        dot={token("gold")}
       />
       <Callout
-        from={P([L, -D, top - 4])}
-        ex={532}
-        ey={196}
+        from={P([xOf(18), 30, top])}
+        ex={540}
+        ey={276}
         id="01 · DAY"
         title="Hour by hour"
         note="Midnight to midnight"
         right
       />
       <Callout
-        from={P([132, D, top - 4])}
-        ex={532}
-        ey={268}
+        from={P([xOf(21), PENS[0].y, bed + 0.3])}
+        ex={540}
+        ey={98}
         id="02 · ENTRIES"
         title="Filled as you go"
         note="From your connected sources"

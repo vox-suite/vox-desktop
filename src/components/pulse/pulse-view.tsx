@@ -10,6 +10,7 @@ import { PulseIntroduction } from "./pulse-introduction";
 import { PulseShell } from "./pulse-shell";
 import { SavedChart } from "./saved-chart";
 import { discoveryApi } from "@/features/pulse/api";
+import { PageLoading } from "@/components/ui/page-loading";
 export function PulseView() {
   const { canvas, loading, refreshing, error, reload } = usePulseCanvas();
   const context = useDesktopContext();
@@ -117,7 +118,9 @@ export function PulseView() {
           </div>
         ) : (
           <>
-            {centered ? (
+            {loading && !canvas ? (
+              <PageLoading accent="mint" label="Loading insights…" />
+            ) : centered ? (
               <PulseIntroduction onCreate={() => setAdding(true)} />
             ) : null}
             {(error || actionError) && (

@@ -66,6 +66,7 @@ import { ContextEditor } from "./context-editor";
 import { CodeExplorer, SourcePreview } from "./code-explorer";
 import { platform } from "@/platform";
 import { Input } from "@/components/ui/input";
+import { PageLoading } from "@/components/ui/page-loading";
 
 export function ProjectDetail({
   id,
@@ -489,19 +490,14 @@ export function ProjectDetail({
             Retry
           </Button>
         </PageHeader>
-        <PageBody>
-          <div className="p-8">
-            {state.error ? (
-              <p role="alert" className="text-sm text-destructive">
-                {state.error}
-              </p>
-            ) : (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading project…
-              </p>
-            )}
-          </div>
+        <PageBody className="flex flex-col">
+          {state.error ? (
+            <p role="alert" className="p-8 text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : (
+            <PageLoading accent="pink" label="Loading project…" />
+          )}
         </PageBody>
       </PageContainer>
     );

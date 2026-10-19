@@ -18,8 +18,6 @@ import { loadMoreDay, useTimelineDays } from "@/hooks/use-timeline-days";
 import { TimelineHeader, type ViewMode } from "./spans";
 
 const DAY_WIDTH = 1600;
-const WINDOW_STEP = 3;
-const WINDOW_MAX = 30;
 
 function toSpan(entry: TimelineEntry, groups: TimelineGroup[]): Span {
   const { event: e, evidence } = entry;
@@ -53,19 +51,17 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const [groups, setGroups] = useState<TimelineGroup[]>([]);
   const [types, setTypes] = useState<TimelineEventType[]>([]);
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
-  const [windowState, setWindowState] = useState({ key: anchor.getTime(), before: 2, after: 2 });
   const [metaError, setMetaError] = useState("");
   const [groupsLoading, setGroupsLoading] = useState(true);
-  const win = windowState.key === anchor.getTime() ? windowState : { key: anchor.getTime(), before: 2, after: 2 };
 
   const customRange = !!(range?.from && range.to);
   const days = useMemo(() => {
     if (range?.from && range.to)
       return daysFrom(range.from, Math.min(31, Math.round((startOfDay(range.to).getTime() - startOfDay(range.from).getTime()) / 864e5) + 1));
-    if (mode === "day") return daysFrom(addDays(anchor, -win.before), win.before + win.after + 1);
+    if (mode === "day") return [anchor];
     if (mode === "month") return monthGridDays(anchor);
     return daysFrom(anchor, 7);
-  }, [anchor, mode, range, win.before, win.after]);
+  }, [anchor, mode, range]);
 
   const store = useTimelineDays(days, group, !voiceFilter, mode === "month" && !customRange);
 
@@ -123,8 +119,6 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
   const changed = () => { timelineDays.invalidate(); setRefresh((n) => n + 1); setSelected(null); };
   const clearFilters = () => { desktopStore.patch({ timeline: null }); setSearchInput(""); setSearch(""); };
   const select = (span: Span) => setSelected(entries.find((e) => e.event.id === span.id) ?? null);
-  const extend = (side: "before" | "after") =>
-    setWindowState({ ...win, [side]: Math.min(WINDOW_MAX, win[side] + WINDOW_STEP) });
 
   return <PageContainer><TimelineHeader range={range} onRangeChange={(next) => { setRange(next); if (next?.from) { setAnchor(startOfDay(next.from)); setMode(next.to && startOfDay(next.to).getTime() !== startOfDay(next.from).getTime() ? "week" : "day"); } }} anchor={anchor} days={mode === "day" && !customRange ? [anchor] : days} mode={mode} onBack={onBack} loading={loading} onReload={reload}
     onModeChange={(next) => { setRange(null); setMode(next); setAnchor((date) => next === "month" ? startOfMonth(date) : next === "week" ? addDays(date, -date.getDay()) : date); }}
@@ -147,9 +141,9 @@ export function TimelineView({ onBack }: { collection?: Collection | null; colle
     {error && <p role="alert" className="px-6 py-2 text-xs text-destructive">{error}</p>}
     <PageBody scroll={false} className="flex flex-col">
       {voiceFilter ? <div className="overflow-auto p-6"><div className="mb-4 flex items-center justify-between"><span className="text-xs text-muted-foreground">{searching ? "Search results" : voiceFilter.spendingOnly ? "Spending" : "Entries"} · {voiceStart && voiceEnd ? `${new Date(voiceStart).toLocaleDateString()} – ${new Date(voiceEnd).toLocaleDateString()} · ${voiceFilter.timezone}` : "All time"}</span><Button variant="ghost" size="sm" onClick={clearFilters}>{searching ? "Clear search" : "Clear selection"}</Button></div>{searchPending || (voiceLoading && !voiceEntries.length) ? <div role="status" aria-label="Searching timeline" className="flex h-32 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />Loading entries…</div> : voiceEntries.length ? voiceEntries.map(entry => <button key={entry.event.id} onClick={() => setSelected(entry)} className="flex w-full justify-between border-b border-border py-4 text-left text-sm"><span>{entry.event.title}{entry.event.summary && <span className="block text-xs text-muted-foreground">{entry.event.summary}</span>}</span><span className="text-xs text-muted-foreground">{new Date(entry.event.occurred_at).toLocaleString()}</span></button>) : <p className="text-sm text-muted-foreground">No matching entries.</p>}{voiceCursor && !searchPending && <Button variant="ghost" disabled={voiceLoading} onClick={() => void voiceMore()}>Load more entries</Button>}</div>
-        : mode === "month" && !customRange ? <SpanMonthCounts anchorDate={anchor} counts={store.counts} loading={store.countsLoading && store.counts.size === 0} onSelectDay={(date) => { setMode("day"); setAnchor(startOfDay(date)); }} />
+        : mode === "month" && !customRange ? <SpanMonthCounts anchorDate={anchor} counts={store.counts} spans={spans} onSelectSpan={select} loading={store.countsLoading && store.counts.size === 0} onSelectDay={(date) => { setMode("day"); setAnchor(startOfDay(date)); }} />
         : <PlanningTimeline key={mode === "day" && !customRange ? "day" : `${mode}-${days[0].getTime()}`} days={days} spans={spans} loading={loading} unavailable={!!error} onSelect={select} frontiers={store.frontiers} onLoadMore={(day) => loadMoreDay(group, day)}
-            {...(mode === "day" && !customRange ? { dayWidth: DAY_WIDTH, hourly: true, anchorDay: anchor, onReachStart: win.before < WINDOW_MAX ? () => extend("before") : undefined, onReachEnd: win.after < WINDOW_MAX ? () => extend("after") : undefined } : {})} />}
+            {...(mode === "day" && !customRange ? { dayWidth: DAY_WIDTH, hourly: true, anchorDay: anchor } : {})} />}
     </PageBody>
     <TimelineEntryDialog entry={selected} types={types} onClose={() => setSelected(null)} onChanged={changed} />
     <AddTimelineEntryDialog open={adding} types={types} groups={groups} onClose={() => setAdding(false)} onCreated={changed} />

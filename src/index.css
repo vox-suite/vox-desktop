@@ -358,3 +358,24 @@ a,
 
 /* Keep the themed host visible while the WebGL style is still initializing. */
 .vox-map-host[data-ready="false"] .maplibregl-canvas { visibility: hidden; }
+
+.page-loading-plate {
+  animation: page-loading-lift 1.4s ease-in-out infinite;
+}
+
+@keyframes page-loading-lift {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading-plate {
+    animation: none;
+  }
+}

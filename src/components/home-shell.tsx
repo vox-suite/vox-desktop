@@ -17,6 +17,7 @@ import { UpdatesView } from "@/components/updates-view";
 import { TimelineView } from "@/components/timeline-view";
 import { useMissionMap } from "@/hooks/use-mission-map";
 import type { Collection } from "@/lib/tauri";
+import { PageLoading } from "@/components/ui/page-loading"; import type { VoxColor } from "@/lib/theme";
 
 // Charts (recharts) and the canvas (xyflow) are large, so they ship in their
 // own chunks. The shell preloads them after first paint so opening a page
@@ -94,13 +95,13 @@ export function HomeShell({
     );
   } else if (activeTab === "pulse") {
     body = (
-      <Suspense fallback={<PageLoadingFrame title="Insights" />}>
+      <Suspense fallback={<PageLoadingFrame title="Insights" accent="mint" />}>
         <PulseView />
       </Suspense>
     );
   } else if (activeTab === "projects") {
     body = (
-      <Suspense fallback={<PageLoadingFrame title="Projects" />}>
+      <Suspense fallback={<PageLoadingFrame title="Projects" accent="pink" />}>
         <ProjectsView />
       </Suspense>
     );
@@ -110,7 +111,7 @@ export function HomeShell({
     body = <ConnectedAppsView />;
   } else {
     body = (
-      <Suspense fallback={<PageLoadingFrame title="Plans" />}>
+      <Suspense fallback={<PageLoadingFrame title="Plans" accent="gold" />}>
         <SpacesView />
       </Suspense>
     );
@@ -173,7 +174,13 @@ export function HomeShell({
   );
 }
 
-function PageLoadingFrame({ title }: { title: string }) {
+function PageLoadingFrame({
+  title,
+  accent,
+}: {
+  title: string;
+  accent: VoxColor;
+}) {
   return (
     <PageContainer aria-busy="true" aria-label={`Loading ${title}`}>
       <PageHeader className="h-16 px-6 py-0">
@@ -192,9 +199,10 @@ function PageLoadingFrame({ title }: { title: string }) {
         </div>
       </PageHeader>
       <PageBody className="flex items-center justify-center">
-        <p role="status" className="text-sm text-muted-foreground">
-          Loading {title.toLowerCase()}…
-        </p>
+        <PageLoading
+          accent={accent}
+          label={`Loading ${title.toLowerCase()}…`}
+        />
       </PageBody>
     </PageContainer>
   );

@@ -34,6 +34,7 @@ import { useSpace } from "@/hooks/use-space";
 import { SpaceCanvas } from "@/components/spaces/space-canvas";
 import { SpacesIntroduction } from "./spaces-introduction";
 import { token } from "@/lib/theme";
+import { PageLoading } from "@/components/ui/page-loading";
 
 export function SpacesView() {
   const [search, setSearch] = useState("");
@@ -110,11 +111,8 @@ export function SpacesView() {
       );
     }
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background text-muted-foreground">
-        <div className="flex flex-col items-center gap-3">
-          <RotateCw className="h-8 w-8 animate-spin text-foreground" />
-          <span className="text-xs text-muted-foreground">Loading plan…</span>
-        </div>
+      <div className="flex h-full w-full bg-background">
+        <PageLoading accent="gold" label="Loading plan…" />
       </div>
     );
   }
@@ -171,7 +169,9 @@ export function SpacesView() {
           </div>
         )}
 
-        {spaces.length === 0 && !filtering && !search ? (
+        {loading && spaces.length === 0 && !filtering && !search ? (
+          <PageLoading accent="gold" label="Loading plans…" />
+        ) : spaces.length === 0 && !filtering && !search ? (
           <SpacesIntroduction onCreate={openCreate} />
         ) : (
           <>

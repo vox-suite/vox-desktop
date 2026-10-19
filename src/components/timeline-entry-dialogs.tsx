@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import {
   CalendarDays,
   Check,
@@ -35,6 +35,9 @@ import {
   type TimelineGroup,
 } from "@/features/timeline/api";
 import { platform } from "@/platform";
+import { BrandMark } from "@/components/connected-apps/brand-mark";
+import { BRANDS, FALLBACK_BRAND } from "@/components/connected-apps/brands";
+import { fade, token } from "@/lib/theme";
 
 const toLocalInput = (iso: string) => {
   const d = new Date(iso);
@@ -121,6 +124,10 @@ export function TimelineEntryDialog({
   const e = entry?.event;
   const content = (e?.content ?? {}) as Record<string, unknown>;
   const dayOnly = e && ["year", "month", "day"].includes(e.time_precision);
+  const brand = BRANDS[entry?.evidence[0]?.source_type ?? ""] ?? {
+    ...FALLBACK_BRAND,
+    icon: CalendarDays,
+  };
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -147,8 +154,12 @@ export function TimelineEntryDialog({
         }
       }}
     >
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
+      <DialogContent
+        className="timeline-entry-panel"
+        style={{ "--entry-glow": fade(brand.color, 28) } as CSSProperties}
+      >
         <DialogHeader>
+          <BrandMark brand={brand} className="mb-2 size-11" />
           <DialogTitle>{e?.title}</DialogTitle>
           <DialogDescription>
             {e?.summary ||
@@ -219,57 +230,76 @@ export function TimelineEntryDialog({
           </form>
         ) : e ? (
           <>
-            <p className="text-xs text-muted-foreground">
-              {dayOnly
-                ? new Date(e.occurred_at).toLocaleDateString()
-                : new Date(e.occurred_at).toLocaleString()}
-              {e.ended_at && ` – ${new Date(e.ended_at).toLocaleString()}`}
-            </p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-              {Object.entries(content)
-                .filter(
-                  ([key, v]) => v != null && v !== "" && key !== "currency",
-                )
-                .map(([key, value]) => (
-                  <div key={key} className="contents">
-                    <dt className="text-xs leading-5 text-muted-foreground">
-                      {label(key)}
-                    </dt>
-                    <dd className="break-words">
-                      {formatValue(key, value, content)}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-            {entry.evidence.length > 0 && (
-              <div className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground">Sources</p>
-                {entry.evidence.map((ev) => {
-                  const ref = ev.raw_reference ?? "";
-                  return (
-                    <p key={ev.id}>
-                      {label(ev.source_type)}
-                      {/^https?:\/\//.test(ref) ? (
-                        <>
-                          {" · "}
-                          <button
-                            type="button"
-                            className="underline underline-offset-2 hover:text-foreground"
-                            onClick={() =>
-                              void platform().browser?.openExternal(ref)
-                            }
+            <section aria-labelledby="entry-attributes" className="space-y-3">
+              <h3
+                id="entry-attributes"
+                className="text-[15px] font-semibold tracking-tight"
+              >
+                Attributes
+              </h3>
+              <dl className="grid grid-cols-[minmax(96px,38%)_1fr] items-start gap-x-4 gap-y-3.5 text-[13px]">
+                <AttributeRow name="When">
+                  {dayOnly
+                    ? new Date(e.occurred_at).toLocaleDateString()
+                    : new Date(e.occurred_at).toLocaleString()}
+                  {e.ended_at && (
+                    <span className="block text-muted-foreground">
+                      until {new Date(e.ended_at).toLocaleString()}
+                    </span>
+                  )}
+                </AttributeRow>
+                {Object.entries(content)
+                  .filter(
+                    ([key, v]) => v != null && v !== "" && key !== "currency",
+                  )
+                  .map(([key, value]) => (
+                    <AttributeRow key={key} name={label(key)}>
+                      <AttributeValue
+                        name={key}
+                        value={value}
+                        content={content}
+                      />
+                    </AttributeRow>
+                  ))}
+                {entry.evidence.length > 0 && (
+                  <AttributeRow name="Sources">
+                    <div className="flex flex-col gap-1.5">
+                      {entry.evidence.map((ev) => {
+                        const ref = ev.raw_reference ?? "";
+                        const id = ev.source_id ?? ref;
+                        return (
+                          <span
+                            key={ev.id}
+                            className="flex min-w-0 items-center gap-2"
                           >
-                            Open source
-                          </button>
-                        </>
-                      ) : ev.source_id || ref ? (
-                        ` · ${ev.source_id ?? ref}`
-                      ) : null}
-                    </p>
-                  );
-                })}
-              </div>
-            )}
+                            <BrandMark
+                              brand={BRANDS[ev.source_type] ?? brand}
+                              className="size-5 rounded-md [&>img]:size-3.5 [&>svg]:size-3"
+                            />
+                            {label(ev.source_type)}
+                            {/^https?:\/\//.test(ref) ? (
+                              <button
+                                type="button"
+                                className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                onClick={() =>
+                                  void platform().browser?.openExternal(ref)
+                                }
+                              >
+                                Open
+                              </button>
+                            ) : id ? (
+                              <span className="truncate font-mono text-[11px] text-muted-foreground">
+                                {id}
+                              </span>
+                            ) : null}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </AttributeRow>
+                )}
+              </dl>
+            </section>
             <DialogFooter>
               <Button
                 variant="ghost"
@@ -300,6 +330,76 @@ export function TimelineEntryDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function AttributeRow({
+  name,
+  children,
+}: {
+  name: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="contents">
+      <dt className="min-h-6 py-0.5 leading-5 text-muted-foreground">{name}</dt>
+      <dd className="flex min-h-6 min-w-0 flex-col justify-center break-words leading-5">
+        {children}
+      </dd>
+    </div>
+  );
+}
+
+const TAG_COLORS = ["coral", "sky", "mint", "gold", "violet", "pink", "teal", "orange"] as const;
+const tagColor = (text: string) =>
+  token(TAG_COLORS[[...text].reduce((h, c) => h + c.charCodeAt(0), 0) % TAG_COLORS.length]);
+
+function AttributeValue({
+  name,
+  value,
+  content,
+}: {
+  name: string;
+  value: unknown;
+  content: Record<string, unknown>;
+}) {
+  if (typeof value === "boolean")
+    return (
+      <span
+        role="img"
+        aria-label={value ? "Yes" : "No"}
+        className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${value ? "bg-primary" : "bg-muted ring-1 ring-border"}`}
+      >
+        <span
+          className={`absolute top-0.5 size-4 rounded-full bg-background shadow-sm ${value ? "left-[18px]" : "left-0.5"}`}
+        />
+      </span>
+    );
+  if (Array.isArray(value) && value.every((v) => typeof v !== "object"))
+    return (
+      <span className="flex flex-wrap gap-1.5">
+        {value.map((v) => (
+          <span
+            key={String(v)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-0.5 text-xs"
+          >
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full"
+              style={{ background: tagColor(String(v)) }}
+            />
+            {String(v)}
+          </span>
+        ))}
+      </span>
+    );
+  const text = formatValue(name, value, content);
+  if (/^[0-9a-f]{8}-[0-9a-f-]{27}$|^(?=.*\d)[A-Z0-9_-]{8,}$/i.test(text))
+    return (
+      <span className="truncate font-mono text-xs text-muted-foreground" title={text}>
+        {text}
+      </span>
+    );
+  return text;
 }
 
 function CategoryIcon({ value }: { value: string }) {
