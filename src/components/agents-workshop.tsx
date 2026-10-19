@@ -42,7 +42,16 @@ export function AgentsWorkshop({
       ? "Listening"
       : "Working";
   return (
-    <figure className="pointer-events-none absolute right-4 bottom-4 z-[5] m-0 w-[300px] max-w-[calc(100%-2rem)] overflow-hidden rounded-2xl border border-ink/10 bg-panel/85 shadow-float backdrop-blur-[24px] select-none">
+    <figure
+      className="pointer-events-none absolute right-4 bottom-4 z-[5] m-0 w-[340px] max-w-[calc(100%-2rem)] overflow-hidden rounded-2xl border border-white/30 select-none dark:border-white/10"
+      style={{
+        background: "color-mix(in srgb, var(--vox-panel) 18%, transparent)",
+        backdropFilter: "blur(5px) saturate(1.1)",
+        WebkitBackdropFilter: "blur(5px) saturate(1.1)",
+        boxShadow:
+          "inset 0 1px 0 color-mix(in srgb, white 25%, transparent), 0 12px 40px -16px color-mix(in srgb, var(--vox-shade) 30%, transparent)",
+      }}
+    >
       <div className="flex items-center justify-between px-3.5 pt-3 font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
         <span>Your agents</span>
         <span className="flex items-center gap-1.5">
@@ -65,7 +74,7 @@ export function AgentsWorkshop({
           speaking={speaking}
         />
       </div>
-      <figcaption className="flex items-center gap-3 border-t border-ink/10 px-3.5 py-2 text-[10.5px] text-muted-foreground">
+      <figcaption className="flex items-center gap-3 border-t border-ink/8 px-3.5 py-2 text-[10.5px] text-muted-foreground">
         {LEGEND.map((item) => (
           <span key={item.label} className="flex items-center gap-1.5">
             <span
