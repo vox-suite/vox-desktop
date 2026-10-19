@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import {fitDiagram,fixLabels} from './vox-layout.mjs';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -21,8 +22,9 @@ try {
   const common=JSON.parse(fs.readFileSync(path.join(root,'schemas/common.schema.json'),'utf8'));
   const example=JSON.parse(fs.readFileSync(path.join(root,'examples',examples[arg]+'.json'),'utf8'));
   console.log(JSON.stringify({schema,common,example,rules:'Examples describe construction, not facts about the user project. Do not copy their content. Evidence must use issued Vox read_source IDs; repository, sources, remote images and brand URLs are not accepted. meta.output is supplied by Vox.'}));
- }else if(mode==='render'){
-  const diagram=JSON.parse(fs.readFileSync(arg,'utf8'));
+ }else if(mode==='render'||mode==='render-fit'){
+  const authored=JSON.parse(fs.readFileSync(arg,'utf8'));
+  const diagram=mode==='render-fit'||authored.diagram_type==='sequence'?fitDiagram(authored):authored;
   rejectUnsafe(diagram);
   if(!types.includes(diagram.diagram_type))throw new Error('Unknown diagram type');
   if(!diagram.meta || typeof diagram.meta!=='object')throw new Error('Provide diagram meta including title.');
@@ -31,8 +33,29 @@ try {
   if(JSON.stringify(diagram).length>100000)throw new Error('Diagram exceeds 100 KB');
   const input=path.join(path.dirname(arg),'render-input.json');
   const output=path.join(path.dirname(arg),'artifact.html');
-  fs.writeFileSync(input,JSON.stringify(diagram),{mode:0o600});
-  const result=spawnSync(process.execPath,[path.join(root,'renderers',diagram.diagram_type,'render-'+diagram.diagram_type+'.mjs'),input,output],{encoding:'utf8',timeout:15000,maxBuffer:64000,env:{PATH:'/usr/bin:/bin',ARCHIFY_DIAGNOSTIC_FORMAT:'json'}});
+  const renderDeadline=Date.now()+12000;
+  const renderOnce=()=>{
+   fs.writeFileSync(input,JSON.stringify(diagram),{mode:0o600});
+   return spawnSync(process.execPath,[path.join(root,'renderers',diagram.diagram_type,'render-'+diagram.diagram_type+'.mjs'),input,output],{encoding:'utf8',timeout:Math.max(1,renderDeadline-Date.now()),maxBuffer:1000000,env:{PATH:'/usr/bin:/bin',ARCHIFY_DIAGNOSTIC_FORMAT:'json'}});
+  };
+  let result=renderOnce();
+  // Label placement is geometry the renderer can already solve: apply its own
+  // placements and nudges, re-render, and keep a pass only when it leaves
+  // fewer problems. The model sees just what is left.
+  const problems=r=>{if(r.status===0)return 0;try{return JSON.parse(r.stderr).diagnostics.length;}catch{return Infinity;}};
+  let best={result,diagram:structuredClone(diagram),count:problems(result)};
+  for(let pass=0;mode==='render-fit'&&best.count>0&&pass<6&&Date.now()<renderDeadline;pass++){
+   if(!fixLabels(diagram,best.result.stderr,pass))break;
+   const next=renderOnce(),count=problems(next);
+   if(count<best.count)best={result:next,diagram:structuredClone(diagram),count};
+   else Object.assign(diagram,structuredClone(best.diagram));
+  }
+  if(best.count>0||best.result!==result){
+   // Leave the artifact and receipt matching the kept candidate.
+   for(const key of Object.keys(diagram))if(!(key in best.diagram))delete diagram[key];
+   Object.assign(diagram,best.diagram);
+   result=best.result;
+  }
   if(result.status!==0)throw new Error((result.stderr||result.error?.message||'Diagram validation failed').slice(0,6000));
   const html=fs.readFileSync(output,'utf8');
   const container=html.indexOf('<div class="diagram-container"');

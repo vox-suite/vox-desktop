@@ -23,7 +23,7 @@ fn array<'a>(v: &'a Value, key: &str, min: usize, max: usize) -> Result<&'a Vec<
         .ok_or_else(|| format!("{key} must contain {min} to {max} entries"))
 }
 fn proof(v: &Value) -> Result<(), String> {
-    let ids = array(v, "citations", 1, 20)?;
+    let ids = array(v, "citations", 1, 256)?;
     if ids
         .iter()
         .any(|id| id.as_str().is_none_or(|s| s.is_empty()))
@@ -43,7 +43,7 @@ pub fn keys(diagram: &Value) -> Result<(&'static str, &'static str), String> {
     }
 }
 pub fn report_schema() -> Value {
-    let citations = json!({"type":"array","minItems":1,"maxItems":20,"items":{"type":"string"}});
+    let citations = json!({"type":"array","minItems":1,"maxItems":256,"items":{"type":"string"}});
     json!({"type":"object","required":["systems","boundaries","targets"],"properties":{
         "systems":{"type":"array","minItems":1,"maxItems":40,"items":{"type":"object","required":["id","name","kind","role","citations"],"properties":{"kind":{"type":"string","enum":["internal","external","concept"]},"source_id":{"type":"string"},"source_root":{"type":"string","description":"For internal owners, exact root from list_sources code_owners; use its canonical name in name."},"id":{"type":"string"},"name":{"type":"string"},"role":{"type":"string"},"citations":citations}}},
         "boundaries":{"type":"array","maxItems":80,"items":{"type":"object","required":["from","to","summary","citations"],"properties":{"from":{"type":"string"},"to":{"type":"string"},"summary":{"type":"string"},"citations":citations}}},
@@ -146,6 +146,90 @@ fn subset_proof(required: &Value, provided: &Value) -> bool {
     })
 }
 /// Review maps every investigated claim to actual visible elements and relationships.
+/// Carry forward evidence for mappings the model explicitly selected. Structural
+/// validation still rejects wrong owners, reversed boundaries and unknown IDs.
+pub fn complete_mapped_evidence(report: &Value, args: &mut Value) {
+    let mut required: Vec<(&str, &str, Value, Value)> = Vec::new();
+    let review = &args["review"];
+    let mut add = |mapping: &Value, citations: &Value| {
+        for id in mapping["element_ids"].as_array().into_iter().flatten() {
+            required.push(("node_evidence", "id", id.clone(), citations.clone()));
+        }
+        for index in mapping["relationship_indexes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            required.push(("edge_evidence", "index", index.clone(), citations.clone()));
+        }
+    };
+    for system in report["systems"].as_array().into_iter().flatten() {
+        for map in review["systems"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|m| m["system_id"] == system["id"])
+        {
+            add(map, &system["citations"]);
+        }
+    }
+    for (index, boundary) in report["boundaries"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .enumerate()
+    {
+        for map in review["boundaries"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|m| m["boundary_index"] == json!(index))
+        {
+            add(map, &boundary["citations"]);
+        }
+    }
+    for target in report["targets"].as_array().into_iter().flatten() {
+        for map in review["targets"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|m| m["target_index"] == target["target_index"])
+        {
+            for (index, mechanism) in target["mechanisms"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .enumerate()
+            {
+                for mapping in map["mechanisms"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|m| m["mechanism_index"] == json!(index))
+                {
+                    add(mapping, &mechanism["citations"]);
+                }
+            }
+        }
+    }
+    for (collection, key, id, citations) in required {
+        for entry in args[collection]
+            .as_array_mut()
+            .into_iter()
+            .flatten()
+            .filter(|e| e[key] == id)
+        {
+            if let Some(ids) = entry["citations"].as_array_mut() {
+                for citation in citations.as_array().into_iter().flatten() {
+                    if !ids.contains(citation) {
+                        ids.push(citation.clone());
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn validate_review(
     report: &Value,
     args: &Value,
@@ -333,6 +417,25 @@ mod tests {
             "boundaries":[{"boundary_index":0,"relationship_indexes":[0]}],
             "targets":[{"target_index":0,"mechanisms":[{"mechanism_index":0,"element_ids":["gate"],"relationship_indexes":[0]}]}],"checks":checks}});
         (plan, report, args)
+    }
+    #[test]
+    fn mapped_evidence_is_completed_without_weakening_direction_checks() {
+        let (_, report, mut args) = fixture();
+        args["edge_evidence"][0]["citations"] = json!([]);
+        complete_mapped_evidence(&report, &mut args);
+        assert!(validate_review(&report, &args, None, false).is_ok());
+        args["diagram"]["flows"][0]["from"] = json!("response");
+        args["diagram"]["flows"][0]["to"] = json!("gate");
+        complete_mapped_evidence(&report, &mut args);
+        assert!(validate_review(&report, &args, None, false)
+            .unwrap_err()
+            .contains("does not connect"));
+    }
+    #[test]
+    fn aggregated_citations_allow_more_than_twenty_without_becoming_unbounded() {
+        let citations: Vec<_> = (0..40).map(|i| json!(format!("cite{i}"))).collect();
+        assert!(proof(&json!({"citations":citations})).is_ok());
+        assert!(proof(&json!({"citations":vec![json!("c");257]})).is_err());
     }
     #[test]
     fn grounded_connected_expansion_is_accepted() {

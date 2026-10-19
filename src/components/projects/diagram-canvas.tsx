@@ -196,7 +196,7 @@ function PinnedLegend({ rendered }: { rendered: RenderedDiagram }) {
     const style = document.createElement("style");
     style.textContent =
       rendered.css +
-      ":host{--canvas:var(--vox-surface-raised);--panel:var(--vox-surface-raised);--mask:var(--vox-surface-raised)}svg{display:block;width:100%;height:auto;font-family:'Geist Mono',monospace}";
+      ":host{--canvas:transparent;--panel:transparent;--mask:transparent;background:transparent}svg{background:transparent!important;display:block;width:100%;height:auto;font-family:'Geist Mono',monospace}";
     root.append(style, svg);
     element.hidden = false;
     const bounds = legend.getBBox();

@@ -48,7 +48,12 @@ function onEvent({ project_id, request_id, event }: ProjectAgentEvent) {
   } else if (event.type === "error") {
     put(project_id, {
       ...run,
-      state: event.state === "cancelled" ? "cancelled" : "failed",
+      state:
+        event.state === "cancelled"
+          ? "cancelled"
+          : event.state === "interrupted"
+            ? "interrupted"
+            : "failed",
       error: event.message ?? "",
     });
   } else if (event.message) {

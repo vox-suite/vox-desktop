@@ -1021,7 +1021,7 @@
   z-index: 5;
   max-width: calc(100% - 80px);
   padding: 4px 8px;
-  background: var(--vox-surface-raised);
+  background: transparent;
   pointer-events: none;
 }
 

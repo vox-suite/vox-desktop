@@ -75,3 +75,9 @@ Review the candidate against the original request and sources, not merely your i
 
 5. Once review succeeds and the candidate, evidence, gaps and revision flags are unchanged, call submit_diagram({}) with no arguments; it submits the reviewed candidate exactly. Do NOT print the fenced JSON or resend the diagram again. If evidence or gaps change, call review_diagram again before submission; re-stream and re-preview only if the diagram object changes.
 6. A successful submission produces an unsaved draft for the user to review. Stop calling tools after accepted:true; finish with at most two short sentences explaining how to read the result and any material gap. Do not append another diagram JSON block or a long duplicate explanation.
+
+## Recovery and layout checks
+
+An empty `current_diagram` result is normal. Preview fits sequence participants, arrow spans and vertical spacing, and automatically routed dataflow nodes and spacing. Reuse the returned fitted candidate by omitting `diagram` in review and submission. Authored routes still require explicit repair if invalid. Every arrow needs a straight segment wider than its label plus 24px. Review requires exactly four checks: request_fit, ownership, ordering and grounding. Boundary mappings are directional. The tool carries report citations into explicitly selected mappings before checking them; it does not infer mappings or relax source validation. Aggregated diagram evidence permits up to 256 citations per element/relationship, consistently with Core persistence.
+
+Runs checkpoint plan, evidence, preview, review and Gemini session ID locally using atomic writes. Crash recovery and recoverable failures expose Resume. Four consecutive or eight total tool failures stop the current attempt with saved state. The 20-minute run deadline remains. Native changes require rebuilding/restarting the desktop; the larger citation limit also requires the matching Core release.

@@ -41,7 +41,7 @@ fn definitions() -> Value {
     let mut properties = tools.last().unwrap()["inputSchema"]["properties"].clone();
     properties["review"] = quality::review_schema();
     tools.push(tool("record_investigation", "Before drawing, record an evidence-backed system map, cross-system boundaries, and an answer or explicit gap for EVERY planned target. For each target assess trigger, processing, conditions (including timing), concurrency, outcomes and failures; cite mechanisms and explain non-applicable aspects. Use systems as real owners, actors or concepts, never generic processing stages.", json!({"report":quality::report_schema()}), &["report"]));
-    tools.push(tool("review_diagram", "After preview, review this exact candidate against the investigation and current sources. Map every system, boundary and mechanism to visible elements/relationships. Explain request fit, ownership, ordering and grounding with citations. This is a model self-review with structural enforcement, not independent factual verification. Omit diagram to review the previewed candidate. After acceptance call submit_diagram with {}.", properties, &["node_evidence","edge_evidence","gaps","review"]));
+    tools.push(tool("review_diagram", "After preview, review this exact candidate against the investigation and current sources. Map every system, boundary and mechanism to visible elements/relationships. Provide exactly four checks: request_fit, ownership, ordering and grounding. Boundary mappings are directional. Citations from the accepted report are automatically carried into explicitly mapped elements and relationships; mapping correctness and issued citations are still validated. This is a model self-review with structural enforcement, not independent factual verification. Omit diagram to review the previewed candidate. After acceptance call submit_diagram with {}.", properties, &["node_evidence","edge_evidence","gaps","review"]));
     definitions
 }
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -246,10 +246,11 @@ impl Tools {
         Ok(())
     }
     fn current(&mut self) -> Result<Value, String> {
-        let base = self
-            .base
-            .clone()
-            .ok_or("No diagram is open; build a new one")?;
+        let Some(base) = self.base.clone() else {
+            return Ok(
+                json!({"diagram":null,"state":"empty","next":"Call plan_request with operation create, then investigate the sources."}),
+            );
+        };
         let mut stale = 0;
         let mut proofs = |items: &Value, key: &str| -> Vec<Value> {
             let mut out = vec![];
@@ -299,8 +300,8 @@ impl Tools {
     fn citations(&self, value: &Value) -> Result<Value, String> {
         let ids = value
             .as_array()
-            .filter(|v| v.len() <= 20)
-            .ok_or("Use at most 20 citation IDs")?;
+            .filter(|v| v.len() <= 256)
+            .ok_or("Use at most 256 citation IDs")?;
         if ids.is_empty() {
             return Err("Evidence requires at least one issued citation ID".into());
         }
@@ -655,6 +656,7 @@ impl Tools {
                 if args["diagram"].is_null() {
                     args["diagram"] = self.quality.preview.clone().unwrap_or(Value::Null);
                 }
+                quality::complete_mapped_evidence(report, &mut args);
                 let args = &args;
                 if self.quality.preview.as_ref() != Some(&args["diagram"]) {
                     return Err("Preview this exact diagram before review".into());
@@ -684,9 +686,9 @@ impl Tools {
                 } else {
                     args["diagram"].clone()
                 };
-                let rendered = super::diagram::render(&diagram, &self.run.join("preview"))?;
-                self.quality.preview = Some(diagram);
-                Ok(json!({"valid":true,"receipt":rendered["receipt"]}))
+                let rendered = super::diagram::render_fitted(&diagram, &self.run.join("preview"))?;
+                self.quality.preview = Some(rendered["diagram"].clone());
+                Ok(json!({"valid":true,"receipt":rendered["receipt"],"diagram":rendered["diagram"],"next":"Use this fitted candidate; omit diagram in review_diagram and submit_diagram to reuse it."}))
             }
             "submit_diagram" => {
                 if args["replace_current"].as_bool() == Some(true)
@@ -1088,6 +1090,31 @@ mod quality_gate_tests {
             plan: Some(json!({"operation":"create","investigation_targets":["Trace processing"]})),
             quality: QualityState::default(),
         }
+    }
+    #[test]
+    fn empty_canvas_is_a_successful_query() {
+        let mut t = tools();
+        let result = t.call("current_diagram", &json!({})).unwrap();
+        assert_eq!(result["state"], "empty");
+        assert!(result["diagram"].is_null());
+    }
+    #[test]
+    fn checkpoint_restores_plan_evidence_and_quality() {
+        let dir = std::env::temp_dir().join(format!("vox-checkpoint-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut t = tools();
+        t.run = dir.clone();
+        t.quality.report = Some(json!({"systems":[]}));
+        t.quality.preview = Some(json!({"diagram_type":"sequence"}));
+        t.persist().unwrap();
+        let mut restored = tools();
+        restored.run = dir.clone();
+        restored.plan = None;
+        restored.restore().unwrap();
+        assert_eq!(restored.plan, t.plan);
+        assert_eq!(restored.quality.preview, t.quality.preview);
+        assert_eq!(restored.quality.report, t.quality.report);
+        std::fs::remove_dir_all(dir).unwrap();
     }
     #[test]
     fn preview_and_submission_cannot_skip_investigation_or_review() {

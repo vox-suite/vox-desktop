@@ -122,6 +122,12 @@ fn fill_draft(diagram: &mut Value) -> Result<(), String> {
     Ok(())
 }
 pub fn render(diagram: &Value, directory: &Path) -> Result<Value, String> {
+    render_mode(diagram, directory, "render")
+}
+pub fn render_fitted(diagram: &Value, directory: &Path) -> Result<Value, String> {
+    render_mode(diagram, directory, "render-fit")
+}
+fn render_mode(diagram: &Value, directory: &Path, mode: &str) -> Result<Value, String> {
     let bytes = serde_json::to_vec(diagram).map_err(|e| e.to_string())?;
     if bytes.len() > 100_000 {
         return Err("Diagram exceeds 100 KB".into());
@@ -129,7 +135,7 @@ pub fn render(diagram: &Value, directory: &Path) -> Result<Value, String> {
     agent::secure_dir(directory)?;
     let input = directory.join("diagram-input.json");
     agent::write_private(&input, &bytes)?;
-    run("render", &input)
+    run(mode, &input)
 }
 struct Temporary(PathBuf);
 impl Drop for Temporary {

@@ -1,0 +1,148 @@
+--- a/renderers/shared/geometry.mjs
++++ b/renderers/shared/geometry.mjs
+@@ -1105,6 +1105,8 @@
+   });
+ }
+ 
++import { arrowLabelProblems } from '../../vox-layout.mjs';
++
+ export function cleanLabelRouteClearanceProblems({
+   relations,
+   labels,
+@@ -1117,9 +1119,10 @@
+   threshold = 4,
+   routeHint = 'adjust labelAt, labelDx, labelDy, or labelSegment; otherwise adjust the other relationship route/via/channel',
+ }) {
+-  if (qualityProfileForGate(profile, profileIsAuthoritative) !== 'showcase') return [];
++  const spanProblems = arrowLabelProblems({ labels, relations, pathFor, diagramType, relationCollection });
++  if (qualityProfileForGate(profile, profileIsAuthoritative) !== 'showcase') return spanProblems;
+   const routedRelations = collectEligibleRoutedRelations({ relations, endpointIds, pathFor });
+-  return collectLabelRouteClearance({ labels, routedRelations, threshold }).map((hit) => {
++  return spanProblems.concat(collectLabelRouteClearance({ labels, routedRelations, threshold }).map((hit) => {
+     const describe = (relation, relationIndex) => {
+       const relationId = relation?.id ? ` id "${relation.id}"` : '';
+       const relationLabel = relation?.label ? ` label "${relation.label}"` : '';
+@@ -1148,7 +1151,7 @@
+       supportedFixes: [hint],
+     });
+     return message;
+-  });
++  }));
+ }
+ 
+ // How far [start, start + size) leaves [0, extent), per end of one axis. This
+--- a/renderers/shared/validator.mjs
++++ b/renderers/shared/validator.mjs
+@@ -40,7 +40,16 @@
+   if (!validate) {
+     throw new Error(`validateSchema: unknown diagram type "${diagramType}"`);
+   }
+-  if (!validate(data)) {
++  // Vox spacing extension; validate it explicitly before the upstream compiled schema.
++  let schemaData = data;
++  if (diagramType === 'dataflow' && data?.meta) {
++    schemaData = {...data, meta:{...data.meta}};
++    for (const [key, minimum] of [['column_gap',215],['row_gap',114]]) {
++      if (key in data.meta && (!Number.isFinite(data.meta[key]) || data.meta[key] < minimum || data.meta[key] > 16000)) throw new Error(`meta.${key} must be a finite number between ${minimum} and 16000`);
++      delete schemaData.meta[key];
++    }
++  }
++  if (!validate(schemaData)) {
+     const diagnostics = validate.errors.map((error) => {
+       const annotated = annotatedPath(error.instancePath, data);
+       const subject = {
+--- a/renderers/sequence/render-sequence.mjs
++++ b/renderers/sequence/render-sequence.mjs
+@@ -71,7 +71,7 @@
+ const participantCount = Math.max(1, asArray(sequence.participants).length);
+ const sideMargin = 62;
+ const participantW = columnFit === 'spread'
+-  ? Math.max(86, Math.min(190, Math.round((viewBox[0] - sideMargin * 2) / participantCount) - 24))
++  ? Math.max(86, Math.min(Math.max(190, ...asArray(sequence.participants).map(p => Math.max(textUnits(p.label || '') * 6.8 + 20, textUnits(p.sublabel || '') * 4.5 + 24))), Math.round((viewBox[0] - sideMargin * 2) / participantCount) - 24))
+   : 86;
+ const colGap = columnFit === 'spread' && participantCount > 1
+   ? Math.max(108, (viewBox[0] - 40 - sideMargin - participantW) / (participantCount - 1))
+--- a/renderers/dataflow/render-dataflow.mjs
++++ b/renderers/dataflow/render-dataflow.mjs
+@@ -55,12 +55,12 @@
+   stageY: 46,
+   stageH: 36,
+   stageBottomPad: 74,
+-  leftX: 100,
+-  colGap: 215,
+-  stageW: 168,
++  leftX: dataflow.meta?.column_gap ? Math.max(100, ...asArray(dataflow.nodes).map(n => (n.width || 112) / 2 + 40)) : 100,
++  colGap: dataflow.meta?.column_gap || 215,
++  stageW: Math.max(168, ...asArray(dataflow.nodes).map(n => (n.width || 112) + 32)),
+   nodeW: 112,
+   nodeH: 58,
+-  rowYs: [128, 242, 356, 470, 584],
++  rowYs: [0,1,2,3,4].map(i => 128 + i * (dataflow.meta?.row_gap || 114)),
+   labelH: 16
+ };
+ 
+--- a/schemas/dataflow.schema.json
++++ b/schemas/dataflow.schema.json
+@@ -62,16 +62,28 @@
+           "type": "object",
+           "additionalProperties": false,
+           "properties": {
+-            "mode": { "$ref": "common.schema.json#/$defs/legendMode" },
++            "mode": {
++              "$ref": "common.schema.json#/$defs/legendMode"
++            },
+             "entries": {
+               "type": "object",
+               "additionalProperties": false,
+               "properties": {
+-                "default": { "$ref": "common.schema.json#/$defs/legendEntry" },
+-                "emphasis": { "$ref": "common.schema.json#/$defs/legendEntry" },
+-                "security": { "$ref": "common.schema.json#/$defs/legendEntry" },
+-                "dashed": { "$ref": "common.schema.json#/$defs/legendEntry" },
+-                "database": { "$ref": "common.schema.json#/$defs/legendEntry" }
++                "default": {
++                  "$ref": "common.schema.json#/$defs/legendEntry"
++                },
++                "emphasis": {
++                  "$ref": "common.schema.json#/$defs/legendEntry"
++                },
++                "security": {
++                  "$ref": "common.schema.json#/$defs/legendEntry"
++                },
++                "dashed": {
++                  "$ref": "common.schema.json#/$defs/legendEntry"
++                },
++                "database": {
++                  "$ref": "common.schema.json#/$defs/legendEntry"
++                }
+               }
+             }
+           }
+@@ -91,6 +103,16 @@
+           "items": false,
+           "minItems": 2,
+           "maxItems": 2
++        },
++        "column_gap": {
++          "type": "number",
++          "minimum": 215,
++          "description": "Spacing fitted by Vox to keep labels inside their arrows."
++        },
++        "row_gap": {
++          "type": "number",
++          "minimum": 114,
++          "description": "Spacing fitted by Vox to keep labels inside their arrows."
+         }
+       }
+     },
+@@ -142,7 +164,9 @@
+           "tag": {
+             "type": "string"
+           },
+-          "icon": { "$ref": "common.schema.json#/$defs/nodeIcon" },
++          "icon": {
++            "$ref": "common.schema.json#/$defs/nodeIcon"
++          },
+           "brand": {
+             "$ref": "common.schema.json#/$defs/brandMark"
+           },
