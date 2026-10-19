@@ -1167,25 +1167,18 @@
   font-size: 9px;
   opacity: 0.1;
 }
-.project-agent-reel li[data-pending] span {
-  display: block;
-  height: 0.6em;
-  width: 16em;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--foreground) 60%, transparent),
-    transparent
-  );
-  background-size: 200% 100%;
-  animation: project-reel-shimmer 1.8s linear infinite;
+.project-agent-reel li[data-pending] {
+  font-variant-ligatures: none;
+  letter-spacing: 0.02em;
 }
-.project-agent-reel li[data-pending][data-distance="2"] span {
-  width: 11em;
+.project-agent-reel li[data-pending][data-distance="1"] {
+  opacity: 0.32;
 }
-.project-agent-reel li[data-pending][data-distance="3"] span {
-  width: 7em;
+.project-agent-reel li[data-pending][data-distance="2"] {
+  opacity: 0.18;
+}
+.project-agent-reel li[data-pending][data-distance="3"] {
+  opacity: 0.09;
 }
 .project-agent-reel .animate-spin {
   animation-duration: 1.6s;
@@ -1197,21 +1190,10 @@
     transform: translateY(14px);
   }
 }
-@keyframes project-reel-shimmer {
-  from {
-    background-position: 100% 0;
-  }
-  to {
-    background-position: -100% 0;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .project-agent-reel li {
     transition: none;
     animation: none !important;
-  }
-  .project-agent-reel li[data-pending] span {
-    animation: none;
   }
 }
 
@@ -1234,16 +1216,16 @@
   inset: 0;
   background-image:
     radial-gradient(
-      color-mix(in srgb, var(--foreground) 22%, transparent) 0.8px,
+      color-mix(in srgb, var(--foreground) 11%, transparent) 0.8px,
       transparent 1px
     ),
     linear-gradient(
-      color-mix(in srgb, var(--vox-violet) 7%, transparent) 1px,
+      color-mix(in srgb, var(--vox-violet) 4%, transparent) 1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--vox-violet) 7%, transparent) 1px,
+      color-mix(in srgb, var(--vox-violet) 4%, transparent) 1px,
       transparent 1px
     );
   background-size:

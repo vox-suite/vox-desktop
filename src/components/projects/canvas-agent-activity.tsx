@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 function readableStatus(status: string) {
@@ -19,6 +19,35 @@ function readableStatus(status: string) {
     submit_diagram: "Verifying the changes…",
   };
   return labels[tool[1]] ?? "Investigating the sources…";
+}
+
+const LETTERS = "abcdefghijklmnopqrstuvwxyz";
+const randomWords = (length: number) => {
+  let out = "";
+  while (out.length < length) {
+    const word = 3 + Math.floor(Math.random() * 7);
+    out += (out ? " " : "") + Array.from({ length: word }, () => "x").join("");
+  }
+  return out.slice(0, length).trimEnd();
+};
+
+// A step not decided yet: a sentence-shaped run of letters that keep
+// changing. Word gaps stay put so it still reads as a sentence.
+function UndecidedLine({ length }: { length: number }) {
+  const [shape] = useState(() => randomWords(length));
+  const scramble = () =>
+    shape.replace(
+      /x/g,
+      () => LETTERS[Math.floor(Math.random() * LETTERS.length)],
+    );
+  const [text, setText] = useState(scramble);
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setText(scramble()), 90);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <span>{text}</span>;
 }
 
 // Consecutive repeats collapse into one line with a count.
@@ -83,7 +112,7 @@ export function CanvasAgentActivity({
           })}
           {Array.from({ length: REEL_BELOW }, (_, i) => (
             <li key={`next${i}`} data-distance={i + 1} data-pending>
-              <span />
+              <UndecidedLine length={[34, 30, 26][i]} />
             </li>
           ))}
         </ol>
