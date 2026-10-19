@@ -55,6 +55,7 @@ import {
 import { InvestigationComposer } from "./investigation-composer";
 import { DiagramCanvas } from "./diagram-canvas";
 import { DiagramLibrary } from "./diagram-library";
+import { diagramRequests } from "@/features/desktop-control/diagram-requests";
 import {
   diagramLineage as lineageOf,
   removeDiagram,
@@ -263,8 +264,9 @@ export function ProjectDetail({
       setCreating(false);
     }
   };
-  const trace = async () => {
-    if (!p || !intent.trim() || state.busy || traceRequest.current) return;
+  const trace = async (text = intent) => {
+    const question = text.trim();
+    if (!p || !question || state.busy || traceRequest.current) return;
     if (draft && viewing !== "draft") {
       setError(
         "Open or discard your unsaved draft before drawing another diagram.",
@@ -300,7 +302,7 @@ export function ProjectDetail({
       const result = await localProjects().trace(
         p.id,
         requestId,
-        intent.trim(),
+        question,
         shown ?? null,
         (event) => {
           if (!mounted.current || traceRequest.current !== requestId) return;
@@ -331,7 +333,7 @@ export function ProjectDetail({
       );
       if (!mounted.current || traceRequest.current !== requestId) return;
       setDraft({
-        question: intent.trim(),
+        question,
         flow: result.flow,
         mode: result.mode,
         lineage:
@@ -354,6 +356,26 @@ export function ProjectDetail({
       if (traceRequest.current === requestId) traceRequest.current = null;
     }
   };
+  const voiceDiagram = useRef<(prompt: string) => void>(() => {});
+  useEffect(() => {
+    voiceDiagram.current = (prompt) => {
+      if (!p) throw new Error("The project is still loading");
+      if (state.busy || traceRequest.current)
+        throw new Error("A diagram is already being drawn");
+      if (draft && viewing !== "draft")
+        throw new Error(
+          "Open or discard the unsaved diagram draft before drawing another",
+        );
+      setTab("context");
+      setIntent(prompt);
+      void trace(prompt);
+    };
+  });
+  useEffect(
+    () =>
+      diagramRequests.register(id, (prompt) => voiceDiagram.current(prompt)),
+    [id],
+  );
   const saveVersion = async (
     question: string,
     flow: ProjectFlow,

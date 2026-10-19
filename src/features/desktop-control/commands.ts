@@ -17,6 +17,7 @@ const actions = new Set([
   "update_pulse",
   "list_pulse_measurements",
   "list_spaces",
+  "draw_diagram",
 ]);
 export function applyAppCommand(
   command: AppCommand,

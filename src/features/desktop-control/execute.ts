@@ -9,6 +9,7 @@ import { timelineApi } from "@/features/timeline/api";
 import { discoveryApi } from "@/features/pulse/api";
 import type { PulseDefinition } from "@/features/pulse/discovery-types";
 import { desktopActions } from "./action-state";
+import { diagramRequests } from "./diagram-requests";
 const pages = new Set([
   "agent",
   "timeline",
@@ -120,6 +121,14 @@ export async function executeDesktopCommand(
           throw new Error("Node does not exist in this space");
         desktopStore.patch({ selectedItemId: id });
         output = { selectedItemId: id };
+        break;
+      }
+      case "draw_diagram": {
+        const prompt = text(args.prompt, "what to draw");
+        if (context.page !== "projects" || !context.projectId)
+          throw new Error("Open a project before drawing a diagram");
+        diagramRequests.start(context.projectId, prompt);
+        output = { started: true, projectId: context.projectId };
         break;
       }
       case "list_spaces":
