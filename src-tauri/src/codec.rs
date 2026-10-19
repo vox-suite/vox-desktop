@@ -1,39 +1,25 @@
-use std::collections::VecDeque;
+use rubato::{audioadapter_buffers::direct::InterleavedSlice, Fft, FixedSync, Resampler};
 
-/// Continuously resamples a mono f32 stream, carrying the fractional
-/// interpolation phase and any not-yet-interpolatable tail samples across
-/// calls. A one-shot resample per chunk restarts its phase at index
-/// 0 every call, which for a src/out ratio that doesn't divide evenly (e.g.
-/// 44.1kHz -> 48kHz) puts a small timing discontinuity at every chunk
-/// boundary -- audible as clicking/static when chunks arrive every ~100ms
-/// from a streaming decoder.
 pub struct StreamResampler {
-    buffer: VecDeque<f32>,
-    pos: f64,
-    src_rate: u32,
-    out_rate: u32,
+    buffer: Vec<f32>,
+    fft: Option<(u32, u32, Fft<f32>)>,
 }
 
 impl StreamResampler {
     pub fn new() -> Self {
         Self {
-            buffer: VecDeque::new(),
-            pos: 0.0,
-            src_rate: 0,
-            out_rate: 0,
+            buffer: Vec::new(),
+            fft: None,
         }
     }
 
     pub fn reset(&mut self) {
         self.buffer.clear();
-        self.pos = 0.0;
-        self.src_rate = 0;
-        self.out_rate = 0;
+        if let Some((_, _, fft)) = &mut self.fft {
+            fft.reset();
+        }
     }
 
-    /// Feeds in the next chunk of source-rate mono samples and returns
-    /// whatever output-rate samples could be produced so far, holding back
-    /// any tail that needs a future sample to interpolate against.
     pub fn push(&mut self, samples: &[f32], src_rate: u32, out_rate: u32) -> Vec<f32> {
         if samples.is_empty() || src_rate == 0 || out_rate == 0 {
             return Vec::new();
@@ -41,36 +27,37 @@ impl StreamResampler {
         if src_rate == out_rate {
             return samples.to_vec();
         }
-        if src_rate != self.src_rate || out_rate != self.out_rate {
+        if !matches!(&self.fft, Some((s, o, _)) if (*s, *o) == (src_rate, out_rate)) {
             self.buffer.clear();
-            self.pos = 0.0;
-            self.src_rate = src_rate;
-            self.out_rate = out_rate;
+            self.fft = Fft::new(
+                src_rate as usize,
+                out_rate as usize,
+                (src_rate as usize / 100).max(1),
+                1,
+                FixedSync::Input,
+            )
+            .ok()
+            .map(|fft| (src_rate, out_rate, fft));
         }
-
-        self.buffer.extend(samples.iter().copied());
-
-        let ratio = src_rate as f64 / out_rate as f64;
+        let Some((_, _, fft)) = &mut self.fft else {
+            return Vec::new();
+        };
+        self.buffer.extend_from_slice(samples);
         let mut output = Vec::new();
-        loop {
-            let idx0 = self.pos.floor() as usize;
-            let idx1 = idx0 + 1;
-            if idx1 >= self.buffer.len() {
+        let mut used = 0;
+        while self.buffer.len() - used >= fft.input_frames_next() {
+            let frames = fft.input_frames_next();
+            let Ok(input) = InterleavedSlice::new(&self.buffer[used..used + frames], 1, frames)
+            else {
                 break;
-            }
-            let frac = (self.pos - idx0 as f64) as f32;
-            let s0 = self.buffer[idx0];
-            let s1 = self.buffer[idx1];
-            output.push(s0 + frac * (s1 - s0));
-            self.pos += ratio;
+            };
+            let Ok(chunk) = fft.process(&input, None) else {
+                break;
+            };
+            output.extend(chunk.take_data());
+            used += frames;
         }
-
-        let consumed = (self.pos.floor() as usize).min(self.buffer.len());
-        if consumed > 0 {
-            self.buffer.drain(..consumed);
-            self.pos -= consumed as f64;
-        }
-
+        self.buffer.drain(..used);
         output
     }
 }
@@ -91,17 +78,26 @@ mod tests {
     }
 
     #[test]
-    fn test_stream_resampler_matches_one_shot_for_a_single_chunk() {
-        let src_rate = 44100;
-        let out_rate = 48000;
-        let input: Vec<f32> = vec![0.25; src_rate as usize];
-        let out = StreamResampler::new().push(&input, src_rate, out_rate);
-        // Within one sample of the whole-buffer length: the streaming version
-        // holds back a tail sample it can't interpolate yet without more input.
-        assert!((out.len() as i64 - out_rate as i64).abs() <= 1);
-        for &sample in &out {
-            assert!((sample - 0.25).abs() < 1e-4);
-        }
+    fn test_upsampling_16k_to_48k_suppresses_images() {
+        let tone = |hz: f32, rate: f32, n: usize| -> Vec<f32> {
+            (0..n)
+                .map(|i| (i as f32 * hz * std::f32::consts::TAU / rate).sin() * 0.5)
+                .collect()
+        };
+        let out = StreamResampler::new().push(&tone(6000.0, 16000.0, 16000), 16000, 48000);
+        assert!((out.len() as i64 - 48000).abs() <= 480);
+        let steady = &out[4800..43200];
+        let power = |hz: f32| {
+            let reference = tone(hz, 48000.0, steady.len() + 4800);
+            let cos: Vec<f32> = (0..steady.len() + 4800)
+                .map(|i| (i as f32 * hz * std::f32::consts::TAU / 48000.0).cos())
+                .collect();
+            let re: f32 = steady.iter().zip(&reference[4800..]).map(|(a, b)| a * b).sum();
+            let im: f32 = steady.iter().zip(&cos[4800..]).map(|(a, b)| a * b).sum();
+            re * re + im * im
+        };
+        let image_db = 10.0 * (power(10000.0) / power(6000.0)).log10();
+        assert!(image_db < -60.0, "image at {image_db} dB");
     }
 
     #[test]

@@ -23,10 +23,11 @@ pub fn decode_s16le(carry: &mut Option<u8>, bytes: &[u8]) -> Vec<f32> {
     let mut joined = Vec::with_capacity(bytes.len() + 1);
     joined.extend(carry.take());
     joined.extend_from_slice(bytes);
-    let pairs = joined.chunks_exact(2);
-    *carry = pairs.remainder().first().copied();
+    let (pairs, rest) = joined.as_chunks::<2>();
+    *carry = rest.first().copied();
     pairs
-        .map(|pair| i16::from_le_bytes([pair[0], pair[1]]) as f32 / 32768.0)
+        .iter()
+        .map(|pair| i16::from_le_bytes(*pair) as f32 / 32768.0)
         .collect()
 }
 #[cfg(test)]

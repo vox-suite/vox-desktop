@@ -42,6 +42,7 @@ portable-pty = "0.9.0"
 sysinfo = "0.39"
 starship-battery = "0.11"
 sonora = "=0.2.0"
+rubato = "5.0.1"
 
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
