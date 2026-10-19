@@ -1321,6 +1321,7 @@ export function AgentsFigure({
     return <circle key={key} cx={x} cy={y} r={r} style={{ fill }} />;
   };
   const top = 8;
+  const raw = token("danger");
   const pace = speaking ? 2.2 : active ? 1.5 : 1;
   const run = t * pace;
   const colors = (
@@ -1434,12 +1435,12 @@ export function AgentsFigure({
     const fall = Math.min(1, age / 0.3);
     const x = src.x + Math.max(0, age - 0.3) * 18;
     const z = A.z + 2.5 + (1 - ease(fall)) * 10;
-    return { k, x, z, color: src.color, show: t > 0 && x < lift.x - 5 };
+    return { k, x, z, color: raw, show: t > 0 && x < lift.x - 5 };
   });
   // Buckets on the elevator, coloured by what they carry.
   const buckets = Array.from({ length: 6 }, (_, i) => {
     const z = lift.z0 + 4 + ((i * 10 + run * 16) % (lift.z1 - lift.z0 - 8));
-    return { i, z, color: cans[(i + n) % cans.length].color };
+    return { i, z, color: raw };
   });
   // The chute from the elevator head to the engine's hopper.
   const chuteA: V3 = [lift.x + 4, lift.y + 3, lift.z1 - 6];
@@ -1670,13 +1671,16 @@ export function AgentsFigure({
         z0={top}
         z1={tank.z1}
         r={tank.r}
+        stroke={raw}
+        fill={`color-mix(in srgb, ${raw} 8%, ${SURFACE})`}
+        top={`color-mix(in srgb, ${raw} 24%, ${SURFACE})`}
       />
       {[16, 26, 36].map((z) => (
         <path
           key={`tb${z}`}
           d={trace(frontArc(tank.r, tank.x, tank.y, z))}
           strokeWidth="0.45"
-          style={{ stroke: FAINT }}
+          style={{ stroke: alpha("danger", 55) }}
         />
       ))}
       {(() => {
@@ -1701,7 +1705,7 @@ export function AgentsFigure({
                 [wx + 1.4, wy - 1.4, level],
                 [wx - 1.4, wy + 1.4, level],
               ])}
-              style={{ stroke: "none", fill: alpha("violet", 45) }}
+              style={{ stroke: "none", fill: alpha("danger", 45) }}
             />
           </g>
         );
@@ -1998,8 +2002,8 @@ export function AgentsFigure({
           w={1.8}
           d={1.8}
           depth={1.8}
-          stroke={cans[n % cans.length].color}
-          top={`color-mix(in srgb, ${cans[n % cans.length].color} 45%, ${SURFACE})`}
+          stroke={raw}
+          top={`color-mix(in srgb, ${raw} 45%, ${SURFACE})`}
           width={0.6}
         />
       )}
@@ -2021,7 +2025,7 @@ export function AgentsFigure({
         strokeWidth="1"
         strokeDasharray="1.5 3.5"
         strokeDashoffset={-t * 9 * pace}
-        style={{ stroke: token("violet") }}
+        style={{ stroke: raw }}
       />
       {[pipe[1], pipe[2]].map((p, i) => dot(p, 1.7, LINE, `pj${i}`))}
       {/* Mast and signal */}
