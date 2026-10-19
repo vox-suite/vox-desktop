@@ -41,24 +41,32 @@ fn oauth_pending_entry() -> Result<Entry, String> {
 }
 
 // Preserve sign-in across the keychain service rename. File paths stay unchanged.
-fn read_credential(account: &str) -> Result<String, keyring::Error> {
-    let current = Entry::new(SERVICE, account)?;
-    match current.get_password() {
-        Err(keyring::Error::NoEntry) => {
-            let legacy = Entry::new(LEGACY_SERVICE, account)?;
-            let payload = legacy.get_password()?;
-            if current.set_password(&payload).is_ok() {
-                let _ = legacy.delete_credential();
+fn read_credential(account: &str) -> Result<Option<String>, String> {
+    match crate::credential_cache::read(SERVICE, account)? {
+        Some(payload) => Ok(Some(payload)),
+        None => {
+            let Some(payload) = crate::credential_cache::read(LEGACY_SERVICE, account)? else {
+                return Ok(None);
+            };
+            if Entry::new(SERVICE, account)
+                .and_then(|entry| entry.set_password(&payload))
+                .is_ok()
+            {
+                crate::credential_cache::remember(SERVICE, account, Some(payload.clone()));
+                if let Ok(legacy) = Entry::new(LEGACY_SERVICE, account) {
+                    let _ = legacy.delete_credential();
+                }
+                crate::credential_cache::remember(LEGACY_SERVICE, account, None);
             }
-            Ok(payload)
+            Ok(Some(payload))
         }
-        result => result,
     }
 }
 
 fn clear_credentials(account: &str) -> Result<(), String> {
     let mut error = None;
     for service in [SERVICE, LEGACY_SERVICE] {
+        crate::credential_cache::remember(service, account, None);
         match Entry::new(service, account).and_then(|entry| entry.delete_credential()) {
             Ok(()) | Err(keyring::Error::NoEntry) => {}
             Err(e) => error = Some(format!("Could not clear stored credential: {e}")),
@@ -88,7 +96,13 @@ pub fn save_pending_oauth(pending: &PersistedOauth) -> Result<(), String> {
     std::fs::write(&path, &payload)
         .map_err(|e| format!("Could not store sign-in state file: {e}"))?;
     if let Ok(entry) = oauth_pending_entry() {
-        let _ = entry.set_password(&payload);
+        if entry.set_password(&payload).is_ok() {
+            crate::credential_cache::remember(
+                SERVICE,
+                OAUTH_PENDING_ACCOUNT,
+                Some(payload.clone()),
+            );
+        }
     }
     Ok(())
 }
@@ -96,12 +110,12 @@ pub fn save_pending_oauth(pending: &PersistedOauth) -> Result<(), String> {
 pub fn load_pending_oauth() -> Result<Option<PersistedOauth>, String> {
     {
         match read_credential(OAUTH_PENDING_ACCOUNT) {
-            Ok(payload) => {
+            Ok(Some(payload)) => {
                 let pending = serde_json::from_str(&payload)
                     .map_err(|e| format!("Stored sign-in state is corrupt: {e}"))?;
                 return Ok(Some(pending));
             }
-            Err(keyring::Error::NoEntry) => {}
+            Ok(None) => {}
             Err(e) => eprintln!("keychain oauth-pending read warning: {e}"),
         }
     }
@@ -150,8 +164,9 @@ pub fn save_session(session: &StoredSession) -> Result<(), String> {
     }
 
     if let Ok(entry) = entry() {
-        if let Err(e) = entry.set_password(&payload) {
-            eprintln!("keychain session write warning: {e}");
+        match entry.set_password(&payload) {
+            Ok(()) => crate::credential_cache::remember(SERVICE, ACCOUNT, Some(payload.clone())),
+            Err(e) => eprintln!("keychain session write warning: {e}"),
         }
     }
     Ok(())
@@ -160,11 +175,11 @@ pub fn save_session(session: &StoredSession) -> Result<(), String> {
 pub fn load_session() -> Result<Option<StoredSession>, String> {
     {
         match read_credential(ACCOUNT) {
-            Ok(payload) => match serde_json::from_str::<StoredSession>(&payload) {
+            Ok(Some(payload)) => match serde_json::from_str::<StoredSession>(&payload) {
                 Ok(session) => return Ok(Some(session)),
                 Err(e) => eprintln!("keychain session corrupt: {e}"),
             },
-            Err(keyring::Error::NoEntry) => {}
+            Ok(None) => {}
             Err(e) => eprintln!("keychain session read warning: {e}"),
         }
     }

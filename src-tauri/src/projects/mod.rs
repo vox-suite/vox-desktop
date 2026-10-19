@@ -1,8 +1,10 @@
 pub mod agent;
 mod agent_gateway;
+mod agent_review;
 mod agent_runtime;
 mod agent_tools;
 pub mod diagram;
+mod diagram_quality;
 mod engine;
 mod graph;
 mod sources;

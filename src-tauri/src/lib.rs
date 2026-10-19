@@ -4,6 +4,7 @@ mod auth;
 mod bridge_voice;
 mod codec;
 mod config;
+mod credential_cache;
 mod deep_link;
 mod device_cache;
 mod device_link;
