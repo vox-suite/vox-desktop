@@ -119,7 +119,27 @@ export type ProjectAgentStatus = {
   authenticated: boolean;
   auth_method: string;
 };
-export type ProjectAgentProgress = { type: string; message: string };
+export type ProjectAgentProgress = {
+  type: string;
+  message?: string;
+  state?: string;
+  result?: ProjectAgentResult;
+};
+export type ProjectAgentEvent = {
+  project_id: string;
+  request_id: string;
+  event: ProjectAgentProgress;
+};
+export type ProjectAgentRun = {
+  request_id: string;
+  state: "running" | "done" | "failed" | "interrupted";
+  question: string;
+  started_at: string;
+  error: string | null;
+  log: string[];
+  streamed: DiagramIR | null;
+  result: ProjectAgentResult | null;
+};
 export type ProjectAgentResult = {
   flow: ProjectFlow;
   mode: "update" | "new";
@@ -135,13 +155,18 @@ export interface ProjectLocalPort {
   ): Promise<void>;
   agentStatus(): Promise<ProjectAgentStatus>;
   configureAgent(key: string): Promise<void>;
-  trace(
+  /** Starts (or, with `resume`, continues) a run that outlives the page. */
+  startTrace(
     projectId: string,
     requestId: string,
-    question: string,
+    question: string | null,
     base: ProjectFlow | null,
-    progress: (event: ProjectAgentProgress) => void,
-  ): Promise<ProjectAgentResult>;
+    resume: boolean,
+  ): Promise<void>;
+  /** Runs that still need attention: running, unopened, failed, interrupted. */
+  traceRuns(projectId: string): Promise<ProjectAgentRun[]>;
+  dismissTrace(projectId: string, requestId: string): Promise<void>;
+  onTraceEvent(listener: (event: ProjectAgentEvent) => void): () => void;
   cancelTrace(requestId: string): Promise<void>;
   engineStatus(): Promise<{
     engine: string;

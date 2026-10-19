@@ -11,7 +11,7 @@ use std::{
     },
     time::Duration,
 };
-use tauri::{ipc::Channel, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     process::Command,
@@ -210,36 +210,67 @@ async fn cancelled(cancel: &AtomicBool, auth: &AuthManager, owner: &str) {
         tokio::time::sleep(Duration::from_millis(150)).await;
     }
 }
-fn stage(progress: &Channel<Value>, stage: &str) {
-    let _ = progress.send(json!({"type":"status","message":stage}));
+/// Where a run reports progress: an append-only log in its folder (so a
+/// reloaded page or a restarted app can replay it) and an app-wide event.
+struct Sink {
+    app: AppHandle,
+    run: PathBuf,
+    project_id: String,
+    request_id: String,
 }
-#[tauri::command]
-pub async fn project_agent_trace(
+impl Sink {
+    fn send(&self, event: Value) {
+        if event["type"] != "text" {
+            use std::io::Write;
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(self.run.join("events.jsonl"))
+            {
+                let _ = writeln!(file, "{event}");
+            }
+        }
+        let _ = self.app.emit(
+            "project-agent-event",
+            json!({"project_id":self.project_id,"request_id":self.request_id,"event":event}),
+        );
+    }
+}
+fn stage(progress: &Sink, stage: &str) {
+    progress.send(json!({"type":"status","message":stage}));
+}
+fn read_json(path: &Path) -> Option<Value> {
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+}
+fn patch_status(run: &Path, patch: impl FnOnce(&mut Value)) {
+    let mut status = read_json(&run.join("status.json")).unwrap_or_else(|| json!({}));
+    patch(&mut status);
+    if let Ok(bytes) = serde_json::to_vec(&status) {
+        let _ = write_private(&run.join("status.json"), &bytes);
+    }
+}
+#[cfg(unix)]
+fn kill_group(pid: i64) {
+    let _ = std::process::Command::new("/bin/kill")
+        .args(["-TERM", "--"])
+        .arg(format!("-{pid}"))
+        .status();
+}
+#[allow(clippy::too_many_arguments)]
+async fn run_trace(
+    app: &AppHandle,
+    user: String,
+    project: PathBuf,
     project_id: String,
     request_id: String,
     question: String,
     base: Option<Value>,
-    progress: Channel<Value>,
-    auth: State<'_, AuthManager>,
+    resume: bool,
+    cancel: Arc<AtomicBool>,
+    progress: &Sink,
 ) -> Result<Value, String> {
-    let user = account(&auth)?;
-    let project = super::dir(&auth, &project_id)?;
-    uuid::Uuid::parse_str(&request_id).map_err(|_| "Invalid investigation ID")?;
-    if question.trim().is_empty()
-        || question.len() > 12000
-        || base.as_ref().is_some_and(|b| b.to_string().len() > 300_000)
-    {
-        return Err("Invalid investigation request".into());
-    }
-    let cancel = Arc::new(AtomicBool::new(false));
-    {
-        let mut runs = active().lock().map_err(|_| "Agent state unavailable")?;
-        if runs.contains_key(&request_id) {
-            return Err("Investigation already running".into());
-        }
-        runs.insert(request_id.clone(), (user.clone(), cancel.clone()));
-    }
-    let _guard = RunGuard(request_id.clone());
+    let auth_state = app.state::<AuthManager>();
+    let auth: &AuthManager = auth_state.inner();
     stage(&progress, "Preparing the Gemini investigation engine…");
     let _permit = tokio::select! {
         result = super::gate().acquire_owned() => result.map_err(|e|e.to_string())?,
@@ -260,16 +291,17 @@ pub async fn project_agent_trace(
         .flatten()
         .filter(|key| !key.is_empty());
     let run = project.join("investigations").join(&request_id);
-    secure_dir(&run)?;
     let workspace = run.join("workspace");
     secure_dir(&workspace)?;
-    write_private(
-        &run.join("manifest.json"),
-        &serde_json::to_vec(
-            &json!({"project_dir":project,"sources":registry,"base":base,"question":question}),
-        )
-        .map_err(|e| e.to_string())?,
-    )?;
+    if !resume {
+        write_private(
+            &run.join("manifest.json"),
+            &serde_json::to_vec(
+                &json!({"project_dir":project,"sources":registry,"base":base,"question":question}),
+            )
+            .map_err(|e| e.to_string())?,
+        )?;
+    }
     let host = std::env::current_exe().map_err(|e| e.to_string())?;
     let (gateway, model) = if api_key.is_none() {
         let proxy = tokio::select! {
@@ -346,14 +378,14 @@ pub async fn project_agent_trace(
     let mut semantic_accepted = false;
     for attempt in 0..3 {
         let mut command = make_command(
-            if attempt == 0 {
+            if attempt == 0 && !resume {
                 PROMPT
             } else {
                 "Continue the original request using retained tool state. Finish the required preview, evidence review, and submission tools; a JSON-only answer is incomplete. Preserve the accepted investigation unless evidence requires a correction. Use valid JSON tool arguments, not a textual imitation of a tool call."
             },
-            attempt > 0,
+            attempt > 0 || resume,
         );
-        if attempt > 0 {
+        if attempt > 0 || resume {
             stage(
                 &progress,
                 "Completing source review and diagram validation…",
@@ -365,7 +397,7 @@ pub async fn project_agent_trace(
         if let Some(mut stdin) = child.stdin.take() {
             stdin
             .write_all(
-                (if attempt > 0 {
+                (if attempt > 0 || resume {
                     format!("Continue the original request. Tool state and citations are retained. Complete investigation, preview, review and submission. Do not finish with only fenced JSON. Repair these independent source-review findings before resubmitting, if any: {repair_feedback}")
                 } else { format!(
                     "Current time: {} UTC\n<user_request>\n{}\n</user_request>\n{}",
@@ -383,6 +415,7 @@ pub async fn project_agent_trace(
             .map_err(|e| e.to_string())?;
         }
         let process_group = child.id();
+        patch_status(&run, |s| s["child"] = json!(process_group));
         let stdout = child.stdout.take().ok_or("Agent has no output stream")?;
         let stderr = child.stderr.take().ok_or("Agent has no error stream")?;
         let error_task = tokio::spawn(async move {
@@ -541,6 +574,180 @@ pub async fn project_agent_trace(
     Ok(
         json!({"flow":flow,"mode":mode,"reply":"Diagram constructed from imported source code.","engine":"gemini-cli","request_id":request_id}),
     )
+}
+fn runs_dir(auth: &AuthManager, project_id: &str) -> Result<PathBuf, String> {
+    Ok(super::dir(auth, project_id)?.join("investigations"))
+}
+/// Starts an investigation that outlives the page that asked for it. Progress
+/// goes to the run folder and the app-wide `project-agent-event`; the final
+/// result lands in `result.json`. With `resume`, an interrupted run continues
+/// from its Gemini session and retained tool state.
+#[tauri::command]
+pub fn project_agent_start(
+    app: AppHandle,
+    project_id: String,
+    request_id: String,
+    question: Option<String>,
+    base: Option<Value>,
+    resume: bool,
+    auth: State<'_, AuthManager>,
+) -> Result<(), String> {
+    let user = account(&auth)?;
+    let project = super::dir(&auth, &project_id)?;
+    uuid::Uuid::parse_str(&request_id).map_err(|_| "Invalid investigation ID")?;
+    let run = project.join("investigations").join(&request_id);
+    let (question, base) = if resume {
+        let manifest =
+            read_json(&run.join("manifest.json")).ok_or("This investigation can't be resumed")?;
+        #[cfg(unix)]
+        if let Some(pid) = read_json(&run.join("status.json")).and_then(|s| s["child"].as_i64()) {
+            kill_group(pid);
+        }
+        (
+            manifest["question"].as_str().unwrap_or_default().to_owned(),
+            Some(manifest["base"].clone()).filter(|b| !b.is_null()),
+        )
+    } else {
+        (question.unwrap_or_default(), base)
+    };
+    if question.trim().is_empty()
+        || question.len() > 12000
+        || base.as_ref().is_some_and(|b| b.to_string().len() > 300_000)
+    {
+        return Err("Invalid investigation request".into());
+    }
+    let cancel = Arc::new(AtomicBool::new(false));
+    {
+        let mut runs = active().lock().map_err(|_| "Agent state unavailable")?;
+        if runs.contains_key(&request_id) {
+            return Err("Investigation already running".into());
+        }
+        runs.insert(request_id.clone(), (user.clone(), cancel.clone()));
+    }
+    secure_dir(&run)?;
+    patch_status(&run, |s| {
+        s["state"] = json!("running");
+        s["project_id"] = json!(project_id);
+        s["question"] = json!(question);
+        s["child"] = Value::Null;
+        if s["started_at"].is_null() {
+            s["started_at"] = json!(chrono::Utc::now().to_rfc3339());
+        }
+    });
+    tauri::async_runtime::spawn(async move {
+        let _guard = RunGuard(request_id.clone());
+        let sink = Sink {
+            app: app.clone(),
+            run: run.clone(),
+            project_id: project_id.clone(),
+            request_id: request_id.clone(),
+        };
+        let outcome = run_trace(
+            &app,
+            user,
+            project,
+            project_id,
+            request_id,
+            question,
+            base,
+            resume,
+            cancel.clone(),
+            &sink,
+        )
+        .await;
+        match outcome {
+            Ok(result) => {
+                let _ = write_private(
+                    &run.join("result.json"),
+                    &serde_json::to_vec(&result).unwrap_or_default(),
+                );
+                patch_status(&run, |s| s["state"] = json!("done"));
+                sink.send(json!({"type":"done","result":result}));
+            }
+            Err(message) => {
+                let state = if cancel.load(Ordering::SeqCst) {
+                    "cancelled"
+                } else {
+                    "failed"
+                };
+                patch_status(&run, |s| {
+                    s["state"] = json!(state);
+                    s["error"] = json!(message);
+                });
+                sink.send(json!({"type":"error","state":state,"message":message}));
+            }
+        }
+    });
+    Ok(())
+}
+/// Runs of a project that still need attention: running, finished but not
+/// yet opened, failed, or interrupted by a crash or quit.
+#[tauri::command]
+pub fn project_agent_runs(
+    project_id: String,
+    auth: State<'_, AuthManager>,
+) -> Result<Vec<Value>, String> {
+    let dir = runs_dir(&auth, &project_id)?;
+    let live: Vec<String> = active()
+        .lock()
+        .map_err(|_| "Agent state unavailable")?
+        .keys()
+        .cloned()
+        .collect();
+    let mut runs = Vec::new();
+    for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+        let run = entry.path();
+        let Some(mut status) = read_json(&run.join("status.json")) else {
+            continue;
+        };
+        let id = entry.file_name().to_string_lossy().to_string();
+        let state = status["state"].as_str().unwrap_or_default().to_owned();
+        if state == "dismissed" || state == "cancelled" {
+            continue;
+        }
+        if state == "running" && !live.contains(&id) {
+            patch_status(&run, |s| s["state"] = json!("interrupted"));
+            status["state"] = json!("interrupted");
+        }
+        let log: Vec<Value> = std::fs::read_to_string(run.join("events.jsonl"))
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+            .filter_map(|e| e["message"].as_str().map(|m| json!(m)))
+            .collect();
+        let log = log[log.len().saturating_sub(40)..].to_vec();
+        runs.push(json!({
+            "request_id": id,
+            "state": status["state"],
+            "question": status["question"],
+            "started_at": status["started_at"],
+            "error": status["error"],
+            "log": log,
+            "streamed": read_json(&run.join("streamed-diagram.json")),
+            "result": read_json(&run.join("result.json")),
+        }));
+    }
+    runs.sort_by(|a, b| {
+        a["started_at"]
+            .as_str()
+            .unwrap_or_default()
+            .cmp(b["started_at"].as_str().unwrap_or_default())
+    });
+    Ok(runs)
+}
+/// The user has seen this run's outcome (or discarded it).
+#[tauri::command]
+pub fn project_agent_dismiss(
+    project_id: String,
+    request_id: String,
+    auth: State<'_, AuthManager>,
+) -> Result<(), String> {
+    uuid::Uuid::parse_str(&request_id).map_err(|_| "Invalid investigation ID")?;
+    let run = runs_dir(&auth, &project_id)?.join(&request_id);
+    if run.join("status.json").is_file() {
+        patch_status(&run, |s| s["state"] = json!("dismissed"));
+    }
+    Ok(())
 }
 pub fn serve_from_args() -> bool {
     let args = std::env::args().collect::<Vec<_>>();

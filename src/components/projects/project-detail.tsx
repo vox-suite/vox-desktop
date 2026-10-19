@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   ArrowLeft,
   Folder,
@@ -33,6 +39,7 @@ import {
 import { useProject } from "@/features/projects/use-project";
 import { replaceNode, activity } from "@/features/projects/context";
 import { streamingDiagram, withoutDiagrams } from "@/features/projects/draft";
+import { traceRuns } from "@/features/projects/trace-runs";
 import { projectsApi, localProjects } from "@/features/projects/api";
 import type {
   Citation,
@@ -88,12 +95,27 @@ export function ProjectDetail({
   const [intent, setIntent] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
-  const [traceStatus, setTraceStatus] = useState("");
-  const [traceLog, setTraceLog] = useState<string[]>([]);
-  const [traceText, setTraceText] = useState("");
-  const [liveFlow, setLiveFlow] = useState<ProjectFlow | null>(null);
-  const streamed = useRef("");
-  const liveJson = useRef("");
+  const traceRun = useSyncExternalStore(traceRuns.subscribe, () =>
+    traceRuns.get(id),
+  );
+  const running = traceRun?.state === "running";
+  const [preparing, setPreparing] = useState("");
+  const traceStatus = preparing || (running ? traceRun.status || "Working…" : "");
+  const traceLog = running ? traceRun.log : [];
+  const traceText = running ? withoutDiagrams(traceRun.text).slice(-4000) : "";
+  const liveFlow = useMemo<ProjectFlow | null>(() => {
+    if (traceRun?.state !== "running") return null;
+    const diagram = streamingDiagram(traceRun.text)?.diagram ?? traceRun.streamed;
+    if (!diagram) return null;
+    const meta = diagram.meta as { title?: string } | undefined;
+    return {
+      title: meta?.title ?? "Drawing the diagram",
+      nodes: [],
+      edges: [],
+      gaps: [],
+      diagram,
+    };
+  }, [traceRun]);
   const [agentStatus, setAgentStatus] = useState<ProjectAgentStatus | null>(
     null,
   );
@@ -148,24 +170,38 @@ export function ProjectDetail({
     if (next === "context") setViewing(null);
     setTab(next);
   };
-  const traceRequest = useRef<string | null>(null);
-  const mounted = useRef(true);
   useEffect(() => {
-    mounted.current = true;
     if (platform().projects)
       void localProjects()
         .agentStatus()
         .then(setAgentStatus)
         .catch((e) => setError(String(e)));
-    return () => {
-      mounted.current = false;
-      const request = traceRequest.current;
-      if (request && platform().projects)
-        void localProjects()
-          .cancelTrace(request)
-          .catch(() => {});
-    };
   }, []);
+  // Runs keep going when this page is left or reloaded; pick them back up.
+  useEffect(() => {
+    void traceRuns.hydrate(id).catch(() => {});
+  }, [id]);
+  useEffect(() => {
+    if (!traceRun) return;
+    if (traceRun.state === "done" && traceRun.result) {
+      const { lineage: started } = traceRuns.meta(traceRun.requestId);
+      setDraft({
+        question: traceRun.question,
+        flow: traceRun.result.flow,
+        mode: traceRun.result.mode,
+        lineage: traceRun.result.mode === "update" ? started : null,
+      });
+      setViewing("draft");
+      setIntent("");
+      void traceRuns.dismiss(id);
+    } else if (traceRun.state === "failed") {
+      setError(traceRun.error);
+      void traceRuns.dismiss(id);
+    } else if (traceRun.state === "cancelled") {
+      void traceRuns.dismiss(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [traceRun?.state, traceRun?.requestId]);
   const [plans, setPlans] = useState<Space[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -267,7 +303,7 @@ export function ProjectDetail({
   };
   const trace = async (text = intent) => {
     const question = text.trim();
-    if (!p || !question || state.busy || traceRequest.current) return;
+    if (!p || !question || state.busy || running || preparing) return;
     if (draft && viewing !== "draft") {
       setError(
         "Open or discard your unsaved draft before drawing another diagram.",
@@ -275,14 +311,7 @@ export function ProjectDetail({
       return;
     }
     setError("");
-    setTraceLog([]);
-    setTraceText("");
-    setLiveFlow(null);
-    streamed.current = "";
-    liveJson.current = "";
-    const requestId = crypto.randomUUID();
-    traceRequest.current = requestId;
-    setTraceStatus("Checking source freshness…");
+    setPreparing("Checking source freshness…");
     try {
       const status = await localProjects().agentStatus();
       setAgentStatus(status);
@@ -295,73 +324,24 @@ export function ProjectDetail({
         if (changes[source.id]?.unavailable)
           throw new Error(`Relink ${source.label} before investigating.`);
         if (changes[source.id]?.files?.length) {
-          setTraceStatus(`Refreshing ${source.label} before investigation…`);
+          setPreparing(`Refreshing ${source.label} before investigation…`);
           await state.index(source.id);
         }
       }
-      if (traceRequest.current !== requestId) return;
-      const result = await localProjects().trace(
-        p.id,
-        requestId,
-        question,
-        shown ?? null,
-        (event) => {
-          if (!mounted.current || traceRequest.current !== requestId) return;
-          if (event.type === "text") {
-            // ponytail: reparses the whole buffer per delta; fine for the 100 KB diagram cap.
-            streamed.current = (streamed.current + event.message).slice(
-              -200000,
-            );
-            setTraceText(withoutDiagrams(streamed.current).slice(-4000));
-            const live = streamingDiagram(streamed.current);
-            const json = live ? JSON.stringify(live.diagram) : "";
-            if (live && json !== liveJson.current) {
-              liveJson.current = json;
-              const meta = live.diagram.meta as { title?: string } | undefined;
-              setLiveFlow({
-                title: meta?.title ?? "Drawing the diagram",
-                nodes: [],
-                edges: [],
-                gaps: [],
-                diagram: live.diagram,
-              });
-            }
-            return;
-          }
-          setTraceStatus(event.message);
-          setTraceLog((old) => [...old, event.message].slice(-40));
-        },
-      );
-      if (!mounted.current || traceRequest.current !== requestId) return;
-      setDraft({
-        question,
-        flow: result.flow,
-        mode: result.mode,
-        lineage:
-          result.mode === "update"
-            ? activeDraft
-              ? activeDraft.lineage
-              : lineage
-            : null,
+      await traceRuns.start(p.id, question, shown ?? null, {
+        lineage: activeDraft ? activeDraft.lineage : lineage,
       });
-      setViewing("draft");
-      setIntent("");
     } catch (e) {
-      if (mounted.current && traceRequest.current === requestId)
-        setError(String(e));
+      setError(String(e));
     } finally {
-      if (mounted.current) {
-        setTraceStatus("");
-        setLiveFlow(null);
-      }
-      if (traceRequest.current === requestId) traceRequest.current = null;
+      setPreparing("");
     }
   };
   const voiceDiagram = useRef<(prompt: string) => void>(() => {});
   useEffect(() => {
     voiceDiagram.current = (prompt) => {
       if (!p) throw new Error("The project is still loading");
-      if (state.busy || traceRequest.current)
+      if (state.busy || running || preparing)
         throw new Error("A diagram is already being drawn");
       if (draft && viewing !== "draft")
         throw new Error(
@@ -470,13 +450,7 @@ export function ProjectDetail({
       setDialogError(String(e));
     }
   };
-  const cancelTrace = async () => {
-    const request = traceRequest.current;
-    if (!request) return;
-    traceRequest.current = null;
-    setTraceStatus("Stopping investigation…");
-    await localProjects().cancelTrace(request);
-  };
+  const cancelTrace = () => traceRuns.cancel(id);
   if (!p)
     return (
       <PageContainer>
@@ -668,6 +642,32 @@ export function ProjectDetail({
                 onClick={() => void state.reload()}
               >
                 Reload
+              </Button>
+            </div>
+          )}
+          {tab === "context" && traceRun?.state === "interrupted" && (
+            <div
+              role="status"
+              className="flex shrink-0 items-center gap-3 border-b border-border px-5 py-3 text-xs"
+            >
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                An investigation stopped before it finished
+                {traceRun.question ? `: “${traceRun.question}”` : "."}
+                {traceRun.error ? ` ${traceRun.error}` : ""}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void traceRuns.dismiss(id)}
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                disabled={state.busy || !!preparing}
+                onClick={() => void traceRuns.resume(id)}
+              >
+                Resume
               </Button>
             </div>
           )}

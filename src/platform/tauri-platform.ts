@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { invoke, Channel } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { LiveEvent, Platform } from "@/platform";
 
@@ -15,18 +15,31 @@ export const tauriPlatform: Platform = {
       invoke("project_export_diagram", { flow, format }),
     agentStatus: () => invoke("project_agent_status"),
     configureAgent: (key) => invoke("project_agent_configure", { key }),
-    trace: (projectId, requestId, question, base, onProgress) => {
-      const progress = new Channel<
-        import("@/features/projects/types").ProjectAgentProgress
-      >();
-      progress.onmessage = onProgress;
-      return invoke("project_agent_trace", {
+    startTrace: (projectId, requestId, question, base, resume) =>
+      invoke("project_agent_start", {
         projectId,
         requestId,
         question,
         base,
-        progress,
+        resume,
+      }),
+    traceRuns: (projectId) => invoke("project_agent_runs", { projectId }),
+    dismissTrace: (projectId, requestId) =>
+      invoke("project_agent_dismiss", { projectId, requestId }),
+    onTraceEvent: (listener) => {
+      let stop: (() => void) | undefined;
+      let stopped = false;
+      void listen<import("@/features/projects/types").ProjectAgentEvent>(
+        "project-agent-event",
+        (e) => listener(e.payload),
+      ).then((fn) => {
+        if (stopped) fn();
+        else stop = fn;
       });
+      return () => {
+        stopped = true;
+        stop?.();
+      };
     },
     cancelTrace: (requestId) => invoke("project_agent_cancel", { requestId }),
     engineStatus: () => invoke("project_engine_status"),

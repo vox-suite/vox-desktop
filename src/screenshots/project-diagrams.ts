@@ -4,6 +4,9 @@ import { project } from "./fixtures";
 import { titleDiagram } from "@/features/projects/diagrams";
 import type {
   Project,
+  ProjectAgentEvent,
+  ProjectAgentProgress,
+  ProjectAgentResult,
   ProjectFlow,
   ProjectLocalPort,
   ProjectMessage,
@@ -64,6 +67,7 @@ export const diagramDemo = {
   saves: 0,
   failSave: new URLSearchParams(location.search).has("save-error"),
 };
+const traceListeners = new Set<(event: ProjectAgentEvent) => void>();
 export const diagramPort: ProjectLocalPort = {
   renderDiagram: async () => {
     diagramDemo.renders++;
@@ -78,23 +82,41 @@ export const diagramPort: ProjectLocalPort = {
     auth_method: "fixture",
   }),
   configureAgent: async () => {},
-  trace: async (_project, _request, _question, base, progress) => {
-    if (new URLSearchParams(location.search).has("generation-test")) {
-      progress({ type: "status", message: "Reading the implementation…" });
-      const json = JSON.stringify(demoFlow.diagram);
-      const split = Math.floor(json.length / 2);
-      progress({ type: "text", message: "Here is the source-backed explanation.\n```json\n" + json.slice(0, split) });
-      await new Promise<void>((resolve) => setTimeout(resolve, 250));
-      progress({ type: "text", message: json.slice(split) + "\n```" });
-      await new Promise<void>((resolve) => setTimeout(resolve, 3250));
-    }
-    return ({
-    flow: titleDiagram(demoFlow, "Place search request flow"),
-    mode: base ? "update" : "new",
-    reply: "Synthetic fixture",
-    engine: "fixture",
-    request_id: "fixture",
-  });
+  startTrace: async (project, request, _question, base) => {
+    const progress = (event: ProjectAgentProgress) =>
+      traceListeners.forEach((l) =>
+        l({ project_id: project, request_id: request, event }),
+      );
+    void (async () => {
+      if (new URLSearchParams(location.search).has("generation-test")) {
+        progress({ type: "status", message: "Reading the implementation…" });
+        const json = JSON.stringify(demoFlow.diagram);
+        const split = Math.floor(json.length / 2);
+        progress({
+          type: "text",
+          message:
+            "Here is the source-backed explanation.\n```json\n" +
+            json.slice(0, split),
+        });
+        await new Promise<void>((resolve) => setTimeout(resolve, 250));
+        progress({ type: "text", message: json.slice(split) + "\n```" });
+        await new Promise<void>((resolve) => setTimeout(resolve, 3250));
+      }
+      const result: ProjectAgentResult = {
+        flow: titleDiagram(demoFlow, "Place search request flow"),
+        mode: base ? "update" : "new",
+        reply: "Synthetic fixture",
+        engine: "fixture",
+        request_id: "fixture",
+      };
+      progress({ type: "done", result });
+    })();
+  },
+  traceRuns: async () => [],
+  dismissTrace: async () => {},
+  onTraceEvent: (listener) => {
+    traceListeners.add(listener);
+    return () => traceListeners.delete(listener);
   },
   cancelTrace: async () => {},
   engineStatus: async () => ({
