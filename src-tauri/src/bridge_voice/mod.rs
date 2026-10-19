@@ -118,9 +118,11 @@ pub async fn run_session_loop(
         let(socket,_)=tokio::time::timeout(Duration::from_secs(10),connect_async(url)).await.map_err(|_|"Voice connection timed out")?.map_err(|_|"Could not connect to Vox Bridge")?;
         let socket_connected_ms=session_started.elapsed().as_millis() as u64;
         let(mut sender,mut receiver)=socket.split();
-        send_frame(&mut sender,Message::Text(json!({"type":"start","ticket":bootstrap.ticket,"client_metrics":true}).to_string().into())).await.map_err(|_|"Voice connection closed")?;
+        send_frame(&mut sender,Message::Text(json!({"type":"start","ticket":bootstrap.ticket,"client_metrics":true,"audio_formats":["pcm_s16le_16000"]}).to_string().into())).await.map_err(|_|"Voice connection closed")?;
         let first=tokio::time::timeout(Duration::from_secs(15),receiver.next()).await.map_err(|_|"Voice session timed out")?;
-        match first {Some(Ok(Message::Text(raw)))=>{let frame:Value=serde_json::from_str(&raw).map_err(|_|"Invalid voice handshake")?;if frame["type"]!="connected" || frame["audio_format"]!="mulaw" || frame["sample_rate"]!=8000 || frame["input_mode"]!="stream"{return Err("Voice session rejected".into());}},_=>return Err("Voice session rejected".into())}
+        let wideband=match first {Some(Ok(Message::Text(raw)))=>{let frame:Value=serde_json::from_str(&raw).map_err(|_|"Invalid voice handshake")?;if frame["type"]!="connected" || frame["input_mode"]!="stream"{return Err("Voice session rejected".into());}match (frame["audio_format"].as_str(),frame["sample_rate"].as_u64()){(Some("pcm_s16le"),Some(16000))=>true,(Some("mulaw"),Some(8000))=>false,_=>return Err("Voice session rejected".into())}},_=>return Err("Voice session rejected".into())};
+        let(frame_bytes,playback_rate)=if wideband{(640,16000)}else{(160,8000)};
+        let mut playback_carry:Option<u8>=None;
         if app.state::<AuthManager>().current_session().as_ref().map(|s|&s.user_id)!=Some(&session.user_id){return Err("Signed out".into());}
         let(mic_tx,mut mic_rx)=mpsc::channel(32);
         let capture_overflow=Arc::new(AtomicBool::new(false));
@@ -166,8 +168,8 @@ pub async fn run_session_loop(
                     if app.state::<BridgeVoiceState>().muted.load(Ordering::SeqCst){input.clear();frames.clear();continue;}
                     if frames.len()>8000 || input.len()+samples.len()>16000 {return Err("Voice input stalled; reconnect".into());}
                     input.extend(samples);
-                    while input.len()>=2{let a=input.pop_front().unwrap();let b=input.pop_front().unwrap();frames.push_back(codec::encode((a+b)*0.5));}
-                    while frames.len()>=160 {let bytes:Vec<u8>=frames.drain(..160).collect();send_frame(&mut sender,Message::Binary(bytes.into())).await.map_err(|_|"Voice disconnected")?;}
+                    if wideband{frames.extend(input.drain(..).flat_map(codec::encode_s16le));}else{while input.len()>=2{let a=input.pop_front().unwrap();let b=input.pop_front().unwrap();frames.push_back(codec::encode((a+b)*0.5));}}
+                    while frames.len()>=frame_bytes {let bytes:Vec<u8>=frames.drain(..frame_bytes).collect();send_frame(&mut sender,Message::Binary(bytes.into())).await.map_err(|_|"Voice disconnected")?;}
                 },
                 text=text_rx.recv()=>{if let Some(frame)=text{send_frame(&mut sender,Message::Text(frame.into())).await.map_err(|_|"Voice disconnected")?;}},
                 frame=receiver.next()=>match frame {
@@ -175,14 +177,14 @@ pub async fn run_session_loop(
                         if bytes.len()>8192 || engine.queued_playback_ms()>10_000.0{return Err("Voice playback stalled; reconnect".into());}
                         let first_received_ms = (!received_audio).then(|| session_started.elapsed().as_millis() as u64);
                         received_audio = true;
-                        let pcm:Vec<f32>=bytes.iter().map(|&b|codec::decode(b)).collect();engine.enqueue_pcm(&pcm,8000,engine.playback_epoch());
+                        let pcm:Vec<f32>=if wideband{codec::decode_s16le(&mut playback_carry,&bytes)}else{bytes.iter().map(|&b|codec::decode(b)).collect()};engine.enqueue_pcm(&pcm,playback_rate,engine.playback_epoch());
                         if let Some(elapsed_ms) = first_received_ms {
                             send_frame(&mut sender,Message::Text(json!({"type":"client_metric","stage":"first_audio_received","elapsed_ms":elapsed_ms,"generation":generation,"buffered_ms":engine.queued_playback_ms() as u64}).to_string().into())).await?;
                         }
                     },
                     Some(Ok(Message::Text(raw)))=>{
                         let frame:Value=serde_json::from_str(&raw).map_err(|_|"Invalid voice message")?;
-                        match frame["type"].as_str(){Some("audio_start")=>{let next=frame["generation"].as_u64().unwrap_or(generation);if next!=generation{engine.reset_playback_measurement();reported_playback=false;}generation=next;received_audio=false;},Some("clear")=>{engine.clear_playback();marks.clear();generation=frame["generation"].as_u64().unwrap_or(generation);received_audio=false;reported_playback=false;},Some("mark")=>{if let Some(name)=frame["name"].as_str(){marks.push_back(name.into());}},Some("error")=>return Err("Voice session failed".into()),_=>{}}
+                        match frame["type"].as_str(){Some("audio_start")=>{let next=frame["generation"].as_u64().unwrap_or(generation);if next!=generation{engine.reset_playback_measurement();reported_playback=false;}generation=next;received_audio=false;},Some("clear")=>{engine.clear_playback();playback_carry=None;marks.clear();generation=frame["generation"].as_u64().unwrap_or(generation);received_audio=false;reported_playback=false;},Some("mark")=>{if let Some(name)=frame["name"].as_str(){marks.push_back(name.into());}},Some("error")=>return Err("Voice session failed".into()),_=>{}}
                     },
                     Some(Ok(Message::Ping(bytes)))=>{send_frame(&mut sender,Message::Pong(bytes)).await.map_err(|_|"Voice disconnected")?;},
                     Some(Ok(Message::Close(_)))|None=>break,Some(Err(_))=>return Err("Voice disconnected".into()),_=>{}

@@ -16,6 +16,19 @@ pub fn decode(byte: u8) -> f32 {
     }) as f32
         / 32768.0
 }
+pub fn encode_s16le(sample: f32) -> [u8; 2] {
+    ((sample.clamp(-1.0, 1.0) * 32767.0) as i16).to_le_bytes()
+}
+pub fn decode_s16le(carry: &mut Option<u8>, bytes: &[u8]) -> Vec<f32> {
+    let mut joined = Vec::with_capacity(bytes.len() + 1);
+    joined.extend(carry.take());
+    joined.extend_from_slice(bytes);
+    let pairs = joined.chunks_exact(2);
+    *carry = pairs.remainder().first().copied();
+    pairs
+        .map(|pair| i16::from_le_bytes([pair[0], pair[1]]) as f32 / 32768.0)
+        .collect()
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -25,5 +38,16 @@ mod tests {
             assert!((decode(encode(s)) - s).abs() < 0.04, "{s}");
         }
         assert_eq!(decode(0xff), 0.0);
+    }
+    #[test]
+    fn s16le_roundtrip_across_odd_frame_split() {
+        let bytes: Vec<u8> = [0.5, -0.25, 1.0].into_iter().flat_map(encode_s16le).collect();
+        let mut carry = None;
+        let mut out = decode_s16le(&mut carry, &bytes[..3]);
+        out.extend(decode_s16le(&mut carry, &bytes[3..]));
+        assert_eq!(carry, None);
+        for (got, want) in out.iter().zip([0.5, -0.25, 1.0]) {
+            assert!((got - want).abs() < 1e-4, "{got} {want}");
+        }
     }
 }

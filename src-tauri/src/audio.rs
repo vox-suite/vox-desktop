@@ -8,13 +8,14 @@ use tokio::sync::{mpsc, oneshot};
 use sonora::config::{EchoCanceller, HighPassFilter, NoiseSuppression};
 use sonora::{AudioProcessing, Config, StreamConfig as AudioStreamConfig};
 
-use crate::codec::{resample_to_16k_mono, StreamResampler};
+use crate::codec::StreamResampler;
 
 const AEC_FRAME: usize = 160;
 
 struct ProcessingState {
     apm: AudioProcessing,
     render_resampler: StreamResampler,
+    capture_resampler: StreamResampler,
     render_acc: VecDeque<f32>,
     capture_acc: VecDeque<f32>,
     errors: u64,
@@ -42,6 +43,7 @@ impl Aec {
             state: Mutex::new(ProcessingState {
                 apm,
                 render_resampler: StreamResampler::new(),
+                capture_resampler: StreamResampler::new(),
                 render_acc: VecDeque::new(),
                 capture_acc: VecDeque::new(),
                 errors: 0,
@@ -51,11 +53,7 @@ impl Aec {
 
     fn render(&self, played: &[f32], rate: u32, channels: u16) {
         let mut state = self.state.lock().unwrap();
-        let mono: Vec<f32> = played
-            .chunks_exact(channels as usize)
-            .map(|frame| frame.iter().sum::<f32>() / channels as f32)
-            .collect();
-        let samples = state.render_resampler.push(&mono, rate, 16000);
+        let samples = state.render_resampler.push(&downmix(played, channels), rate, 16000);
         state.render_acc.extend(samples);
         while state.render_acc.len() >= AEC_FRAME {
             let mut frame = [0.0; AEC_FRAME];
@@ -69,8 +67,9 @@ impl Aec {
         }
     }
 
-    fn capture(&self, mic_16k: Vec<f32>) -> Vec<f32> {
+    fn capture(&self, mic: &[f32], rate: u32, channels: u16) -> Vec<f32> {
         let mut state = self.state.lock().unwrap();
+        let mic_16k = state.capture_resampler.push(&downmix(mic, channels), rate, 16000);
         state.capture_acc.extend(mic_16k);
         let mut out = Vec::with_capacity(state.capture_acc.len());
         while state.capture_acc.len() >= AEC_FRAME {
@@ -87,6 +86,14 @@ impl Aec {
         }
         out
     }
+}
+
+fn downmix(interleaved: &[f32], channels: u16) -> Vec<f32> {
+    let channels = channels.max(1) as usize;
+    interleaved
+        .chunks_exact(channels)
+        .map(|frame| frame.iter().sum::<f32>() / channels as f32)
+        .collect()
 }
 
 impl ProcessingState {
@@ -224,8 +231,7 @@ impl AudioEngine {
                         let rms = (sum_sq / data.len().max(1) as f32).sqrt();
                         mic_level_f32.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k =
-                            aec_in_f32.capture(resample_to_16k_mono(data, in_rate, in_channels));
+                        let samples_16k = aec_in_f32.capture(data, in_rate, in_channels);
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -242,11 +248,7 @@ impl AudioEngine {
                         let rms = (sum_sq / f32_samples.len().max(1) as f32).sqrt();
                         mic_level_i16.store(rms.to_bits(), Ordering::Relaxed);
 
-                        let samples_16k = aec_in_i16.capture(resample_to_16k_mono(
-                            &f32_samples,
-                            in_rate,
-                            in_channels,
-                        ));
+                        let samples_16k = aec_in_i16.capture(&f32_samples, in_rate, in_channels);
                         if !samples_16k.is_empty() {
                             let _ = mic_tx.send(samples_16k);
                         }
@@ -492,6 +494,17 @@ mod bounded_capture_tests {
             std::time::Instant::now(),
         );
         assert_eq!(output, [32767, -32767, 0]);
+    }
+
+    #[test]
+    fn capture_does_not_drift_against_render_across_odd_callback_sizes() {
+        let aec = Aec::new().unwrap();
+        let mut produced = 0;
+        for _ in 0..1000 {
+            produced += aec.capture(&[0.0; 512 * 2], 48000, 2).len();
+        }
+        // 512_000 frames @48k = 170_666.67 @16k; per-chunk rounding gave 171_000.
+        assert!((produced as i64 - 170_666).abs() <= AEC_FRAME as i64);
     }
 
     #[test]

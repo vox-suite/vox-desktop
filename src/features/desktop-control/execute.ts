@@ -23,6 +23,25 @@ const text = (value: unknown, label: string) => {
     throw new Error(`Specify ${label}`);
   return value;
 };
+async function resolveProject(args: Record<string, unknown>) {
+  const id = args.projectId ?? args.project_id;
+  if (typeof id === "string") return id;
+  const name = args.projectName ?? args.project_name;
+  if (typeof name !== "string" || !name.trim()) return null;
+  const wanted = name.trim().toLowerCase();
+  const { items } = await projectsApi.list();
+  const exact = items.filter((p) => p.name.trim().toLowerCase() === wanted);
+  const matches = exact.length
+    ? exact
+    : items.filter((p) => p.name.toLowerCase().includes(wanted));
+  if (matches.length !== 1)
+    throw new Error(
+      matches.length
+        ? "Several projects match that name"
+        : "No project has that name",
+    );
+  return matches[0].id;
+}
 export async function executeDesktopCommand(
   command: AppCommand,
 ): Promise<unknown> {
@@ -43,9 +62,7 @@ export async function executeDesktopCommand(
         const spaceId = typeof args.spaceId === "string" ? args.spaceId : null;
         const pulseId = typeof args.pulseId === "string" ? args.pulseId : null;
         const projectId =
-          page === "projects" && typeof args.projectId === "string"
-            ? args.projectId
-            : null;
+          page === "projects" ? await resolveProject(args) : null;
         if (projectId) await projectsApi.get(projectId);
         if (spaceId) await spacesApi.getSpace(spaceId);
         if (pulseId)
