@@ -41,9 +41,14 @@
         },
         {
           "url": "https://mcp.swiggy.com/auth/authorize?*"
+        },
+        {
+          "url": "https://github.com/vox-suite/vox-desktop/releases/latest"
         }
       ]
     },
-    "deep-link:default"
+    "deep-link:default",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

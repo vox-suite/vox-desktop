@@ -1,40 +1,56 @@
 import { useEffect, useState } from "react";
+import { check as checkUpdate, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { platform } from "@/platform";
 
-type AppUpdate = { required: boolean; latest: string | null };
+type AppUpdate = { required: boolean; latest: string | null; installing: boolean };
 
 const RELEASES = "https://github.com/vox-suite/vox-desktop/releases/latest";
-const LATEST_API = "https://api.github.com/repos/vox-suite/vox-desktop/releases/latest";
 
-let state: AppUpdate = { required: false, latest: null };
+let state: AppUpdate = { required: false, latest: null, installing: false };
+let ready: Update | null = null;
+let busy = false;
 const listeners = new Set<(update: AppUpdate) => void>();
 let timer: ReturnType<typeof setInterval> | undefined;
 
-function parts(version: string) {
-  return version.replace(/^v/, "").split(/[.+-]/).map(Number).filter(Number.isFinite);
+function publish(next: Partial<AppUpdate>) {
+  state = { ...state, ...next };
+  listeners.forEach((listener) => listener(state));
 }
 
-function newer(candidate: string, current: string) {
-  const a = parts(candidate);
-  const b = parts(current);
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const diff = (a[i] ?? 0) - (b[i] ?? 0);
-    if (diff) return diff > 0;
+async function install() {
+  if (!ready || state.installing) return;
+  publish({ installing: true });
+  try {
+    await ready.install();
+    await relaunch();
+  } catch {
+    publish({ installing: false });
   }
-  return false;
 }
 
 async function check() {
-  const [server, release] = await Promise.allSettled([
-    platform().http.request<{ status: string }>({ method: "GET", path: "/v1/app/version", query: { platform: "desktop", version: __APP_VERSION__ } }),
-    fetch(LATEST_API).then((response) => (response.ok ? response.json() as Promise<{ tag_name?: string }> : null)),
-  ]);
-  const tag = release.status === "fulfilled" ? release.value?.tag_name : undefined;
-  state = {
-    required: server.status === "fulfilled" && server.value.status === "update_required",
-    latest: tag && newer(tag, __APP_VERSION__) ? tag.replace(/^v/, "") : null,
-  };
-  listeners.forEach((listener) => listener(state));
+  if (busy) return;
+  busy = true;
+  try {
+    const server = await platform().http
+      .request<{ status: string }>({ method: "GET", path: "/v1/app/version", query: { platform: "desktop", version: __APP_VERSION__ } })
+      .catch(() => null);
+    publish({ required: server?.status === "update_required" });
+    if (!ready) {
+      const update = await checkUpdate().catch(() => null);
+      if (update) {
+        await update.download();
+        ready = update;
+      }
+    }
+    publish({ latest: ready?.version ?? null });
+    if (state.required) await install();
+  } catch {
+    publish({ latest: null });
+  } finally {
+    busy = false;
+  }
 }
 
 export function useAppUpdate() {
@@ -49,5 +65,10 @@ export function useAppUpdate() {
       listeners.delete(setUpdate);
     };
   }, []);
-  return { ...update, check, download: () => void platform().browser.openExternal(RELEASES) };
+  return {
+    ...update,
+    check,
+    install,
+    download: () => void platform().browser.openExternal(RELEASES),
+  };
 }

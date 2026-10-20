@@ -300,14 +300,18 @@ export function AppSidebar({
         {appUpdate.latest && updateDismissed !== appUpdate.latest && (
           <div className="space-y-2 rounded-xl border border-line bg-ink/[0.03] p-3 group-data-[collapsible=icon]:hidden">
             <div>
-              <p className="text-[13px] font-medium">Vox {appUpdate.latest} is available</p>
+              <p className="text-[13px] font-medium">Vox {appUpdate.latest} is ready</p>
               <p className="text-xs text-muted-foreground">
-                You're on {__APP_VERSION__}. Download and install the new version.
+                Downloaded in the background. Restart to finish updating.
               </p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={appUpdate.download}>
-                Download
+              <Button
+                size="sm"
+                disabled={appUpdate.installing}
+                onClick={() => void appUpdate.install()}
+              >
+                {appUpdate.installing ? "Updating…" : "Restart to update"}
               </Button>
               <Button
                 size="sm"
