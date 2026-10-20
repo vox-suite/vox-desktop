@@ -69,6 +69,6 @@ export function useAppUpdate() {
     ...update,
     check,
     install,
-    download: () => void platform().browser.openExternal(RELEASES),
+    download: () => void platform().browser?.openExternal(RELEASES),
   };
 }
