@@ -2,6 +2,7 @@ const HELP_DESTINATIONS = new Set([
   "https://takeout.google.com/",
   "https://www.playstation.com/",
   "https://ca.account.sony.com/api/v1/ssocookie",
+  "https://github.com/vox-suite/vox-desktop/releases/latest",
 ]);
 
 const AUTH_DESTINATIONS = new Set([

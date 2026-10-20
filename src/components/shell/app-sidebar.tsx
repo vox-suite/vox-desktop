@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -42,6 +42,8 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { windowControls } from "@/lib/tauri";
+import { platform } from "@/platform";
+import { updatesApi } from "@/features/updates/api";
 import { setThemePref, useThemePref, type ThemePref } from "@/lib/theme";
 import { desktopStore } from "@/features/desktop-control/store";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
@@ -105,13 +107,6 @@ const NAV_ITEMS = [
     activeColor:
       "data-[active=true]:text-violet data-[active=true]:hover:text-violet",
   },
-  {
-    id: "updates",
-    label: "Updates",
-    icon: Bell,
-    activeColor:
-      "data-[active=true]:text-orange data-[active=true]:hover:text-orange",
-  },
 ] as const satisfies readonly {
   id: ShellTab;
   label: string;
@@ -128,6 +123,28 @@ const THEMES = [
   label: string;
   icon: unknown;
 }[];
+
+function useHasUpdates() {
+  const [hasUpdates, setHasUpdates] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      updatesApi
+        .list()
+        .then((items) => alive && setHasUpdates(items.length > 0))
+        .catch(() => {});
+    void load();
+    const unsubscribe = platform().live.subscribe((event) => {
+      if (event.type === "updates_updated" || event.type === "live_reconnected")
+        void load();
+    });
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, []);
+  return hasUpdates;
+}
 
 const INTERACTIVE = "button, a, input, textarea, select, [role='menuitem']";
 
@@ -152,6 +169,7 @@ export function AppSidebar({
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
   const [imgError, setImgError] = useState(false);
   const themePref = useThemePref();
+  const hasUpdates = useHasUpdates();
   const themeIndex = THEMES.findIndex((t) => t.pref === themePref);
   const theme = THEMES[themeIndex];
   const displayName =
@@ -221,11 +239,28 @@ export function AppSidebar({
             className="size-6 rounded-full text-muted-foreground hover:bg-transparent hover:text-foreground"
           />
         </div>
-        <span className="flex min-w-0 items-center gap-2 px-1 py-1 font-heading text-sm font-normal text-muted-foreground group-data-[collapsible=icon]:hidden">
-          <span className="truncate group-data-[collapsible=icon]:hidden">
+        <div className="flex min-w-0 items-center justify-between gap-2 px-1 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <span className="truncate font-heading text-sm font-normal text-muted-foreground group-data-[collapsible=icon]:hidden">
             Vox · {__APP_VERSION__}
           </span>
-        </span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Updates"
+            aria-label={hasUpdates ? "Updates, new items" : "Updates"}
+            aria-pressed={activeTab === "updates"}
+            onClick={() => onTabChange("updates")}
+            className={cn(
+              "relative text-muted-foreground hover:text-foreground",
+              activeTab === "updates" && "text-orange hover:text-orange",
+            )}
+          >
+            <Bell className="size-3.5" />
+            {hasUpdates && (
+              <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-destructive ring-2 ring-sidebar" />
+            )}
+          </Button>
+        </div>
       </SidebarHeader>
 
       <div className="mx-4 border-t border-ink/5 group-data-[collapsible=icon]:mx-2" />
