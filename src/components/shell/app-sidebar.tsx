@@ -44,6 +44,7 @@ import {
 import { windowControls } from "@/lib/tauri";
 import { platform } from "@/platform";
 import { updatesApi } from "@/features/updates/api";
+import { useAppUpdate } from "@/hooks/use-app-update";
 import { setThemePref, useThemePref, type ThemePref } from "@/lib/theme";
 import { desktopStore } from "@/features/desktop-control/store";
 import { useDesktopContext } from "@/hooks/use-desktop-control";
@@ -170,6 +171,8 @@ export function AppSidebar({
   const [imgError, setImgError] = useState(false);
   const themePref = useThemePref();
   const hasUpdates = useHasUpdates();
+  const appUpdate = useAppUpdate();
+  const [updateDismissed, setUpdateDismissed] = useState<string | null>(null);
   const themeIndex = THEMES.findIndex((t) => t.pref === themePref);
   const theme = THEMES[themeIndex];
   const displayName =
@@ -294,6 +297,28 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:p-2">
+        {appUpdate.latest && updateDismissed !== appUpdate.latest && (
+          <div className="space-y-2 rounded-xl border border-line bg-ink/[0.03] p-3 group-data-[collapsible=icon]:hidden">
+            <div>
+              <p className="text-[13px] font-medium">Vox {appUpdate.latest} is available</p>
+              <p className="text-xs text-muted-foreground">
+                You're on {__APP_VERSION__}. Download and install the new version.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={appUpdate.download}>
+                Download
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setUpdateDismissed(appUpdate.latest)}
+              >
+                Later
+              </Button>
+            </div>
+          </div>
+        )}
         <span className="px-2 text-[10px] uppercase tracking-widest text-muted-foreground/60 group-data-[collapsible=icon]:hidden">
           Assistant
         </span>
