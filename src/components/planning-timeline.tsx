@@ -70,6 +70,8 @@ export function PlanningTimeline({
         ? days.length * 100
         : days.length * 400;
   const leadingSpace = 40;
+  const minimumEntryWidth = 180;
+  const trailingSpace = minimumEntryWidth + 40;
   const scale = width / (end - start);
 
   const items = useMemo(() => {
@@ -91,16 +93,16 @@ export function PlanningTimeline({
       .sort((a, b) => a.from - b.from || a.to - b.to)
       .map(({ span, from, to }) => {
         const left = Math.max(0, from - start) * scale;
-        const barWidth = Math.min(
-          width - left,
-          Math.max(180, (Math.min(end, to) - Math.max(start, from)) * scale),
+        const barWidth = Math.max(
+          minimumEntryWidth,
+          (Math.min(end, to) - Math.max(start, from)) * scale,
         );
         let lane = lanes.findIndex((occupied) => occupied + 8 <= left);
         if (lane < 0) lane = lanes.length;
         lanes[lane] = left + barWidth;
         return { span, from, to, left, barWidth, lane };
       });
-  }, [spans, start, end, scale, width]);
+  }, [spans, start, end, scale]);
 
   const ticks = hourly
     ? days.flatMap((day) =>
@@ -157,7 +159,10 @@ export function PlanningTimeline({
       >
         <div
           className="relative h-full"
-          style={{ width: width + leadingSpace + 16, minHeight: height }}
+          style={{
+            width: width + leadingSpace + trailingSpace,
+            minHeight: height,
+          }}
         >
           {onReachStart && (
             <FrontierSentinel

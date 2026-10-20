@@ -402,6 +402,10 @@ export function AppDetailSheet({
                   </div>
                 )}
 
+                {openApp.id === "steam" && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">Sign in through Steam. Set Game details to Public and allow playtime to be visible. Vox checks every 15 minutes and records newly observed playtime, not exact session start and end times. Existing lifetime totals are not added as new activity.</p>
+                )}
+
                 {openApp.id === "playstation" && (
                   <PlaystationNpsso npsso={npsso} setNpsso={setNpsso} />
                 )}

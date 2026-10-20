@@ -35,6 +35,7 @@ export const BRANDS: Record<string, BrandConfig> = {
     color: brandToken("google-calendar"),
     tagline: "Calendar events on your timeline",
   },
+  steam: { icon: Gamepad2, color: "#66c0f4", tagline: "Games and observed playtime" },
   playstation: {
     icon: Gamepad2,
     logo: playstationLogo,
@@ -79,6 +80,7 @@ export const FALLBACK_BRAND: BrandConfig = {
 };
 
 export const KNOWN_CONNECTORS: Connector[] = [
+  { id: "steam", name: "Steam", description: "Add game playtime to your timeline. Requires public Game details and playtime; exact session times are unavailable.", supported_features: ["timeline_sync", "assistant_read"], auth_type: "openid", available: false },
   {
     id: "playstation",
     name: "PlayStation Network",

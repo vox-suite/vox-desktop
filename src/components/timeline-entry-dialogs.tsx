@@ -49,6 +49,48 @@ const fromLocalInput = (value: string) => new Date(value).toISOString();
 const label = (key: string) =>
   key.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase());
 
+function formatAttributeDate(value: string, precision = "minute"): string {
+  // Calendar dates must not shift to the previous day in western time zones.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(dateOnly ? `${value}T00:00:00` : value);
+  if (Number.isNaN(date.getTime())) return value;
+  const calendarOnly = dateOnly || ["year", "month", "day"].includes(precision);
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    ...(precision !== "year" ? { month: "short" as const } : {}),
+    ...(!["year", "month"].includes(precision)
+      ? { day: "numeric" as const }
+      : {}),
+    ...(!calendarOnly
+      ? { hour: "numeric" as const, minute: "2-digit" as const }
+      : {}),
+  }).format(date);
+}
+
+function ExpandableAttributeText({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  const long = text.length > 180;
+  return (
+    <div className="min-w-0">
+      <span id={id} className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+        {long && !expanded ? `${text.slice(0, 180).trimEnd()}…` : text}
+      </span>
+      {long && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={id}
+          className="mt-1 block rounded-sm text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 focus-visible:outline-2 focus-visible:outline-ring"
+          onClick={() => setExpanded((current) => !current)}
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function formatValue(
   key: string,
   value: unknown,
@@ -80,8 +122,8 @@ function formatValue(
     return value.toLocaleString();
   }
   if (typeof value === "string")
-    return /^\d{4}-\d{2}-\d{2}T/.test(value)
-      ? new Date(value).toLocaleString()
+    return /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value)
+      ? formatAttributeDate(value)
       : value;
   if (Array.isArray(value))
     return value.map((v) => formatValue(key, v, content)).join(", ");
@@ -123,7 +165,6 @@ export function TimelineEntryDialog({
   const [error, setError] = useState("");
   const e = entry?.event;
   const content = (e?.content ?? {}) as Record<string, unknown>;
-  const dayOnly = e && ["year", "month", "day"].includes(e.time_precision);
   const brand = BRANDS[entry?.evidence[0]?.source_type ?? ""] ?? {
     ...FALLBACK_BRAND,
     icon: CalendarDays,
@@ -239,12 +280,10 @@ export function TimelineEntryDialog({
               </h3>
               <dl className="grid grid-cols-[minmax(96px,38%)_1fr] items-start gap-x-4 gap-y-3.5 text-[13px]">
                 <AttributeRow name="When">
-                  {dayOnly
-                    ? new Date(e.occurred_at).toLocaleDateString()
-                    : new Date(e.occurred_at).toLocaleString()}
+                  {formatAttributeDate(e.occurred_at, e.time_precision)}
                   {e.ended_at && (
                     <span className="block text-muted-foreground">
-                      until {new Date(e.ended_at).toLocaleString()}
+                      until {formatAttributeDate(e.ended_at, e.time_precision)}
                     </span>
                   )}
                 </AttributeRow>
@@ -253,7 +292,7 @@ export function TimelineEntryDialog({
                     ([key, v]) => v != null && v !== "" && key !== "currency",
                   )
                   .map(([key, value]) => (
-                    <AttributeRow key={key} name={label(key)}>
+                    <AttributeRow key={`${e.id}:${key}`} name={label(key)}>
                       <AttributeValue
                         name={key}
                         value={value}
@@ -349,9 +388,22 @@ function AttributeRow({
   );
 }
 
-const TAG_COLORS = ["coral", "sky", "mint", "gold", "violet", "pink", "teal", "orange"] as const;
+const TAG_COLORS = [
+  "coral",
+  "sky",
+  "mint",
+  "gold",
+  "violet",
+  "pink",
+  "teal",
+  "orange",
+] as const;
 const tagColor = (text: string) =>
-  token(TAG_COLORS[[...text].reduce((h, c) => h + c.charCodeAt(0), 0) % TAG_COLORS.length]);
+  token(
+    TAG_COLORS[
+      [...text].reduce((h, c) => h + c.charCodeAt(0), 0) % TAG_COLORS.length
+    ],
+  );
 
 function AttributeValue({
   name,
@@ -387,7 +439,7 @@ function AttributeValue({
               className="size-1.5 rounded-full"
               style={{ background: tagColor(String(v)) }}
             />
-            {String(v)}
+            {formatValue(name, v, content)}
           </span>
         ))}
       </span>
@@ -395,11 +447,14 @@ function AttributeValue({
   const text = formatValue(name, value, content);
   if (/^[0-9a-f]{8}-[0-9a-f-]{27}$|^(?=.*\d)[A-Z0-9_-]{8,}$/i.test(text))
     return (
-      <span className="truncate font-mono text-xs text-muted-foreground" title={text}>
+      <span
+        className="truncate font-mono text-xs text-muted-foreground"
+        title={text}
+      >
         {text}
       </span>
     );
-  return text;
+  return <ExpandableAttributeText key={text} text={text} />;
 }
 
 function CategoryIcon({ value }: { value: string }) {
