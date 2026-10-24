@@ -162,7 +162,7 @@ def main():
                 return
             request = urllib.request.Request(api + "/" + action, data=self.rfile.read(size), headers=headers)
             try:
-                response = urllib.request.urlopen(request, timeout=190)
+                response = urllib.request.urlopen(request, timeout=90)
             except urllib.error.HTTPError as error:
                 response = error
             except Exception:
@@ -187,7 +187,7 @@ def main():
     (home / ".gemini").mkdir(parents=True)
     host = desktop / "target/debug/vox-desktop"
     runtime = private_root / "engines/gemini-v0.63.0-node22.23.3-aarch64"
-    settings = {"security":{"auth":{"selectedType":"gemini-api-key"}},"advanced":{"autoConfigureMemory":False},"telemetry":{"enabled":False},"context":{"fileName":"VOX_NO_PROJECT_INSTRUCTIONS.md"},"model":{"maxSessionTurns":80},"mcpServers":{"vox-sources":{"command":str(host),"args":["--vox-project-tools",str(run)],"trust":True,"timeout":60000}}}
+    settings = {"security":{"auth":{"selectedType":"gemini-api-key"}},"advanced":{"autoConfigureMemory":False},"telemetry":{"enabled":False},"context":{"fileName":"VOX_NO_PROJECT_INSTRUCTIONS.md"},"model":{"maxSessionTurns":80,"disableLoopDetection":True},"mcpServers":{"vox-sources":{"command":str(host),"args":["--vox-project-tools",str(run)],"trust":True,"timeout":60000}}}
     (home / ".gemini/settings.json").write_text(json.dumps(settings))
     policy = run / "policy.toml"
     policy.write_text('[[rule]]\ntoolName = "*"\ndecision = "deny"\npriority = 800\n\n[[rule]]\ntoolName = "*"\nmcpName = "vox-sources"\ndecision = "allow"\npriority = 900\n')

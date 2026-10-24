@@ -212,6 +212,24 @@ pub fn changed(source: &LocalSource) -> Result<Vec<String>, String> {
     Ok(changes.into_iter().collect())
 }
 pub fn read(source: &LocalSource, citation: &Citation) -> Result<String, String> {
+    let text = file_text(source, citation)?;
+    if citation.start_line == 0 || citation.end_line < citation.start_line {
+        return Err("Invalid line range".into());
+    }
+    if citation.start_line as usize > text.lines().count() {
+        return Err("Citation line is outside this source file".into());
+    }
+    Ok(text
+        .lines()
+        .skip(citation.start_line as usize - 1)
+        .take((citation.end_line - citation.start_line + 1).min(400) as usize)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .chars()
+        .take(32000)
+        .collect())
+}
+pub fn file_text(source: &LocalSource, citation: &Citation) -> Result<String, String> {
     let relative = Path::new(&citation.path);
     if relative.is_absolute()
         || relative
@@ -243,20 +261,5 @@ pub fn read(source: &LocalSource, citation: &Citation) -> Result<String, String>
     if !citation.hash.is_empty() && hash(&bytes) != citation.hash {
         return Err("This citation is outdated. Refresh its source first.".into());
     }
-    let text = std::str::from_utf8(&bytes).map_err(|_| "Source is not UTF-8 text")?;
-    if citation.start_line == 0 || citation.end_line < citation.start_line {
-        return Err("Invalid line range".into());
-    }
-    if citation.start_line as usize > text.lines().count() {
-        return Err("Citation line is outside this source file".into());
-    }
-    Ok(text
-        .lines()
-        .skip(citation.start_line as usize - 1)
-        .take((citation.end_line - citation.start_line + 1).min(200) as usize)
-        .collect::<Vec<_>>()
-        .join("\n")
-        .chars()
-        .take(16000)
-        .collect())
+    String::from_utf8(bytes).map_err(|_| "Source is not UTF-8 text".into())
 }
