@@ -148,10 +148,10 @@ export function AppDetailSheet({
         side="right"
         overlay={false}
         onInteractOutside={outsideGuard}
-        className="vox-scroll w-full overflow-y-auto border-ink/10 bg-modal sm:max-w-lg"
+        className="vox-scroll overflow-y-auto rounded-2xl border border-line bg-modal data-[side=right]:inset-y-3 data-[side=right]:right-3 data-[side=right]:h-auto data-[side=right]:w-[calc(100%-1.5rem)] data-[side=right]:sm:max-w-lg [&_[data-slot=sheet-close]]:right-4 [&_[data-slot=sheet-close]]:top-4"
       >
         {openApp && openBrand && (
-          <div className="relative isolate flex min-h-full shrink-0 flex-col gap-7 px-8 pb-12 pt-9">
+          <div className="relative isolate flex min-h-full shrink-0 flex-col gap-6 px-5 pb-8 pt-10 sm:px-7">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 overflow-hidden"

@@ -81,7 +81,7 @@ function charts(catalog: Measurement[], days: number): Chart[] {
     out.push(
       {
         key: "gemini-daily",
-        title: "Gemini tokens per day",
+        title: "LLM tokens per day",
         definition: {
           ...base,
           measurement_id: tokens,
@@ -94,7 +94,7 @@ function charts(catalog: Measurement[], days: number): Chart[] {
       },
       {
         key: "gemini-channel",
-        title: "Gemini tokens by channel",
+        title: "LLM tokens by channel",
         definition: {
           ...base,
           measurement_id: tokens,
@@ -104,7 +104,7 @@ function charts(catalog: Measurement[], days: number): Chart[] {
       },
       {
         key: "gemini-feature",
-        title: "Gemini tokens by feature",
+        title: "LLM tokens by feature",
         definition: {
           ...base,
           measurement_id: tokens,
@@ -234,7 +234,7 @@ export function UsagePage() {
               <p className="mt-0.5 font-mono text-[10.5px] leading-4 text-muted-foreground">
                 {firstSeen
                   ? `Tracked since ${new Date(firstSeen).toLocaleDateString()}`
-                  : "Voice minutes and Gemini tokens"}
+                  : "Voice minutes and LLM tokens"}
               </p>
             </div>
           </div>
@@ -282,7 +282,7 @@ export function UsagePage() {
           <PageLoading accent="violet" label="Loading usage…" />
         ) : list.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">
-            No usage recorded yet. Voice sessions and Gemini requests appear here
+            No usage recorded yet. Voice sessions and LLM requests appear here
             once tracking has data.
           </p>
         ) : (
@@ -292,11 +292,11 @@ export function UsagePage() {
               <Stat label="Voice input" value={seriesTotal(voiceDaily, id("voice", "input_audio_seconds"))} unit="minutes" />
               <Stat label="Voice output" value={seriesTotal(voiceDaily, id("voice", "output_audio_seconds"))} unit="minutes" />
               <Stat label="Voice sessions" value={seriesCount(voiceDaily, id("voice", "session_seconds"))} unit="" />
-              <Stat label="Gemini tokens" value={seriesTotal(geminiDaily, id("gemini", "total_tokens"))} unit="tokens" />
-              <Stat label="Gemini requests" value={seriesCount(geminiDaily, id("gemini", "total_tokens"))} unit="" />
+              <Stat label="LLM tokens" value={seriesTotal(geminiDaily, id("gemini", "total_tokens"))} unit="tokens" />
+              <Stat label="LLM requests" value={seriesCount(geminiDaily, id("gemini", "total_tokens"))} unit="" />
             </div>
             <p className="text-xs text-muted-foreground">
-              Gemini totals include every request: voice, phone, chat and
+              LLM totals include every request: voice, phone, chat and
               background work. Voice output counts only audio that was played.
             </p>
             <div className="pulse-chart-grid">

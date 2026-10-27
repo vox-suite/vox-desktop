@@ -1,17 +1,18 @@
 import { CHART_TOKENS, SERIES_TOKENS } from "@/features/pulse/format";
-import { useVoxColors } from "@/lib/theme";
+import { token } from "@/lib/theme";
 
-/** Resolved chart colors for Recharts and SVG attributes, updated when the theme changes. */
+/** SVG and HTML resolve these tokens directly, including after theme changes.
+ * Avoid caching computed colors before the theme stylesheet is available.
+ */
 export function useChartPalette() {
-  const colors = useVoxColors();
-  const series = SERIES_TOKENS.map((name) => colors[name]);
+  const series = SERIES_TOKENS.map(token);
   return {
     series,
     seriesAt: (i: number) => series[i % series.length],
-    chart: CHART_TOKENS.map((name) => colors[name]),
-    grid: colors.border,
-    cursor: colors["border-strong"],
-    axis: colors["text-muted"],
-    label: colors.text,
+    chart: CHART_TOKENS.map(token),
+    grid: token("border"),
+    cursor: token("border-strong"),
+    axis: token("text-muted"),
+    label: token("text"),
   };
 }
