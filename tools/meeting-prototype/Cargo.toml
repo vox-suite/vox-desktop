@@ -9,6 +9,8 @@ publish = false
 
 [dependencies]
 anyhow = "1"
+vox-meeting-store = { path = "../../crates/meeting-store" }
+uuid = { version = "1", features = ["v4", "serde"] }
 clap = { version = "4", features = ["derive"] }
 ctrlc = "3"
 flexaudio = "=0.8.1"

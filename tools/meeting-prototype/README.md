@@ -65,3 +65,7 @@ To test inference without listening to the room, substitute `.runtime/whisper.cp
 Record OS/CPU/RAM, library/model pin, selected devices, permission state, duration, per-source frames/peak/loss, CPU/memory/thermal observations, recognition accuracy and transcription wall time. Test headphones, speakers, USB/Bluetooth switches, idle output, permission denial, Ctrl+C, network disconnected and failed local inference. Inspect runtime network activity to substantiate audio staying local; source/dependency inspection alone is not a network-trace result.
 
 Dependencies: [flexaudio (MIT)](https://github.com/Studio-Sadola/flexaudio), [whisper.cpp (MIT)](https://github.com/ggml-org/whisper.cpp), [Whisper weights (MIT)](https://github.com/openai/whisper/blob/main/LICENSE). Preserve upstream license notices when packaging; audit the pinned transitive tree before shipping.
+
+## Persistent meeting library
+
+`record-meeting` and `meetings` now exercise the shared local storage layer. Recordings are owned by a persistent meeting ID; transcripts and manual notes survive restarting the process. See [the storage contract and commands](../../crates/meeting-store/README.md) for account scoping, checkpoint/recovery behavior and evidence limits. This is the backend slice of the next milestone; no meeting UI or model-generated summaries/tasks are included.

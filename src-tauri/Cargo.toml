@@ -13,6 +13,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+vox-meeting-store = { path = "../crates/meeting-store" }
+anyhow = "1"
 vox-connections = { path = "../../vox-connections" }
 vox-shared = { path = "../../vox-shared" }
 vox-desktop-control = { path = "../../vox-desktop-control" }

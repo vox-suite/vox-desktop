@@ -29,15 +29,26 @@ impl Drop for OwnedWorker {
 
 /// Bound native capture startup and teardown as well as the recording loop.
 pub fn supervise(
+    command: Command,
+    cancelled: &AtomicBool,
+    duration: Duration,
+    grace: Duration,
+) -> Result<WorkerOutcome> {
+    supervise_with_checkpoint(command, cancelled, duration, grace, || Ok(()))
+}
+
+pub fn supervise_with_checkpoint(
     mut command: Command,
     cancelled: &AtomicBool,
     duration: Duration,
     grace: Duration,
+    mut checkpoint: impl FnMut() -> Result<()>,
 ) -> Result<WorkerOutcome> {
     let mut worker = OwnedWorker(command.stdin(Stdio::piped()).spawn()?);
     let pid = worker.0.id();
     let deadline = Instant::now() + duration;
     let mut stop_requested: Option<(Instant, &'static str)> = None;
+    let mut next_checkpoint = Instant::now();
     loop {
         if let Some(status) = worker.0.try_wait()? {
             return Ok(WorkerOutcome {
@@ -47,6 +58,10 @@ pub fn supervise(
                 reason: stop_requested.map(|(_, why)| why.into()),
                 exit_code: status.code(),
             });
+        }
+        if Instant::now() >= next_checkpoint {
+            checkpoint()?;
+            next_checkpoint = Instant::now() + Duration::from_secs(1);
         }
         if stop_requested.is_none()
             && (cancelled.load(Ordering::Relaxed) || Instant::now() >= deadline)

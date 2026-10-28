@@ -9,6 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 use vox_meeting_prototype::{capture, supervisor, transcript};
+mod library;
 
 #[derive(Parser)]
 #[command(about = "Local-only Vox capture experiment. Records ONLY after the record command.")]
@@ -19,6 +20,26 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Action {
+    /// Capture into an account-scoped, recoverable local meeting library.
+    RecordMeeting {
+        #[arg(long)]
+        library: PathBuf,
+        #[arg(long)]
+        account: uuid::Uuid,
+        #[arg(long)]
+        title: String,
+        #[arg(long,default_value_t=30,value_parser=clap::value_parser!(u64).range(1..=7200))]
+        seconds: u64,
+    },
+    /// Inspect and edit persistent local meeting records without opening audio devices.
+    Meetings {
+        #[arg(long)]
+        library: PathBuf,
+        #[arg(long)]
+        account: uuid::Uuid,
+        #[command(subcommand)]
+        action: MeetingAction,
+    },
     /// Enumerate microphone and playback devices; never starts a recording.
     Devices,
     /// Record separate microphone/system WAVs locally. Ctrl+C stops both.
@@ -53,6 +74,43 @@ enum Action {
     },
 }
 
+#[derive(Subcommand)]
+enum MeetingAction {
+    Create {
+        #[arg(long)]
+        title: String,
+    },
+    List {
+        #[arg(long, default_value_t = 0)]
+        offset: u32,
+        #[arg(long, default_value_t = 20)]
+        limit: u32,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Import {
+        id: uuid::Uuid,
+        #[arg(long)]
+        expected_revision: i64,
+        #[arg(long)]
+        transcript: PathBuf,
+    },
+    Notes {
+        id: uuid::Uuid,
+        #[arg(long)]
+        expected_revision: i64,
+        #[arg(long)]
+        text: String,
+    },
+    Recover,
+    Delete {
+        id: uuid::Uuid,
+        #[arg(long)]
+        expected_revision: i64,
+    },
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let stopped = Arc::new(AtomicBool::new(false));
@@ -61,6 +119,71 @@ fn main() -> Result<()> {
         signal.store(true, Ordering::Relaxed);
     })?;
     match args.command {
+        Action::RecordMeeting {
+            library: root,
+            account,
+            title,
+            seconds,
+        } => {
+            let meeting = library::record(&root, account, &title, seconds, &stopped)?;
+            println!("{}", serde_json::to_string_pretty(&meeting)?);
+            ensure!(
+                matches!(
+                    meeting.state,
+                    vox_meeting_store::MeetingState::Captured
+                        | vox_meeting_store::MeetingState::Partial
+                ),
+                "meeting capture interrupted; local record was preserved"
+            );
+        }
+        Action::Meetings {
+            library: root,
+            account,
+            action,
+        } => {
+            use vox_meeting_store::{now_ms, Store};
+            let mut store = Store::open(&root, account)?;
+            let value = match action {
+                MeetingAction::Create { title } => {
+                    serde_json::to_value(store.create(uuid::Uuid::new_v4(), &title, now_ms()?)?)?
+                }
+                MeetingAction::List { offset, limit } => {
+                    serde_json::to_value(store.list(offset, limit)?)?
+                }
+                MeetingAction::Get { id } => serde_json::to_value(store.get(id)?)?,
+                MeetingAction::Import {
+                    id,
+                    expected_revision,
+                    transcript,
+                } => serde_json::to_value(library::import(
+                    &mut store,
+                    id,
+                    expected_revision,
+                    &transcript,
+                )?)?,
+                MeetingAction::Notes {
+                    id,
+                    expected_revision,
+                    text,
+                } => serde_json::to_value(store.save_notes(
+                    id,
+                    expected_revision,
+                    &text,
+                    now_ms()?,
+                )?)?,
+                MeetingAction::Recover => {
+                    serde_json::to_value(store.recover_interrupted(now_ms()?)?)?
+                }
+                MeetingAction::Delete {
+                    id,
+                    expected_revision,
+                } => {
+                    store.delete(id, expected_revision, now_ms()?)?;
+                    serde_json::json!({"deleted":true})
+                }
+            };
+            println!("{}", serde_json::to_string_pretty(&value)?);
+        }
         Action::Devices => {
             for device in flexaudio::devices()? {
                 println!(

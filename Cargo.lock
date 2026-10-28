@@ -7058,6 +7058,7 @@ dependencies = [
 name = "vox-desktop"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "base64 0.22.1",
  "chrono",
@@ -7094,6 +7095,7 @@ dependencies = [
  "uuid",
  "vox-connections",
  "vox-desktop-control",
+ "vox-meeting-store",
  "vox-shared",
 ]
 
@@ -7112,6 +7114,18 @@ dependencies = [
  "objc2-foundation",
  "objc2-vision",
  "xcap",
+]
+
+[[package]]
+name = "vox-meeting-store"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
 ]
 
 [[package]]

@@ -10,6 +10,7 @@ mod device_cache;
 mod device_link;
 mod live_link;
 mod local_voice;
+mod meetings;
 #[cfg(target_os = "macos")]
 mod macos_location;
 mod pkce;
@@ -131,6 +132,13 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            meetings::meeting_list,
+            meetings::meeting_get,
+            meetings::meeting_create,
+            meetings::meeting_save_transcript,
+            meetings::meeting_save_notes,
+            meetings::meeting_delete,
+            meetings::meeting_recover_interrupted,
             projects::project_engine_status,
             projects::project_install_engine,
             projects::project_pick_sources,

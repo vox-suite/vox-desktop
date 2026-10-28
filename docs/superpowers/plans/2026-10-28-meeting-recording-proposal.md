@@ -118,3 +118,5 @@ Milestone 2 developer prototype is in `tools/meeting-prototype/`: isolated flexa
 - Library links above and https://github.com/screenpipe/screenpipe/blob/main/LICENSE.md
 
 Evidence boundary: local source inspection and live upstream documentation/repository review only. No library/model was installed or built, and no cross-platform capture, offline/privacy, transcription-quality, or performance test was performed.
+
+2026-10-28 follow-up: prototype committed/pushed to main as `372ec704df0ee18edbe022d0ba94fb30bef6ed98`, remote hash verified. The next backend slice is implemented in `crates/meeting-store`, `src-tauri/src/meetings.rs` and the managed recorder CLI: account-scoped SQLite transcript/notes storage, optimistic edits, capture leases/OS locks, retryable interrupted-WAV repair and authenticated desktop commands. See `crates/meeting-store/README.md` for tests/live evidence and remaining UI/privacy-hardening work. This does not mark the full meeting UI, encrypted recorder or summarization/task milestone complete.
