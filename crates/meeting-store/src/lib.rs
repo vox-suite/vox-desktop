@@ -1,3 +1,4 @@
+mod cleanup;
 mod document;
 pub use document::{export_text, parse_transcript_import, MAX_IMPORT_BYTES};
 mod recordings;
@@ -36,6 +37,12 @@ pub fn private_dir(path: &Path) -> Result<()> {
     Ok(())
 }
 
+pub struct RecordingFilesLock {
+    _file: File,
+    account_dir: PathBuf,
+    id: Uuid,
+}
+
 pub struct Store {
     conn: Connection,
     account_dir: PathBuf,
@@ -56,10 +63,10 @@ impl Store {
             options.mode(0o600);
         }
         options.open(&db)?;
-        let conn = Connection::open(db)?;
+        let mut conn = Connection::open(db)?;
         conn.busy_timeout(Duration::from_secs(5))?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        ensure!(version <= 1, "meeting library requires a newer Vox version");
+        ensure!(version <= 2, "meeting library requires a newer Vox version");
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;
             CREATE TABLE IF NOT EXISTS meetings(id TEXT PRIMARY KEY, title TEXT NOT NULL, state TEXT NOT NULL,
             revision INTEGER NOT NULL DEFAULT 0, notes TEXT NOT NULL DEFAULT '', created_ms INTEGER NOT NULL,
@@ -67,7 +74,18 @@ impl Store {
             system_frames INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS transcripts(meeting_id TEXT NOT NULL REFERENCES meetings(id), source TEXT NOT NULL,
             input_json TEXT NOT NULL, saved_json TEXT NOT NULL, PRIMARY KEY(meeting_id,source));
-            PRAGMA user_version=1;")?;
+")?;
+        if version < 2 {
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            let version: i64 = tx.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            ensure!(version <= 2, "meeting library requires a newer Vox version");
+            if version < 2 {
+                tx.execute_batch("ALTER TABLE meetings ADD COLUMN audio_cleanup_pending INTEGER NOT NULL DEFAULT 0;
+                  ALTER TABLE meetings ADD COLUMN audio_deleted INTEGER NOT NULL DEFAULT 0;
+                  PRAGMA user_version=2;")?;
+            }
+            tx.commit()?;
+        }
         Ok(Self {
             conn,
             account_dir,
@@ -89,9 +107,9 @@ impl Store {
     }
     pub fn get(&self, id: Uuid) -> Result<Meeting> {
         let tx = self.conn.unchecked_transaction()?;
-        let mut meeting = tx.query_row("SELECT id,title,state,revision,notes,created_ms,updated_ms,mic_frames,system_frames FROM meetings WHERE id=?1 AND deleted=0", [id.to_string()], |row| {
-            Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,i64>(3)?,row.get::<_,String>(4)?,row.get::<_,i64>(5)?,row.get::<_,i64>(6)?,row.get::<_,u64>(7)?,row.get::<_,u64>(8)?))
-        }).optional()?.map(|r| -> Result<Meeting> { Ok(Meeting { id:Uuid::parse_str(&r.0)?,title:r.1,state:serde_json::from_value(serde_json::Value::String(r.2))?,revision:r.3,notes:r.4,created_ms:r.5,updated_ms:r.6,mic_frames:r.7,system_frames:r.8,tracks:vec![],cross_source_alignment_verified:false }) }).transpose()?.context("meeting not found")?;
+        let mut meeting = tx.query_row("SELECT id,title,state,revision,notes,created_ms,updated_ms,mic_frames,system_frames,audio_cleanup_pending,audio_deleted FROM meetings WHERE id=?1 AND deleted=0", [id.to_string()], |row| {
+            Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,i64>(3)?,row.get::<_,String>(4)?,row.get::<_,i64>(5)?,row.get::<_,i64>(6)?,row.get::<_,u64>(7)?,row.get::<_,u64>(8)?,row.get::<_,bool>(9)?,row.get::<_,bool>(10)?))
+        }).optional()?.map(|r| -> Result<Meeting> { Ok(Meeting { id:Uuid::parse_str(&r.0)?,title:r.1,state:serde_json::from_value(serde_json::Value::String(r.2))?,revision:r.3,notes:r.4,created_ms:r.5,updated_ms:r.6,mic_frames:r.7,system_frames:r.8,audio_cleanup_pending:r.9,audio_available:!r.10 && self.recording_path(id).is_dir(),tracks:vec![],cross_source_alignment_verified:false }) }).transpose()?.context("meeting not found")?;
         let mut stmt = tx.prepare(
             "SELECT source,saved_json FROM transcripts WHERE meeting_id=?1 ORDER BY source",
         )?;
@@ -152,6 +170,16 @@ impl Store {
         ensure!(self.conn.execute("UPDATE meetings SET notes=?1,revision=revision+1,updated_ms=?2 WHERE id=?3 AND revision=?4 AND deleted=0",params![notes,now,id.to_string(),expected])? == 1,"meeting changed; reload before editing");
         self.get(id)
     }
+    pub fn save_processed_transcript(
+        &mut self,
+        id: Uuid,
+        expected: i64,
+        source: Source,
+        input: &[Segment],
+        now: i64,
+    ) -> Result<i64> {
+        self.save_transcript_inner(id, expected, source, input, now, true)
+    }
     pub fn save_transcript(
         &mut self,
         id: Uuid,
@@ -160,15 +188,40 @@ impl Store {
         input: &[Segment],
         now: i64,
     ) -> Result<Meeting> {
+        self.save_transcript_inner(id, expected, source, input, now, false)?;
+        self.get(id)
+    }
+    fn save_transcript_inner(
+        &mut self,
+        id: Uuid,
+        expected: i64,
+        source: Source,
+        input: &[Segment],
+        now: i64,
+        strict: bool,
+    ) -> Result<i64> {
         let input = validate_segments(input)?;
         let json = serde_json::to_string(&input)?;
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if strict {
+            let revision: Option<i64> = tx
+                .query_row(
+                    "SELECT revision FROM meetings WHERE id=?1 AND deleted=0",
+                    [id.to_string()],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            ensure!(
+                revision == Some(expected),
+                "Meeting changed; audio retained for retry"
+            );
+        }
         let old: Option<String> = tx.query_row("SELECT input_json FROM transcripts t JOIN meetings m ON m.id=t.meeting_id WHERE t.meeting_id=?1 AND source=?2 AND m.deleted=0",params![id.to_string(),source.as_str()],|r| r.get(0)).optional()?;
         if old.as_deref() == Some(&json) {
             tx.commit()?;
-            return self.get(id);
+            return Ok(expected);
         }
         ensure!(tx.execute("UPDATE meetings SET revision=revision+1,updated_ms=?1,state=CASE WHEN state='prepared' THEN 'transcript_ready' ELSE state END WHERE id=?2 AND revision=?3 AND deleted=0 AND state!='recording'",params![now,id.to_string(),expected])? == 1, "meeting changed or recording is active");
         let segments: Vec<SavedSegment> = input
@@ -183,7 +236,7 @@ impl Store {
             .collect();
         tx.execute("INSERT INTO transcripts(meeting_id,source,input_json,saved_json) VALUES(?1,?2,?3,?4) ON CONFLICT(meeting_id,source) DO UPDATE SET input_json=excluded.input_json,saved_json=excluded.saved_json",params![id.to_string(),source.as_str(),json,serde_json::to_string(&segments)?])?;
         tx.commit()?;
-        self.get(id)
+        Ok(expected + 1)
     }
     pub fn delete(&mut self, id: Uuid, expected: i64, now: i64) -> Result<()> {
         let path = self.recording_path(id);
@@ -204,10 +257,14 @@ impl Store {
         Ok(())
     }
     /// Hold while reading local audio so deletion/recovery cannot mutate it.
-    pub fn lock_recording_files(&self, id: Uuid) -> Result<File> {
+    pub fn lock_recording_files(&self, id: Uuid) -> Result<RecordingFilesLock> {
         let lock = self.capture_lock(id)?;
         lock.try_lock().context("recording or recovery is active")?;
-        Ok(lock)
+        Ok(RecordingFilesLock {
+            _file: lock,
+            account_dir: self.account_dir.clone(),
+            id,
+        })
     }
     fn capture_lock(&self, id: Uuid) -> Result<File> {
         open_lock(&self.account_dir, id)
@@ -227,5 +284,7 @@ fn open_lock(account: &Path, id: Uuid) -> Result<File> {
     Ok(options.open(path)?)
 }
 
+#[cfg(test)]
+mod cleanup_tests;
 #[cfg(test)]
 mod tests;

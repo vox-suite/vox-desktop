@@ -82,7 +82,7 @@ impl Store {
     pub fn recover_interrupted(&mut self, now: i64) -> Result<Vec<RecoveryReport>> {
         self.recover_expired(now)?;
         let ids = {
-            let mut stmt=self.conn.prepare("SELECT id FROM meetings WHERE state='interrupted' AND deleted=0 ORDER BY updated_ms,id LIMIT 100")?;
+            let mut stmt=self.conn.prepare("SELECT id FROM meetings WHERE state='interrupted' AND deleted=0 AND audio_deleted=0 ORDER BY updated_ms,id LIMIT 100")?;
             let rows = stmt
                 .query_map([], |r| r.get::<_, String>(0))?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -101,7 +101,7 @@ impl Store {
             let tx = self
                 .conn
                 .transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let old=tx.query_row("SELECT mic_frames,system_frames FROM meetings WHERE id=?1 AND state='interrupted' AND deleted=0",[&raw],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,u64>(1)?))).optional()?;
+            let old=tx.query_row("SELECT mic_frames,system_frames FROM meetings WHERE id=?1 AND state='interrupted' AND deleted=0 AND audio_deleted=0",[&raw],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,u64>(1)?))).optional()?;
             let Some((mut mic, mut system)) = old else {
                 continue;
             };

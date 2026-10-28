@@ -17,6 +17,8 @@ const base = (id: string, title: string, index: number): Meeting => ({
   updated_ms: stamp,
   mic_frames: 240000,
   system_frames: 240000,
+  audio_available: true,
+  audio_cleanup_pending: false,
   cross_source_alignment_verified: false,
   tracks: [
     {
@@ -68,6 +70,7 @@ const records = new Map(
 export const meetingFixture = {
   records,
   failSave: false,
+  failCleanup: false,
   failGetId: "",
   conflictNextSave: false,
   failList: false,
@@ -90,6 +93,15 @@ const get = (id: string) => {
   return m;
 };
 export const meetingFixturePort: MeetingsPort = {
+  cleanupAudio: async (id) => {
+    if (meetingFixture.failCleanup)
+      throw Error("Temporary audio cleanup failed; retry");
+    const m = records.get(id)!;
+    m.audio_available = false;
+    m.audio_cleanup_pending = false;
+    m.revision++;
+    return structuredClone(m);
+  },
   list: async (offset, limit) => {
     if (meetingFixture.failList)
       throw Error("Could not open local meeting notes");
@@ -220,6 +232,7 @@ meetingFixturePort.recording = {
     const m = await meetingFixturePort.create(title);
     const saved = records.get(m.id)!;
     saved.state = "recording";
+    saved.audio_available = true;
     saved.mic_frames = saved.system_frames = 16000;
     recordingStatus = {
       id: m.id,
@@ -255,6 +268,8 @@ meetingFixturePort.recording = {
         },
       ];
       m.revision++;
+      m.audio_available = false;
+      m.audio_cleanup_pending = false;
       recordingStatus = { ...recordingStatus, phase: "ready" };
     }, 100);
   },

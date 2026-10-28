@@ -12,7 +12,7 @@ use std::{
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 use vox_meeting_recorder::{library, ownership::AudioOwnership, transcript};
-use vox_meeting_store::{now_ms, Meeting, MeetingState, Segment, Source, Store};
+use vox_meeting_store::{now_ms, Meeting, MeetingState, Segment, Store};
 
 #[derive(Clone, Serialize, Default)]
 pub struct Status {
@@ -357,76 +357,44 @@ pub async fn meeting_transcribe(
     tauri::async_runtime::spawn(async move {
         let worker_stop = stop.clone();
         let task = tauri::async_runtime::spawn_blocking(move || -> anyhow::Result<()> {
-            let mut store = Store::open(&root, account)?;
-            let _audio_lock = store.lock_recording_files(id)?;
-            let m = store.get(id)?;
-            anyhow::ensure!(
-                matches!(
-                    m.state,
-                    MeetingState::Captured
-                        | MeetingState::Partial
-                        | MeetingState::Interrupted
-                        | MeetingState::TranscriptReady
-                ),
-                "Stop and recover the recording first"
-            );
-            anyhow::ensure!(
-                m.mic_frames > 0 || m.system_frames > 0,
-                "No recoverable audio; check interrupted recordings first"
-            );
-            let output = store.recording_path(id);
-            for (source, name, frames) in [
-                (Source::Mic, "mic", m.mic_frames),
-                (Source::System, "system", m.system_frames),
-            ] {
-                if frames == 0 {
-                    continue;
-                }
-                anyhow::ensure!(
-                    !worker_stop.load(Ordering::SeqCst),
-                    "Local transcription cancelled"
-                );
-                let expected_revision = store.get(id)?.revision;
-                let prefix = output.join(format!("asr-{}", Uuid::new_v4()));
-                let audio = output.join(format!("{name}.wav"));
-                let segments = if let Some(binary) = &c.binary {
-                    transcript::transcribe(
-                        binary,
-                        &c.model,
-                        &audio,
-                        &prefix,
-                        name,
-                        &worker_stop,
-                        Duration::from_secs(7200),
-                    )?
-                } else {
-                    vox_meeting_recorder::embedded::supervised(
-                        &executable,
-                        &c.model,
-                        &audio,
-                        &prefix,
-                        name,
-                        &worker_stop,
-                        Duration::from_secs(7200),
-                    )?
-                };
-                let _ = std::fs::remove_file(prefix.with_extension("json"));
-                anyhow::ensure!(
-                    !worker_stop.load(Ordering::SeqCst),
-                    "Local transcription cancelled"
-                );
-                let segments: Vec<_> = segments
-                    .into_iter()
-                    .map(|s| Segment {
-                        start_ms: s.start_ms,
-                        end_ms: s.end_ms,
-                        text: s.text,
-                    })
-                    .collect();
-                // A concurrent note edit invalidates the revision; do not overwrite it.
-                store.save_transcript(id, expected_revision, source, &segments, now_ms()?)?;
-            }
-            Ok(())
+            vox_meeting_recorder::processing::transcribe_meeting(
+                &root,
+                account,
+                id,
+                &worker_stop,
+                |source, audio, prefix| {
+                    let name = source.as_str();
+                    let segments = if let Some(binary) = &c.binary {
+                        transcript::transcribe(
+                            binary,
+                            &c.model,
+                            audio,
+                            prefix,
+                            name,
+                            &worker_stop,
+                            Duration::from_secs(7200),
+                        )?
+                    } else {
+                        vox_meeting_recorder::embedded::supervised(
+                            &executable,
+                            &c.model,
+                            audio,
+                            prefix,
+                            name,
+                            &worker_stop,
+                            Duration::from_secs(7200),
+                        )?
+                    };
+                    Ok(segments
+                        .into_iter()
+                        .map(|s| Segment {
+                            start_ms: s.start_ms,
+                            end_ms: s.end_ms,
+                            text: s.text,
+                        })
+                        .collect())
+                },
+            )
         });
         tokio::pin!(task);
         let result = loop {
@@ -481,5 +449,25 @@ mod tests {
             .load(Ordering::SeqCst));
         state.allow_exit();
         assert!(!state.must_wait_for_shutdown());
+    }
+}
+
+pub(crate) fn audio_cleanup_completed(app: &AppHandle, id: Uuid) {
+    let owner = app
+        .state::<AuthManager>()
+        .current_session()
+        .map(|s| s.user_id);
+    if let Ok(mut job) = app.state::<RecordingState>().0.lock() {
+        if let Some(job) = job.as_mut().filter(|j| {
+            j.status.id == Some(id)
+                && Some(&j.owner) == owner.as_ref()
+                && !matches!(
+                    j.status.phase.as_str(),
+                    "recording" | "stopping" | "transcribing"
+                )
+        }) {
+            job.status.phase = "ready".into();
+            job.status.error = None;
+        }
     }
 }

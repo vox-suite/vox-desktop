@@ -141,8 +141,9 @@ function Controls({ session }: { session: RecordingSession }) {
           <p className="text-xs text-muted-foreground">
             Keep this window visible while recording. Maximum two hours. Echo
             cancellation is not available yet. Transcribe locally after
-            stopping. Audio is stored unencrypted on this device until you
-            delete the meeting.
+            stopping. Temporary audio stays on this device until the transcript
+            is saved successfully, then Vox deletes it automatically. Failed or
+            cancelled transcription keeps the audio for retry.
           </p>
           <Input
             aria-label="Recording title"
@@ -199,7 +200,8 @@ function Transcribe({
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-xs">
       <span className="flex-1 text-muted-foreground">
-        Speech recognition runs on this computer. Audio stays local.
+        Speech recognition runs here. Temporary audio is deleted after the
+        transcript is saved.
       </span>
       <Button
         variant="outline"

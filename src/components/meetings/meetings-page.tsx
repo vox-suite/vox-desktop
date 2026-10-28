@@ -188,7 +188,11 @@ export function MeetingsPage({
                             },
                           )}
                         </time>
-                        <span>{stateLabel[item.state]}</span>
+                        <span>
+                          {item.state === "captured" && item.has_transcript
+                            ? "Transcript"
+                            : stateLabel[item.state]}
+                        </span>
                       </span>
                     </button>
                   </li>

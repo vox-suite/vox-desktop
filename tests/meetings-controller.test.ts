@@ -12,6 +12,8 @@ const meeting = (id: string, revision = 0, notes = ""): Meeting => ({
   updated_ms: 1,
   mic_frames: 0,
   system_frames: 0,
+  audio_available: false,
+  audio_cleanup_pending: false,
   cross_source_alignment_verified: false,
   tracks: [],
 });
@@ -28,6 +30,7 @@ function port(overrides: Partial<MeetingsPort> = {}): MeetingsPort {
     saveNotes: async (id, revision, notes) => meeting(id, revision + 1, notes),
     remove: async () => {},
     recover: async () => [],
+    cleanupAudio: async (id) => meeting(id),
     importTranscript: async () => null,
     exportText: async () => false,
     ...overrides,
@@ -150,4 +153,27 @@ test("background refresh keeps the open detail and draft mounted", async () => {
   await pending;
   assert.equal(lib.snapshot().draft, "live draft");
   assert.equal(lib.snapshot().detail?.state, "captured");
+});
+
+test("cleanup retry preserves an unsaved note draft and needs no speech model", async () => {
+  let calls = 0;
+  const lib = new MeetingLibrary(
+    port({
+      get: async () => ({ ...meeting("a"), audio_cleanup_pending: true }),
+      cleanupAudio: async () => {
+        calls++;
+        return {
+          ...meeting("a", 1),
+          audio_available: false,
+          audio_cleanup_pending: false,
+        };
+      },
+    }),
+  );
+  await lib.select("a");
+  lib.edit("Keep my draft");
+  await lib.cleanupAudio();
+  assert.equal(calls, 1);
+  assert.equal(lib.snapshot().draft, "Keep my draft");
+  assert.equal(lib.snapshot().detail?.audio_cleanup_pending, false);
 });

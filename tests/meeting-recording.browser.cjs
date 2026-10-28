@@ -77,6 +77,14 @@ const assert = require("node:assert/strict");
     await expect(
       page.getByText("Local speech recognition completed."),
     ).toBeVisible();
+    await expect(
+      page.getByText(
+        "No local audio retained. Your transcript and notes remain.",
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Transcribe local audio", exact: true }),
+    ).toHaveCount(0);
     await page.setViewportSize({ width: 390, height: 780 });
     assert.equal(
       await page.evaluate(

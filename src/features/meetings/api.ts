@@ -17,6 +17,7 @@ const local: MeetingsPort = {
   saveNotes: async (id, rev, text) => port().saveNotes(id, rev, text),
   remove: async (id, rev) => port().remove(id, rev),
   recover: async () => port().recover(),
+  cleanupAudio: async (id) => port().cleanupAudio(id),
   importTranscript: async (id, rev) => port().importTranscript(id, rev),
   exportText: async (id) => port().exportText(id),
 };

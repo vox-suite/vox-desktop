@@ -326,6 +326,27 @@ export class MeetingLibrary {
       this.patch({ busy: null });
     }
   }
+  async cleanupAudio() {
+    const m = this.state.detail;
+    if (!this.active || !m || this.state.busy || this.state.saving) return;
+    this.patch({ busy: "cleanup", detailError: "", notice: "" });
+    try {
+      const saved = await this.port.cleanupAudio(m.id);
+      if (!this.active) return;
+      this.upsert(saved);
+      if (this.state.selectedId === m.id) {
+        this.show(saved);
+        this.patch({
+          notice: "Temporary audio deleted. Transcript and notes kept.",
+        });
+      }
+    } catch (error) {
+      if (this.state.selectedId === m.id)
+        this.patch({ detailError: String(error) });
+    } finally {
+      this.patch({ busy: null });
+    }
+  }
   async recover() {
     if (!this.active || this.state.busy) return;
     this.patch({ busy: "recover", error: "", notice: "" });

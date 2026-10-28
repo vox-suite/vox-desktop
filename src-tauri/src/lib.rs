@@ -154,6 +154,7 @@ pub fn run() {
             meetings::meeting_save_transcript,
             meetings::meeting_save_notes,
             meetings::meeting_delete,
+            meetings::meeting_cleanup_audio,
             meetings::meeting_recover_interrupted,
             projects::project_engine_status,
             projects::project_install_engine,

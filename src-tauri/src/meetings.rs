@@ -40,7 +40,14 @@ pub async fn meeting_list(
     offset: u32,
     limit: u32,
 ) -> Result<Vec<MeetingSummary>, String> {
-    access(app, &auth, move |s| s.list(offset, limit)).await
+    let handle = app.clone();
+    access(app, &auth, move |s| {
+        for id in s.cleanup_pending_audio(now_ms()?)? {
+            crate::meeting_recording::audio_cleanup_completed(&handle, id);
+        }
+        s.list(offset, limit)
+    })
+    .await
 }
 #[tauri::command]
 pub async fn meeting_get(
@@ -175,4 +182,22 @@ pub async fn meeting_export_text(
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())?;
     Ok(true)
+}
+
+#[tauri::command]
+pub async fn meeting_cleanup_audio(
+    app: AppHandle,
+    auth: State<'_, AuthManager>,
+    id: Uuid,
+) -> Result<Meeting, String> {
+    let handle = app.clone();
+    access(app, &auth, move |s| {
+        let pending = s.get(id)?.audio_cleanup_pending;
+        let meeting = s.cleanup_audio(id, now_ms()?)?;
+        if pending {
+            crate::meeting_recording::audio_cleanup_completed(&handle, id);
+        }
+        Ok(meeting)
+    })
+    .await
 }

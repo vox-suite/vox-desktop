@@ -122,17 +122,44 @@ export function MeetingDetail({
         meeting.state === "failed") && (
         <p className="meeting-recording-notice">
           {meeting.state === "interrupted"
-            ? "This recording was interrupted. Check interrupted recordings to recover available audio."
+            ? meeting.audio_available
+              ? "This recording was interrupted. Check interrupted recordings to recover available audio."
+              : "This recording was interrupted. Its saved transcript may be incomplete."
             : meeting.state === "partial"
               ? "This recording has gaps or audio warnings. The transcript may be incomplete."
               : "The recording did not finish. Saved notes are still available."}
         </p>
       )}
+      {meeting.audio_cleanup_pending ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-xs">
+          <p className="flex-1" role="status">
+            Transcript saved. Temporary audio cleanup needs a retry.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={locked}
+            onClick={() => void library.cleanupAudio()}
+          >
+            Retry audio cleanup
+          </Button>
+        </div>
+      ) : !meeting.audio_available &&
+        (meeting.mic_frames > 0 || meeting.system_frames > 0) ? (
+        <p
+          role="status"
+          className="border-b border-line px-4 py-2 text-xs text-muted-foreground"
+        >
+          No local audio retained. Your transcript and notes remain.
+        </p>
+      ) : null}
       <TranscribeRecording
         accountId={accountId}
         id={meeting.id}
         available={
           !activeRecording &&
+          meeting.audio_available &&
+          !meeting.audio_cleanup_pending &&
           (meeting.mic_frames > 0 || meeting.system_frames > 0)
         }
       />

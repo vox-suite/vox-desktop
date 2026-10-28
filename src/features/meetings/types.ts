@@ -26,6 +26,8 @@ export type Meeting = Omit<MeetingSummary, "has_transcript"> & {
   notes: string;
   mic_frames: number;
   system_frames: number;
+  audio_available: boolean;
+  audio_cleanup_pending: boolean;
   cross_source_alignment_verified: boolean;
   tracks: { source: MeetingSource; segments: TranscriptSegment[] }[];
 };
@@ -50,6 +52,7 @@ export interface MeetingsPort {
   ): Promise<Meeting>;
   remove(id: string, expectedRevision: number): Promise<void>;
   recover(): Promise<RecoveryReport[]>;
+  cleanupAudio(id: string): Promise<Meeting>;
   importTranscript(
     id: string,
     expectedRevision: number,
