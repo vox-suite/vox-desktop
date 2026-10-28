@@ -170,3 +170,68 @@ export const meetingFixturePort: MeetingsPort = {
     return true;
   },
 };
+
+let recordingStatus: import("@/features/meetings/types").RecordingStatus = {
+  id: null,
+  phase: "",
+  started_ms: 0,
+  error: null,
+  mic_frames: 0,
+  system_frames: 0,
+};
+export const recordingFixture = {
+  ready: false,
+  failStart: false,
+  failStop: false,
+};
+meetingFixturePort.recording = {
+  status: async () => ({ ...recordingStatus }),
+  modelReady: async () => recordingFixture.ready,
+  chooseModel: async () => {
+    recordingFixture.ready = true;
+    return true;
+  },
+  start: async (title) => {
+    if (recordingFixture.failStart) throw Error("Microphone permission denied");
+    const m = await meetingFixturePort.create(title);
+    const saved = records.get(m.id)!;
+    saved.state = "recording";
+    saved.mic_frames = saved.system_frames = 16000;
+    recordingStatus = {
+      id: m.id,
+      phase: "recording",
+      started_ms: Date.now(),
+      error: null,
+      mic_frames: 16000,
+      system_frames: 16000,
+    };
+    return m;
+  },
+  stop: async () => {
+    if (recordingFixture.failStop)
+      throw Error("Stop could not complete; retry");
+    if (recordingStatus.id) records.get(recordingStatus.id)!.state = "captured";
+    recordingStatus = { ...recordingStatus, phase: "captured" };
+  },
+  transcribe: async (id) => {
+    recordingStatus = { ...recordingStatus, id, phase: "transcribing" };
+    setTimeout(() => {
+      const m = records.get(id)!;
+      m.tracks = [
+        {
+          source: "mic",
+          segments: [
+            {
+              id: "generated",
+              start_ms: 0,
+              end_ms: 1000,
+              text: "Local speech recognition completed.",
+            },
+          ],
+        },
+      ];
+      m.revision++;
+      recordingStatus = { ...recordingStatus, phase: "ready" };
+    }, 100);
+  },
+};

@@ -1,6 +1,6 @@
 # Local meeting capture prototype
 
-Developer evaluation for milestone 2. This is an isolated Rust CLI, not the shipping meeting UI or a production recorder. It keeps experimental CPAL/flexaudio dependencies out of the desktop app. It neither contacts Vox Core nor uses cloud speech services. Only `record` opens capture streams; setup, help and transcription never start a microphone recording.
+Developer evaluation for milestone 2. This is an isolated Rust CLI, not the shipping meeting UI or a production recorder. The CLI now reuses `crates/meeting-recorder`, which also powers the first desktop recording controls. It neither contacts Vox Core nor uses cloud speech services. Only `record` opens capture streams; setup, help and transcription never start a microphone recording.
 
 ## What is implemented
 

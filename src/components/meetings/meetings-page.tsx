@@ -228,6 +228,7 @@ export function MeetingsPage({
                 </div>
               ) : state.detail ? (
                 <MeetingDetail
+                  accountId={accountId}
                   key={state.detail.id}
                   library={library}
                   state={state}

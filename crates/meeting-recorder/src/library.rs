@@ -13,9 +13,20 @@ pub fn record(
 ) -> Result<Meeting> {
     let mut store = Store::open(root, owner)?;
     let id = Uuid::new_v4();
+    store.create(id, title, now_ms()?)?;
+    record_existing(root, owner, id, seconds, stopped)
+}
+
+pub fn record_existing(
+    root: &Path,
+    owner: Uuid,
+    id: Uuid,
+    seconds: u64,
+    stopped: &AtomicBool,
+) -> Result<Meeting> {
+    let mut store = Store::open(root, owner)?;
     let token = Uuid::new_v4();
     let mut command = Command::new(std::env::current_exe()?);
-    store.create(id, title, now_ms()?)?;
     store.begin_recording(id, token, now_ms()?)?;
     let output = store.recording_path(id);
     command
@@ -51,7 +62,7 @@ fn finalize(
     let (mut state, mut primary) = match &result {
         Ok(outcome) if outcome.forced => (MeetingState::Interrupted, None),
         Ok(outcome) if outcome.success => (MeetingState::Captured, None),
-        Ok(_) => (MeetingState::Failed, None),
+        Ok(_) => (MeetingState::Interrupted, None),
         Err(error) => (
             MeetingState::Interrupted,
             Some(anyhow::anyhow!(error.to_string())),
@@ -156,5 +167,30 @@ mod tests {
         };
         assert!(finalize(&mut store, id, token, &output, Ok(outcome)).is_err());
         assert_eq!(store.get(id).unwrap().state, MeetingState::Interrupted);
+    }
+}
+
+#[cfg(test)]
+mod recovery_state_tests {
+    use super::*;
+    #[test]
+    fn nonzero_worker_exit_keeps_recording_recoverable() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut store = Store::open(temp.path(), Uuid::new_v4()).unwrap();
+        let id = Uuid::new_v4();
+        let token = Uuid::new_v4();
+        store.create(id, "Device lost", now_ms().unwrap()).unwrap();
+        store.begin_recording(id, token, now_ms().unwrap()).unwrap();
+        let output = store.recording_path(id);
+        capture::create_private_directory(&output).unwrap();
+        let outcome = supervisor::WorkerOutcome {
+            worker_pid: 1,
+            success: false,
+            forced: false,
+            reason: None,
+            exit_code: Some(1),
+        };
+        let saved = finalize(&mut store, id, token, &output, Ok(outcome)).unwrap();
+        assert_eq!(saved.state, MeetingState::Interrupted);
     }
 }

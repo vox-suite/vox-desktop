@@ -203,6 +203,12 @@ impl Store {
         tx.commit()?;
         Ok(())
     }
+    /// Hold while reading local audio so deletion/recovery cannot mutate it.
+    pub fn lock_recording_files(&self, id: Uuid) -> Result<File> {
+        let lock = self.capture_lock(id)?;
+        lock.try_lock().context("recording or recovery is active")?;
+        Ok(lock)
+    }
     fn capture_lock(&self, id: Uuid) -> Result<File> {
         open_lock(&self.account_dir, id)
     }

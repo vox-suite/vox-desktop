@@ -1,3 +1,4 @@
+import { RecordingControls } from "@/components/meetings/recording-controls";
 import { hasUnsavedMeetingNotes } from "@/features/meetings/api";
 import {
   Dialog,
@@ -162,6 +163,7 @@ export function HomeShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <RecordingControls accountId={accountId ?? accountLabel} />
       <SidebarProvider
         mobileMode={activeTab === "meetings" ? "drawer" : "inline"}
         className="relative min-h-0 flex-1 overflow-hidden"

@@ -91,9 +91,11 @@ const assert = require("node:assert/strict");
     await page
       .getByRole("button", { name: "Check interrupted recordings" })
       .click();
-    await expect(page.getByRole("status")).toContainText(
-      "Recording remains stopped.",
-    );
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Checked 1 interrupted meeting" }),
+    ).toContainText("Recording remains stopped.");
     await page.getByRole("button", { name: "Load more meetings" }).click();
     await expect(open("Planning notes 22")).toBeVisible();
     await page.setViewportSize({ width: 390, height: 780 });

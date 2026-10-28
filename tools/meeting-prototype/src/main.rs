@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 use vox_meeting_prototype::{capture, supervisor, transcript};
-mod library;
+use vox_meeting_prototype::library;
 
 #[derive(Parser)]
 #[command(about = "Local-only Vox capture experiment. Records ONLY after the record command.")]

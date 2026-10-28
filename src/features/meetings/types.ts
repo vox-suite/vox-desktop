@@ -39,6 +39,7 @@ export type RecoveryReport = {
   }[];
 };
 export interface MeetingsPort {
+  recording?: MeetingRecordingPort;
   list(offset: number, limit: number): Promise<MeetingSummary[]>;
   get(id: string): Promise<Meeting>;
   create(title: string): Promise<Meeting>;
@@ -54,4 +55,28 @@ export interface MeetingsPort {
     expectedRevision: number,
   ): Promise<Meeting | null>;
   exportText(id: string): Promise<boolean>;
+}
+
+export type RecordingStatus = {
+  id: string | null;
+  phase:
+    | ""
+    | "recording"
+    | "stopping"
+    | "captured"
+    | "transcribing"
+    | "ready"
+    | "failed";
+  started_ms: number;
+  error: string | null;
+  mic_frames: number;
+  system_frames: number;
+};
+export interface MeetingRecordingPort {
+  start(title: string): Promise<Meeting>;
+  stop(): Promise<void>;
+  status(): Promise<RecordingStatus>;
+  modelReady(): Promise<boolean>;
+  chooseModel(): Promise<boolean>;
+  transcribe(id: string): Promise<void>;
 }

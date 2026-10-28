@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-# Keep experimental capture dependencies out of the shipping desktop lockfile.
+# Standalone developer CLI using the shared desktop recorder.
 [workspace]
 
 [dependencies]
+vox-meeting-recorder = { path = "../../crates/meeting-recorder" }
 anyhow = "1"
 vox-meeting-store = { path = "../../crates/meeting-store" }
 uuid = { version = "1", features = ["v4", "serde"] }

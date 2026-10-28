@@ -1,0 +1,19 @@
+# Shared local meeting recorder
+
+The desktop and developer CLI use this single implementation for two-track flexaudio capture, checkpointed WAV writing, supervised cancellation, and local whisper.cpp transcription. The desktop executable dispatches capture-worker arguments before Tauri and single-instance initialization. Its inherited control pipe stops capture when its parent disappears; normal stop has a three-second grace before forced termination. Failed workers leave interrupted, recoverable meeting records.
+
+The desktop owns one audio lease across Talk to Vox and meeting capture. Start is explicit, limited to two hours, and uses the default microphone/output. The global recording bar remains visible across pages and reports checkpointed seconds per source. Stop does not discard captured audio. Signing out cancels the job; an independent account watcher also cancels after account changes. Closing the window while a job is busy is prevented. Explicit quit cancels and waits up to ten seconds for cleanup; repeated quit requests share that wait.
+
+Choose a trusted local `whisper-cli` executable and GGML model through the native file dialogs. The existing `tools/meeting-prototype/setup.py` builds pinned whisper.cpp with network downloading disabled and verifies its base-model checksum; `.runtime/ready.json` contains the resulting paths. No engine or model is automatically downloaded by the desktop yet. After stopping, open the saved meeting and choose **Transcribe local audio**. Processing is local, cancellable, and source-separated. It holds an audio-file lock to exclude deletion/recovery, and a revision check rejects a concurrent edit/import rather than overwriting it. Successfully imported source text survives a failure on the other source; retry remains available.
+
+Current limits: macOS 14.4+ for this capture backend; Windows still needs native hardware/packaged verification. No pause, device selection in the UI, tray/background mode, live ASR, AEC, VAD qualification, diarization, clock synchronization, summaries, tasks, or model-download UI in this slice. Minimize behavior and signed-app permissions require device qualification. Audio remains plaintext local files until meeting deletion; encrypted storage/default retention cleanup are outstanding. An abrupt application crash can leave the external ASR process running; graceful quit is coordinated. Capture has a separate parent-disconnection guard. No audio upload or cloud speech fallback is introduced.
+
+## Verification on 2026-10-28
+
+- Shared recorder: 16 unit tests; store: 9 unit tests, including file-lock exclusion.
+- Native shutdown coordination regression; TypeScript library/recording controllers: 12 tests.
+- Two browser suites with fictional fixtures: source/search, notes/conflicts, start permission error, stop retry, capture completion, local-ASR completion, preserving the draft and selected tab, and narrow layout. These do not exercise native permissions or audio devices.
+- macOS native compile/linked desktop binary; worker entry point rejects invalid duration before starting Tauri/capture. Embedded microphone/system-audio usage descriptions checked in the Mach-O binary.
+- Existing locally installed whisper.cpp/base model transcribed its public 11-second JFK sample through the extracted implementation (one segment, 427 ms inference wall time). This is a smoke check, not a meeting/hardware benchmark or new network-trace result.
+- Windows GNU cross-check attempted but blocked by the missing `x86_64-w64-mingw32-gcc` compiler needed for bundled SQLite. No Windows build/runtime success is claimed for this slice.
+- No new live microphone/system recording or signed package was exercised in this slice. Previous prototype capture evidence remains in `tools/meeting-prototype/VERIFICATION.md`.

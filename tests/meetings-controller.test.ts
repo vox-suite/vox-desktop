@@ -134,3 +134,20 @@ test("reverting to previously saved text during save is still a newer edit", asy
   assert.equal(lib.snapshot().draft, "");
   assert.equal(lib.snapshot().dirty, true);
 });
+
+test("background refresh keeps the open detail and draft mounted", async () => {
+  const next = deferred<Meeting>();
+  let calls = 0;
+  const lib = new MeetingLibrary(
+    port({ get: async () => (++calls === 1 ? meeting("a") : next.promise) }),
+  );
+  await lib.select("a");
+  lib.edit("live draft");
+  const pending = lib.reloadSelected();
+  assert.equal(lib.snapshot().detail?.id, "a");
+  assert.equal(lib.snapshot().detailLoading, false);
+  next.resolve({ ...meeting("a", 1), state: "captured" });
+  await pending;
+  assert.equal(lib.snapshot().draft, "live draft");
+  assert.equal(lib.snapshot().detail?.state, "captured");
+});

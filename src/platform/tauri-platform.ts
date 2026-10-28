@@ -9,6 +9,14 @@ import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
   meetings: {
+    recording: {
+      start: (title) => invoke("meeting_recording_start", { title }),
+      stop: () => invoke("meeting_recording_stop"),
+      status: () => invoke("meeting_recording_status"),
+      modelReady: () => invoke("meeting_model_ready"),
+      chooseModel: () => invoke("meeting_model_choose"),
+      transcribe: (id) => invoke("meeting_transcribe", { id }),
+    },
     list: (offset, limit) => invoke("meeting_list", { offset, limit }),
     get: (id) => invoke("meeting_get", { id }),
     create: (title) => invoke("meeting_create", { title }),

@@ -641,7 +641,8 @@ pub async fn sign_in_with_google(
 }
 
 #[tauri::command]
-pub fn sign_out(auth: State<'_, AuthManager>) -> Result<AuthState, String> {
+pub fn sign_out(app: AppHandle, auth: State<'_, AuthManager>) -> Result<AuthState, String> {
+    app.state::<crate::meeting_recording::RecordingState>().stop();
     auth.sign_out()
 }
 

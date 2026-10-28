@@ -1,3 +1,4 @@
+import { RecordingSession } from "./recording";
 import { platform } from "@/platform";
 import { registerCacheReset } from "@/features/cache-reset";
 import { MeetingLibrary } from "./controller";
@@ -36,3 +37,23 @@ registerCacheReset(clearMeetingLibraries);
 export function hasUnsavedMeetingNotes(accountId: string) {
   return sessions.get(accountId)?.hasDrafts() ?? false;
 }
+
+const recordings = new Map<string, RecordingSession>();
+export function meetingRecording(accountId: string) {
+  const port = platform().meetings?.recording;
+  if (!port) return null;
+  let session = recordings.get(accountId);
+  if (!session) {
+    session = new RecordingSession(port, () => {
+      const library = meetingLibrary(accountId);
+      void library.refresh();
+      void library.reloadSelected();
+    });
+    recordings.set(accountId, session);
+  }
+  return session;
+}
+registerCacheReset(() => {
+  recordings.forEach((s) => s.close());
+  recordings.clear();
+});

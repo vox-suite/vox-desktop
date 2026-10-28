@@ -3,7 +3,7 @@ use crate::bridge_voice as client;
 use crate::types::CallStatus;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
-use tauri::State;
+use tauri::{State, Manager};
 use tokio::sync::oneshot;
 
 const PHASE_IDLE: u8 = 0;
@@ -56,6 +56,7 @@ pub async fn start_call(
     auth: State<'_, AuthManager>,
     state: State<'_, SessionManager>,
 ) -> Result<CallStatus, String> {
+    let audio_lease = app.state::<vox_meeting_recorder::ownership::AudioOwnership>().acquire()?;
     let attempt = state.1.fetch_add(1, Ordering::SeqCst) + 1;
     crate::device_link::emit_local_event(&app, "status", "Voice call connecting...");
     if let Err(err) = auth.refresh_if_expiring().await {
@@ -119,6 +120,7 @@ pub async fn start_call(
     }
 
     tokio::spawn(async move {
+        let _audio_lease = audio_lease;
         let result = client::run_session_loop(
             app_handle,
             api_url,

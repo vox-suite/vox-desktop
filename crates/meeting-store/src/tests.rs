@@ -203,3 +203,15 @@ fn text_export_keeps_notes_and_sources_separate() {
     assert!(text.contains("Microphone"));
     assert!(text.contains("[00:00] Send the proposal"));
 }
+
+#[test]
+fn processing_lock_excludes_delete_and_recovery() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut store = Store::open(temp.path(), Uuid::new_v4()).unwrap();
+    let id = Uuid::new_v4();
+    let m = store.create(id, "Processing", 1).unwrap();
+    let lock = store.lock_recording_files(id).unwrap();
+    assert!(store.delete(id, m.revision, 2).is_err());
+    drop(lock);
+    store.delete(id, m.revision, 3).unwrap();
+}

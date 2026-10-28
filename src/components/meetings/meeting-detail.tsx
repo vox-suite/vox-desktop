@@ -1,3 +1,4 @@
+import { TranscribeRecording } from "./recording-controls";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Download, FileUp, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,12 @@ import type {
 } from "@/features/meetings/controller";
 import { MeetingTranscript } from "./meeting-transcript";
 export function MeetingDetail({
+  accountId,
   library,
   state,
   timezone,
 }: {
+  accountId: string;
   library: MeetingLibrary;
   state: MeetingLibraryState;
   timezone: string;
@@ -125,6 +128,14 @@ export function MeetingDetail({
               : "The recording did not finish. Saved notes are still available."}
         </p>
       )}
+      <TranscribeRecording
+        accountId={accountId}
+        id={meeting.id}
+        available={
+          !activeRecording &&
+          (meeting.mic_frames > 0 || meeting.system_frames > 0)
+        }
+      />
       <Tabs
         defaultValue={meeting.tracks.length ? "transcript" : "notes"}
         className="flex min-h-0 flex-1 flex-col gap-0"

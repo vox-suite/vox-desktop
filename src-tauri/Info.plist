@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Vox needs microphone access for live voice conversations.</string>
+	<string>Vox uses your microphone for voice conversations and locally recorded meetings.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Vox records computer audio locally only when you start a meeting recording.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Vox uses your location to center the home map and highlight the building you are in.</string>
 	<key>NSLocationUsageDescription</key>

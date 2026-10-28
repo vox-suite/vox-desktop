@@ -11,6 +11,7 @@ mod device_link;
 mod live_link;
 mod local_voice;
 mod meetings;
+mod meeting_recording;
 #[cfg(target_os = "macos")]
 mod macos_location;
 mod pkce;
@@ -86,6 +87,8 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(auth)
         .manage(SessionManager::new())
+        .manage(vox_meeting_recorder::ownership::AudioOwnership::default())
+        .manage(meeting_recording::RecordingState::default())
         .manage(device_link::DeviceLinkState::default())
         .manage(device_link::RemoteControl::load())
         .manage(device_link::EventLog::default())
@@ -96,10 +99,10 @@ pub fn run() {
         .manage(bridge_voice::BridgeVoiceState::default())
         .manage(terminal::TerminalManager::default())
         .on_window_event(|window, event| {
-            #[cfg(target_os = "macos")]
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                if window.state::<meeting_recording::RecordingState>().busy() { api.prevent_close(); return; }
+                #[cfg(target_os = "macos")]
+                { api.prevent_close(); let _ = window.hide(); }
             }
         })
         .setup(|app| {
@@ -134,6 +137,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             meetings::meeting_import_transcript,
             meetings::meeting_export_text,
+            meeting_recording::meeting_recording_start,
+            meeting_recording::meeting_recording_status,
+            meeting_recording::meeting_recording_stop,
+            meeting_recording::meeting_model_ready,
+            meeting_recording::meeting_model_choose,
+            meeting_recording::meeting_transcribe,
             meetings::meeting_list,
             meetings::meeting_get,
             meetings::meeting_create,
@@ -202,6 +211,25 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                let state = app.state::<meeting_recording::RecordingState>();
+                if state.must_wait_for_shutdown() {
+                    api.prevent_exit();
+                    if state.begin_shutdown() {
+                    state.stop();
+                    let handle = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        for _ in 0..100 {
+                            if !handle.state::<meeting_recording::RecordingState>().busy() { break; }
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        }
+                        handle.state::<meeting_recording::RecordingState>().allow_exit();
+                        handle.exit(0);
+                    });
+                    }
+                }
+            }
+            if matches!(&event, tauri::RunEvent::Exit) { app.state::<meeting_recording::RecordingState>().stop(); }
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = &event {
                 let vox_urls =

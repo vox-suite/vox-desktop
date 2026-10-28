@@ -142,6 +142,21 @@ export class MeetingLibrary {
       if (epoch === this.detailEpoch) this.patch({ detailLoading: false });
     }
   }
+  async reloadSelected() {
+    const id = this.state.selectedId;
+    if (!this.active || !id) return;
+    if (!this.state.detail) return this.select(id);
+    const epoch = ++this.detailEpoch;
+    try {
+      const m = await this.port.get(id);
+      if (this.active && epoch === this.detailEpoch) this.show(m);
+    } catch (error) {
+      if (this.active && epoch === this.detailEpoch)
+        this.patch({
+          notice: `Could not refresh this meeting: ${String(error)}`,
+        });
+    }
+  }
   private show(m: Meeting) {
     let draft = this.drafts.get(m.id);
     if (draft?.text === m.notes && this.savingId !== m.id) {

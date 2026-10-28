@@ -1641,6 +1641,21 @@ dependencies = [
  "serde_json",
  "tempfile",
  "uuid",
+ "vox-meeting-recorder",
+ "vox-meeting-store",
+]
+
+[[package]]
+name = "vox-meeting-recorder"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cpal",
+ "flexaudio",
+ "hound",
+ "serde",
+ "serde_json",
+ "uuid",
  "vox-meeting-store",
 ]
 
