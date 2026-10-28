@@ -1,3 +1,4 @@
+import { meetingFixturePort } from "./meetings";
 import App from "@/app";
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
@@ -113,6 +114,7 @@ const connections = connectors.map((c) => ({
   account_label: "alex.morgan@example.com",
 }));
 const mock: Platform = {
+  meetings:meetingFixturePort,
   ...(isDiagramDemo ? { projects: diagramPort } : {}),
   cache: {
     read: async () => null,
@@ -243,6 +245,7 @@ installPlatform(mock);
 const page = new URLSearchParams(location.search).get("screen") ?? "home";
 const tabs = {
   home: "agent",
+  meetings:"meetings",
   day: "timeline",
   month: "timeline",
   detail: "timeline",
@@ -288,6 +291,7 @@ export default function Capture() {
       <HomeShell
         activeTab={context.page}
         onTabChange={(tab) => desktopStore.navigate(tab)}
+        accountId="fixture-user"
         accountLabel="alex.morgan@example.com"
         userName="Alex Morgan"
         avatarUrl={null}

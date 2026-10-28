@@ -53,6 +53,7 @@ export interface CachePort {
 }
 
 export interface Platform {
+  meetings?: import("@/features/meetings/types").MeetingsPort;
   projects?: ProjectLocalPort;
   cache?: CachePort;
   wiz?: WizPort;

@@ -132,6 +132,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            meetings::meeting_import_transcript,
+            meetings::meeting_export_text,
             meetings::meeting_list,
             meetings::meeting_get,
             meetings::meeting_create,

@@ -8,6 +8,19 @@ import type { WizStatus } from "./ports";
 import { isAllowedExternalUrl } from "./external-url-policy";
 
 export const tauriPlatform: Platform = {
+  meetings: {
+    list: (offset, limit) => invoke("meeting_list", { offset, limit }),
+    get: (id) => invoke("meeting_get", { id }),
+    create: (title) => invoke("meeting_create", { title }),
+    saveNotes: (id, expectedRevision, notes) =>
+      invoke("meeting_save_notes", { id, expectedRevision, notes }),
+    remove: (id, expectedRevision) =>
+      invoke("meeting_delete", { id, expectedRevision }),
+    recover: () => invoke("meeting_recover_interrupted"),
+    importTranscript: (id, expectedRevision) =>
+      invoke("meeting_import_transcript", { id, expectedRevision }),
+    exportText: (id) => invoke("meeting_export_text", { id }),
+  },
   projects: {
     renderDiagram: (diagram, draft) =>
       invoke("project_render_diagram", { diagram, draft: !!draft }),

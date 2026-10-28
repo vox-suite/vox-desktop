@@ -1,3 +1,5 @@
+mod document;
+pub use document::{export_text, parse_transcript_import, MAX_IMPORT_BYTES};
 mod recordings;
 mod recovery;
 mod types;

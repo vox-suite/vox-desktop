@@ -1,7 +1,17 @@
+import { hasUnsavedMeetingNotes } from "@/features/meetings/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { DesktopActionOverlay } from "@/components/shell/desktop-action-overlay";
 import { TerminalPanel } from "@/components/shell/terminal-panel";
 import { ConnectedAppsView } from "@/components/connected-apps-view";
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import {
   PageContainer,
   PageHeader,
@@ -23,6 +33,10 @@ import type { VoxColor } from "@/lib/theme";
 // Charts (recharts) and the canvas (xyflow) are large, so they ship in their
 // own chunks. The shell preloads them after first paint so opening a page
 // never waits on a download.
+const loadMeetings = () => import("@/components/meetings/meetings-page");
+const MeetingsPage = lazy(() =>
+  loadMeetings().then((m) => ({ default: m.MeetingsPage })),
+);
 const loadPulse = () => import("@/components/pulse/pulse-view");
 const loadSpaces = () => import("@/components/spaces/spaces-view");
 const loadProjects = () => import("@/components/projects/projects-view");
@@ -44,6 +58,7 @@ export function HomeShell({
   activeTab,
   onTabChange,
   accountLabel,
+  accountId,
   userName,
   avatarUrl,
   onSignOut,
@@ -58,6 +73,7 @@ export function HomeShell({
   activeTab: ShellTab;
   onTabChange: (tab: ShellTab) => void;
   accountLabel: string;
+  accountId?: string;
   userName?: string | null;
   avatarUrl?: string | null;
   onSignOut: () => void;
@@ -69,6 +85,12 @@ export function HomeShell({
   onToggleCall: () => void;
   collections: Collection[];
 }) {
+  const [signOutConfirm, setSignOutConfirm] = useState(false);
+  const requestSignOut = () => {
+    if (hasUnsavedMeetingNotes(accountId ?? accountLabel))
+      setSignOutConfirm(true);
+    else onSignOut();
+  };
   useEffect(() => {
     const id = setTimeout(() => {
       void loadPulse();
@@ -97,6 +119,16 @@ export function HomeShell({
         collections={collections}
         onCollapse={() => onTabChange("agent")}
       />
+    );
+  } else if (activeTab === "meetings") {
+    body = (
+      <Suspense fallback={<PageLoadingFrame title="Meetings" accent="mint" />}>
+        <MeetingsPage
+          key={accountId ?? accountLabel}
+          accountId={accountId ?? accountLabel}
+          navigation
+        />
+      </Suspense>
     );
   } else if (activeTab === "pulse") {
     body = (
@@ -131,7 +163,7 @@ export function HomeShell({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <SidebarProvider
-        mobileMode="inline"
+        mobileMode={activeTab === "meetings" ? "drawer" : "inline"}
         className="relative min-h-0 flex-1 overflow-hidden"
       >
         <AppSidebar
@@ -140,7 +172,7 @@ export function HomeShell({
           accountLabel={accountLabel}
           userName={userName}
           avatarUrl={avatarUrl}
-          onSignOut={onSignOut}
+          onSignOut={requestSignOut}
           voice={{
             isActive,
             speaking: voxSpeaking,
@@ -181,6 +213,31 @@ export function HomeShell({
           ) : null}
         </SidebarInset>
       </SidebarProvider>
+      <Dialog open={signOutConfirm} onOpenChange={setSignOutConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sign out with unsaved notes?</DialogTitle>
+            <DialogDescription>
+              Your unsaved meeting drafts will be discarded. Saved notes stay on
+              this computer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSignOutConfirm(false)}>
+              Keep editing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setSignOutConfirm(false);
+                onSignOut();
+              }}
+            >
+              Sign out and discard drafts
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

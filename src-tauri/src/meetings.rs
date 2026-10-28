@@ -107,3 +107,72 @@ pub async fn meeting_recover_interrupted(
 ) -> Result<Vec<vox_meeting_store::RecoveryReport>, String> {
     access(app, &auth, move |s| s.recover_interrupted(now_ms()?)).await
 }
+
+#[tauri::command]
+pub async fn meeting_import_transcript(
+    app: AppHandle,
+    auth: State<'_, AuthManager>,
+    id: Uuid,
+    expected_revision: i64,
+) -> Result<Option<Meeting>, String> {
+    let owner = auth.current_session().ok_or("Sign in first")?.user_id;
+    let file = rfd::AsyncFileDialog::new()
+        .set_title("Import a Vox transcript")
+        .add_filter("Vox transcript", &["json"])
+        .pick_file()
+        .await;
+    let Some(file) = file else { return Ok(None) };
+    if auth.current_session().as_ref().map(|s| s.user_id.as_str()) != Some(owner.as_str()) {
+        return Err("Account changed; import cancelled".into());
+    }
+    access(app, &auth, move |store| {
+        use std::io::Read;
+        let mut bytes = Vec::new();
+        std::fs::File::open(file.path())?
+            .take(vox_meeting_store::MAX_IMPORT_BYTES + 1)
+            .read_to_end(&mut bytes)?;
+        let (source, segments) = vox_meeting_store::parse_transcript_import(&bytes)?;
+        store
+            .save_transcript(id, expected_revision, source, &segments, now_ms()?)
+            .map(Some)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn meeting_export_text(
+    app: AppHandle,
+    auth: State<'_, AuthManager>,
+    id: Uuid,
+) -> Result<bool, String> {
+    let owner = auth.current_session().ok_or("Sign in first")?.user_id;
+    let saved = access(app.clone(), &auth, move |store| store.get(id)).await?;
+    let file = rfd::AsyncFileDialog::new()
+        .set_title("Export meeting notes")
+        .set_file_name("meeting-notes.txt")
+        .add_filter("Text document", &["txt"])
+        .save_file()
+        .await;
+    let Some(file) = file else { return Ok(false) };
+    if auth.current_session().as_ref().map(|s| s.user_id.as_str()) != Some(owner.as_str()) {
+        return Err("Account changed; export cancelled".into());
+    }
+    let text = vox_meeting_store::export_text(&saved);
+    tauri::async_runtime::spawn_blocking(move || -> std::io::Result<()> {
+        use std::io::Write;
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut output = options.open(file.path())?;
+        output.write_all(text.as_bytes())?;
+        output.sync_all()
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())?;
+    Ok(true)
+}

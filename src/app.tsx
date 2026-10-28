@@ -123,6 +123,7 @@ export default function App() {
         <HomeShell
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          accountId={authState.user_id ?? ""}
           accountLabel={authState.email ?? authState.user_id ?? "Signed in"}
           userName={
             authState.user_name ??

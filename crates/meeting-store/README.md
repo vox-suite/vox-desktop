@@ -1,6 +1,14 @@
 # Local meeting storage
 
-Shared Rust storage used by Vox's Tauri backend and the developer meeting recorder. This slice adds persistent meeting text and process-crash recovery. It does not add the meeting UI, summaries, personal-task extraction, encryption, or cloud synchronization.
+Shared Rust storage used by Vox's Tauri backend and the developer meeting recorder. It provides persistent meeting text and process-crash recovery. Summaries, personal-task extraction, encryption, and cloud synchronization remain future work.
+
+## Desktop library
+
+The Meetings sidebar page browses local meetings, searches each transcript source, and edits notes with explicit saves and revision conflict choices. Drafts survive navigation in memory; closing the app discards unsaved drafts after the browser warning, and signing out asks before discarding them. Notes and transcripts are never added to shared desktop context or sent through the HTTP client.
+
+New note creates a text record; it does not start recording. Recording controls and model execution remain in the developer prototype. Import accepts a version-1 Vox JSON document containing `schema_version`, `source` (`mic` or `system`), and `segments` with `start_ms`, `end_ms`, and `text`. Files are limited to 8 MB; importing replaces that source while preserving manual notes. Export writes the saved notes and source-separated transcript to a user-selected text file. Both use native file choosers.
+
+Validation: `node --experimental-strip-types --test tests/meetings-controller.test.ts`, `cargo test -p vox-meeting-store --locked`, and, with Vite on port 1432, `node tests/meetings.browser.cjs`. Browser tests use fictional, development-only fixtures. Native file choosers and packaged Windows behavior still require device verification.
 
 ## Storage contract
 

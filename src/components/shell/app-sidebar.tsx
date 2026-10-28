@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   Activity,
   House,
+  NotebookPen,
   Bell,
   ChevronsUpDown,
   GanttChart,
@@ -40,6 +41,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { windowControls } from "@/lib/tauri";
 import { platform } from "@/platform";
@@ -79,6 +81,13 @@ const NAV_ITEMS = [
     icon: GanttChart,
     activeColor:
       "data-[active=true]:text-sky data-[active=true]:hover:text-sky",
+  },
+  {
+    id: "meetings",
+    label: "Meetings",
+    icon: NotebookPen,
+    activeColor:
+      "data-[active=true]:text-mint data-[active=true]:hover:text-mint",
   },
   {
     id: "spaces",
@@ -166,6 +175,7 @@ export function AppSidebar({
   onSignOut: () => void;
   voice: SidebarVoiceProps;
 }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   const context = useDesktopContext();
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
   const [imgError, setImgError] = useState(false);
@@ -187,7 +197,7 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      inline
+      inline={!isMobile}
       collapsible="icon"
       variant="sidebar"
       onMouseDown={(event) => {
@@ -280,7 +290,10 @@ export function AppSidebar({
                   <SidebarMenuButton
                     isActive={activeTab === item.id}
                     tooltip={item.label}
-                    onClick={() => onTabChange(item.id)}
+                    onClick={() => {
+                      onTabChange(item.id);
+                      if (isMobile) setOpenMobile(false);
+                    }}
                     className={cn(
                       "h-8 rounded-lg px-3 text-[13px] text-muted-foreground data-[active=true]:bg-ink/[0.08] [&>svg]:size-4",
                       item.activeColor,
@@ -300,7 +313,9 @@ export function AppSidebar({
         {appUpdate.latest && updateDismissed !== appUpdate.latest && (
           <div className="space-y-2 rounded-xl border border-line bg-ink/[0.03] p-3 group-data-[collapsible=icon]:hidden">
             <div>
-              <p className="text-[13px] font-medium">Vox {appUpdate.latest} is ready</p>
+              <p className="text-[13px] font-medium">
+                Vox {appUpdate.latest} is ready
+              </p>
               <p className="text-xs text-muted-foreground">
                 Downloaded in the background. Restart to finish updating.
               </p>

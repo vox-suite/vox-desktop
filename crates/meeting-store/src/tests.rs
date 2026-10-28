@@ -171,3 +171,35 @@ fn recovery_retries_missing_audio_and_persists_repaired_frame_counts() {
     assert_eq!(store.get(id).unwrap().mic_frames, 2);
     assert_eq!(store.get(id).unwrap().system_frames, 2);
 }
+
+#[test]
+fn transcript_import_rejects_unsupported_or_invalid_files() {
+    let valid=br#"{"schema_version":1,"source":"system","segments":[{"start_ms":100,"end_ms":900,"text":"  A decision.  "}]}"#;
+    let (source, segments) = parse_transcript_import(valid).unwrap();
+    assert_eq!(source, Source::System);
+    assert_eq!(segments[0].text, "A decision.");
+    assert!(
+        parse_transcript_import(br#"{"schema_version":2,"source":"system","segments":[]}"#)
+            .is_err()
+    );
+    assert!(
+        parse_transcript_import(br#"{"schema_version":1,"source":"other","segments":[]}"#).is_err()
+    );
+    assert!(parse_transcript_import(br#"{"schema_version":1,"source":"mic","segments":[{"start_ms":100,"end_ms":0,"text":"bad"}]}"#).is_err());
+}
+#[test]
+fn text_export_keeps_notes_and_sources_separate() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut store = Store::open(temp.path(), Uuid::new_v4()).unwrap();
+    let id = Uuid::new_v4();
+    store.create(id, "Planning", 1).unwrap();
+    store
+        .save_transcript(id, 0, Source::Mic, &[segment()], 2)
+        .unwrap();
+    store.save_notes(id, 1, "My note", 3).unwrap();
+    let text = export_text(&store.get(id).unwrap());
+    assert!(text.contains("Planning"));
+    assert!(text.contains("My note"));
+    assert!(text.contains("Microphone"));
+    assert!(text.contains("[00:00] Send the proposal"));
+}

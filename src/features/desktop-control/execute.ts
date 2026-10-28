@@ -13,6 +13,7 @@ import { diagramRequests } from "./diagram-requests";
 const pages = new Set([
   "agent",
   "timeline",
+  "meetings",
   "pulse",
   "usage",
   "spaces",
