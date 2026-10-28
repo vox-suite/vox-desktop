@@ -24,6 +24,8 @@ export type TranscriptSegment = {
 };
 export type Meeting = Omit<MeetingSummary, "has_transcript"> & {
   notes: string;
+  analysis: AttachedAnalysis | null;
+  action_reviews: ActionReview[];
   mic_frames: number;
   system_frames: number;
   audio_available: boolean;
@@ -53,6 +55,14 @@ export interface MeetingsPort {
   remove(id: string, expectedRevision: number): Promise<void>;
   recover(): Promise<RecoveryReport[]>;
   cleanupAudio(id: string): Promise<Meeting>;
+  analyze(
+    id: string,
+    names: string[],
+    timezone: string,
+    force: boolean,
+  ): Promise<Meeting>;
+  promoteAction(id: string, key: string): Promise<Meeting>;
+  dismissAction(id: string, key: string): Promise<Meeting>;
   importTranscript(
     id: string,
     expectedRevision: number,
@@ -103,4 +113,38 @@ export type SpeechModelStatus = {
   ready: boolean;
   engine: "bundled" | "custom" | null;
   error: string | null;
+};
+
+export type CitedText = { text: string; evidence_ids: string[] };
+export type ActionCandidate = {
+  title: string;
+  notes: string;
+  owner: "me" | "other" | "unknown";
+  due_at: string | null;
+  evidence_ids: string[];
+  evidence_quote: string;
+};
+export type AttachedAnalysis = {
+  input_hash: string;
+  transcript_hash: string;
+  created_ms: number;
+  stale: boolean;
+  action_keys: string[];
+  my_names: string[];
+  response: {
+    model: string;
+    prompt_revision: number;
+    analysis: {
+      overview: CitedText[];
+      decisions: CitedText[];
+      open_questions: CitedText[];
+      actions: ActionCandidate[];
+    };
+  };
+};
+export type ActionReview = {
+  key: string;
+  state: "pending" | "saved" | "dismissed";
+  span_id: string | null;
+  approved_task: { title: string; notes: string; due_at: string | null } | null;
 };

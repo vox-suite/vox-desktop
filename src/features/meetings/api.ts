@@ -18,6 +18,10 @@ const local: MeetingsPort = {
   remove: async (id, rev) => port().remove(id, rev),
   recover: async () => port().recover(),
   cleanupAudio: async (id) => port().cleanupAudio(id),
+  analyze: async (id, names, timezone, force) =>
+    port().analyze(id, names, timezone, force),
+  promoteAction: async (id, key) => port().promoteAction(id, key),
+  dismissAction: async (id, key) => port().dismissAction(id, key),
   importTranscript: async (id, rev) => port().importTranscript(id, rev),
   exportText: async (id) => port().exportText(id),
 };

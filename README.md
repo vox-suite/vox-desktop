@@ -116,7 +116,7 @@ Configure these **environment variables** on the `production` environment in `vo
 | ------------------------ | ------------------------------------------- |
 | `VOX_SUPABASE_URL`       | Public Supabase project URL                 |
 | `VOX_SUPABASE_ANON_KEY`  | Public Supabase anon / publishable key      |
-| `VOX_API_URL`            | Core API origin (`https://api.callvox.in`) |
+| `VOX_API_URL`            | Core API origin (`https://api.callvox.in`)  |
 | `VOX_BRIDGE_URL`         | Bridge origin (usually same as API)         |
 | `VOX_OAUTH_REDIRECT_URI` | Optional; defaults to `vox://auth/callback` |
 
@@ -129,3 +129,7 @@ Public config is injected at **build time** via `src-tauri/build.rs`. End users 
 - Deploy Bridge + Core with desktop channel + Caddy `/v1/*` → Core.
 - Core: `SUPABASE_URL` points at the same Supabase project (JWKS ES256 verify). Optional `SUPABASE_JWT_SECRET` only for legacy HS256 tokens.
 - Remote control of the Mac is off by default. The user turns it on from the Desktop Link tile; every command still needs a spoken confirmation and is logged to `~/.config/vox/remote-commands.log`.
+
+### Meeting summaries and reviewed tasks
+
+Saved meetings include a Summary tab with an explicit cloud **text-only** option. Cited summaries stay attached locally; suggested tasks enter Timeline only after review. Recording and speech recognition stay on the computer. See [meeting analysis](docs/meeting-analysis.md) for privacy boundaries, retry behavior, and verification limits.

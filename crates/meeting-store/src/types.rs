@@ -70,6 +70,8 @@ pub struct Meeting {
     pub mic_frames: u64,
     pub system_frames: u64,
     pub tracks: Vec<Track>,
+    pub analysis: Option<crate::AttachedAnalysis>,
+    pub action_reviews: Vec<crate::ActionReview>,
     pub audio_available: bool,
     pub audio_cleanup_pending: bool,
     pub cross_source_alignment_verified: bool,

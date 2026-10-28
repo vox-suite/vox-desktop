@@ -66,7 +66,7 @@ impl Store {
         let mut conn = Connection::open(db)?;
         conn.busy_timeout(Duration::from_secs(5))?;
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        ensure!(version <= 2, "meeting library requires a newer Vox version");
+        ensure!(version <= 3, "meeting library requires a newer Vox version");
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON;
             CREATE TABLE IF NOT EXISTS meetings(id TEXT PRIMARY KEY, title TEXT NOT NULL, state TEXT NOT NULL,
             revision INTEGER NOT NULL DEFAULT 0, notes TEXT NOT NULL DEFAULT '', created_ms INTEGER NOT NULL,
@@ -75,14 +75,18 @@ impl Store {
             CREATE TABLE IF NOT EXISTS transcripts(meeting_id TEXT NOT NULL REFERENCES meetings(id), source TEXT NOT NULL,
             input_json TEXT NOT NULL, saved_json TEXT NOT NULL, PRIMARY KEY(meeting_id,source));
 ")?;
-        if version < 2 {
+        if version < 3 {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let version: i64 = tx.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-            ensure!(version <= 2, "meeting library requires a newer Vox version");
+            ensure!(version <= 3, "meeting library requires a newer Vox version");
             if version < 2 {
                 tx.execute_batch("ALTER TABLE meetings ADD COLUMN audio_cleanup_pending INTEGER NOT NULL DEFAULT 0;
                   ALTER TABLE meetings ADD COLUMN audio_deleted INTEGER NOT NULL DEFAULT 0;
                   PRAGMA user_version=2;")?;
+            }
+            if version < 3 {
+                tx.execute_batch("CREATE TABLE IF NOT EXISTS meeting_analyses(meeting_id TEXT PRIMARY KEY REFERENCES meetings(id),input_hash TEXT NOT NULL,transcript_hash TEXT NOT NULL,response_json TEXT NOT NULL,created_ms INTEGER NOT NULL);
+                CREATE TABLE IF NOT EXISTS meeting_action_reviews(meeting_id TEXT NOT NULL REFERENCES meetings(id),action_key TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','saved','dismissed')),request_json TEXT,span_id TEXT,PRIMARY KEY(meeting_id,action_key)); PRAGMA user_version=3;")?;
             }
             tx.commit()?;
         }
@@ -109,7 +113,7 @@ impl Store {
         let tx = self.conn.unchecked_transaction()?;
         let mut meeting = tx.query_row("SELECT id,title,state,revision,notes,created_ms,updated_ms,mic_frames,system_frames,audio_cleanup_pending,audio_deleted FROM meetings WHERE id=?1 AND deleted=0", [id.to_string()], |row| {
             Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,i64>(3)?,row.get::<_,String>(4)?,row.get::<_,i64>(5)?,row.get::<_,i64>(6)?,row.get::<_,u64>(7)?,row.get::<_,u64>(8)?,row.get::<_,bool>(9)?,row.get::<_,bool>(10)?))
-        }).optional()?.map(|r| -> Result<Meeting> { Ok(Meeting { id:Uuid::parse_str(&r.0)?,title:r.1,state:serde_json::from_value(serde_json::Value::String(r.2))?,revision:r.3,notes:r.4,created_ms:r.5,updated_ms:r.6,mic_frames:r.7,system_frames:r.8,audio_cleanup_pending:r.9,audio_available:!r.10 && self.recording_path(id).is_dir(),tracks:vec![],cross_source_alignment_verified:false }) }).transpose()?.context("meeting not found")?;
+        }).optional()?.map(|r| -> Result<Meeting> { Ok(Meeting { id:Uuid::parse_str(&r.0)?,title:r.1,state:serde_json::from_value(serde_json::Value::String(r.2))?,revision:r.3,notes:r.4,created_ms:r.5,updated_ms:r.6,mic_frames:r.7,system_frames:r.8,audio_cleanup_pending:r.9,audio_available:!r.10 && self.recording_path(id).is_dir(),analysis:None,action_reviews:vec![],tracks:vec![],cross_source_alignment_verified:false }) }).transpose()?.context("meeting not found")?;
         let mut stmt = tx.prepare(
             "SELECT source,saved_json FROM transcripts WHERE meeting_id=?1 ORDER BY source",
         )?;
@@ -123,6 +127,7 @@ impl Store {
             });
         }
         drop(stmt);
+        analysis::attach(&tx, &mut meeting)?;
         tx.commit()?;
         Ok(meeting)
     }
@@ -250,6 +255,14 @@ impl Store {
             std::fs::remove_dir_all(path)?;
         }
         tx.execute(
+            "DELETE FROM meeting_analyses WHERE meeting_id=?1",
+            [id.to_string()],
+        )?;
+        tx.execute(
+            "DELETE FROM meeting_action_reviews WHERE meeting_id=?1",
+            [id.to_string()],
+        )?;
+        tx.execute(
             "DELETE FROM transcripts WHERE meeting_id=?1",
             [id.to_string()],
         )?;
@@ -284,7 +297,10 @@ fn open_lock(account: &Path, id: Uuid) -> Result<File> {
     Ok(options.open(path)?)
 }
 
+mod analysis;
 #[cfg(test)]
 mod cleanup_tests;
 #[cfg(test)]
 mod tests;
+
+pub use analysis::{ActionReview, AttachedAnalysis};

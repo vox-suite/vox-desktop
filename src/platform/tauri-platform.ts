@@ -29,6 +29,10 @@ export const tauriPlatform: Platform = {
       invoke("meeting_delete", { id, expectedRevision }),
     recover: () => invoke("meeting_recover_interrupted"),
     cleanupAudio: (id) => invoke("meeting_cleanup_audio", { id }),
+    analyze: (id, myNames, timezone, force) =>
+      invoke("meeting_analyze", { id, myNames, timezone, force }),
+    promoteAction: (id, key) => invoke("meeting_promote_action", { id, key }),
+    dismissAction: (id, key) => invoke("meeting_dismiss_action", { id, key }),
     importTranscript: (id, expectedRevision) =>
       invoke("meeting_import_transcript", { id, expectedRevision }),
     exportText: (id) => invoke("meeting_export_text", { id }),

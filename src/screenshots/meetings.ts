@@ -9,6 +9,8 @@ const base = (id: string, title: string, index: number): Meeting => ({
   title,
   state: "transcript_ready",
   revision: 1,
+  analysis: null,
+  action_reviews: [],
   notes:
     index === 0
       ? "Keep the first release focused on reliable local recording."
@@ -71,6 +73,12 @@ export const meetingFixture = {
   records,
   failSave: false,
   failCleanup: false,
+  failAnalysis: false,
+  omitActions: false,
+  suggestedDeadline: false,
+  failPromotion: false,
+  analysisCalls: 0,
+  promotionCalls: 0,
   failGetId: "",
   conflictNextSave: false,
   failList: false,
@@ -93,6 +101,87 @@ const get = (id: string) => {
   return m;
 };
 export const meetingFixturePort: MeetingsPort = {
+  analyze: async (id, names) => {
+    meetingFixture.analysisCalls++;
+    if (meetingFixture.failAnalysis)
+      throw Error("Cloud text analysis unavailable; transcript kept");
+    const m = records.get(id)!;
+    const first = m.tracks.flatMap((t) => t.segments)[0],
+      action = m.tracks.flatMap((t) => t.segments)[1] ?? first;
+    m.analysis = {
+      input_hash: "fixture",
+      transcript_hash: "fixture",
+      created_ms: stamp,
+      stale: false,
+      action_keys: ["a".repeat(64)],
+      my_names: names,
+      response: {
+        model: "fixture",
+        prompt_revision: 1,
+        analysis: {
+          overview: [
+            {
+              text: "The team agreed to focus on reliable local recording and durable notes.",
+              evidence_ids: [first.id],
+            },
+          ],
+          decisions: [],
+          open_questions: [],
+          actions: [
+            {
+              title: "Bring a short proposal",
+              notes: "Prepare for the next planning session.",
+              owner: "unknown",
+              due_at: meetingFixture.suggestedDeadline
+                ? "2026-11-01T12:00:00Z"
+                : null,
+              evidence_ids: [action.id],
+              evidence_quote: action.text,
+            },
+          ],
+        },
+      },
+    };
+    if (meetingFixture.omitActions) {
+      m.analysis.response.analysis.actions = [];
+      m.analysis.action_keys = [];
+    }
+    m.revision++;
+    return structuredClone(m);
+  },
+  promoteAction: async (id, key) => {
+    const m = records.get(id)!;
+    let review = m.action_reviews.find((r) => r.key === key);
+    if (!review) {
+      const a = m.analysis!.response.analysis.actions[0];
+      review = {
+        key,
+        state: "pending",
+        span_id: null,
+        approved_task: { title: a.title, notes: a.notes, due_at: a.due_at },
+      };
+      m.action_reviews.push(review);
+    }
+    if (meetingFixture.failPromotion)
+      throw Error("Connection interrupted; retry the saved approval");
+    if (review.state !== "saved") {
+      review.state = "saved";
+      review.span_id = "00000000-0000-4000-8000-000000000099";
+      meetingFixture.promotionCalls++;
+    }
+    return structuredClone(m);
+  },
+  dismissAction: async (id, key) => {
+    const m = records.get(id)!;
+    m.action_reviews.push({
+      key,
+      state: "dismissed",
+      span_id: null,
+      approved_task: null,
+    });
+    return structuredClone(m);
+  },
+
   cleanupAudio: async (id) => {
     if (meetingFixture.failCleanup)
       throw Error("Temporary audio cleanup failed; retry");

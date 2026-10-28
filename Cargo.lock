@@ -7444,19 +7444,24 @@ name = "vox-meeting-store"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
  "uuid",
+ "vox-shared",
 ]
 
 [[package]]
 name = "vox-shared"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
+ "sha2",
+ "uuid",
 ]
 
 [[package]]

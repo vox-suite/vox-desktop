@@ -10,6 +10,7 @@ mod device_cache;
 mod device_link;
 mod live_link;
 mod local_voice;
+mod meeting_analysis;
 mod meetings;
 mod meeting_recording;
 mod meeting_models;
@@ -148,6 +149,9 @@ pub fn run() {
             meeting_models::meeting_model_cancel,
             meeting_recording::meeting_model_choose,
             meeting_recording::meeting_transcribe,
+            meeting_analysis::meeting_analyze,
+            meeting_analysis::meeting_promote_action,
+            meeting_analysis::meeting_dismiss_action,
             meetings::meeting_list,
             meetings::meeting_get,
             meetings::meeting_create,

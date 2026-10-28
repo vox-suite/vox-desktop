@@ -326,6 +326,42 @@ export class MeetingLibrary {
       this.patch({ busy: null });
     }
   }
+  private async analysisAction(
+    kind: string,
+    action: (id: string) => Promise<Meeting>,
+  ) {
+    const m = this.state.detail;
+    if (!this.active || !m || this.state.busy || this.state.saving) return;
+    this.patch({ busy: kind, detailError: "", notice: "" });
+    try {
+      const saved = await action(m.id);
+      if (!this.active) return;
+      this.upsert(saved);
+      if (this.state.selectedId === m.id) this.show(saved);
+    } catch (error) {
+      if (this.active && this.state.selectedId === m.id) {
+        this.patch({ detailError: String(error) });
+        await this.reloadSelected();
+      }
+    } finally {
+      this.patch({ busy: null });
+    }
+  }
+  analyze(names: string[], timezone: string, force = false) {
+    return this.analysisAction("analysis", (id) =>
+      this.port.analyze(id, names, timezone, force),
+    );
+  }
+  promoteAction(key: string) {
+    return this.analysisAction("promote", (id) =>
+      this.port.promoteAction(id, key),
+    );
+  }
+  dismissAction(key: string) {
+    return this.analysisAction("dismiss", (id) =>
+      this.port.dismissAction(id, key),
+    );
+  }
   async cleanupAudio() {
     const m = this.state.detail;
     if (!this.active || !m || this.state.busy || this.state.saving) return;

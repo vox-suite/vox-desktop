@@ -1,3 +1,4 @@
+import { MeetingSummary } from "./meeting-summary";
 import { TranscribeRecording } from "./recording-controls";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Download, FileUp, Trash2, RefreshCw } from "lucide-react";
@@ -169,6 +170,7 @@ export function MeetingDetail({
       >
         <div className="meeting-detail-toolbar">
           <TabsList variant="line">
+            <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="notes">
               Your notes
@@ -190,6 +192,14 @@ export function MeetingDetail({
             Import transcript
           </Button>
         </div>
+        <TabsContent value="summary" className="meeting-tab-body">
+          <MeetingSummary
+            meeting={meeting}
+            library={library}
+            busy={locked}
+            timezone={timezone}
+          />
+        </TabsContent>
         <TabsContent value="transcript" className="meeting-tab-body min-h-0">
           <MeetingTranscript
             meeting={meeting}
@@ -278,7 +288,7 @@ export function MeetingDetail({
             <DialogDescription>
               This removes {meeting.title}, its transcript, notes, and any
               recording files stored with it on this computer. This cannot be
-              undone.
+              undone. Tasks already added to Timeline remain there.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

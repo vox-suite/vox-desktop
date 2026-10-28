@@ -5,15 +5,34 @@ use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
 use vox_meeting_store::{now_ms, Meeting, MeetingSummary, Segment, Source, Store};
 
-async fn access<T: Send + 'static>(
+pub(crate) async fn access<T: Send + 'static>(
     app: AppHandle,
     auth: &AuthManager,
+    action: impl FnOnce(&mut Store) -> anyhow::Result<T> + Send + 'static,
+) -> Result<T, String> {
+    access_bound(app, auth, None, action).await
+}
+pub(crate) async fn access_for_owner<T: Send + 'static>(
+    app: AppHandle,
+    auth: &AuthManager,
+    owner: String,
+    action: impl FnOnce(&mut Store) -> anyhow::Result<T> + Send + 'static,
+) -> Result<T, String> {
+    access_bound(app, auth, Some(owner), action).await
+}
+async fn access_bound<T: Send + 'static>(
+    app: AppHandle,
+    auth: &AuthManager,
+    expected: Option<String>,
     action: impl FnOnce(&mut Store) -> anyhow::Result<T> + Send + 'static,
 ) -> Result<T, String> {
     let owner = auth
         .current_session()
         .ok_or("Sign in to access local meeting notes")?
         .user_id;
+    if expected.as_ref().is_some_and(|expected| expected != &owner) {
+        return Err("Account changed; reopen the meeting".into());
+    }
     let account = Uuid::parse_str(&owner).map_err(|_| "Invalid account identity")?;
     let root = app
         .path()

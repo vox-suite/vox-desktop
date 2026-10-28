@@ -8,6 +8,8 @@ const meeting = (id: string, revision = 0, notes = ""): Meeting => ({
   state: "transcript_ready",
   revision,
   notes,
+  analysis: null,
+  action_reviews: [],
   created_ms: 1,
   updated_ms: 1,
   mic_frames: 0,
@@ -31,6 +33,9 @@ function port(overrides: Partial<MeetingsPort> = {}): MeetingsPort {
     remove: async () => {},
     recover: async () => [],
     cleanupAudio: async (id) => meeting(id),
+    analyze: async (id) => meeting(id),
+    promoteAction: async (id) => meeting(id),
+    dismissAction: async (id) => meeting(id),
     importTranscript: async () => null,
     exportText: async () => false,
     ...overrides,
@@ -176,4 +181,45 @@ test("cleanup retry preserves an unsaved note draft and needs no speech model", 
   assert.equal(calls, 1);
   assert.equal(lib.snapshot().draft, "Keep my draft");
   assert.equal(lib.snapshot().detail?.audio_cleanup_pending, false);
+});
+
+test("late analysis cannot expose a closed account", async () => {
+  const result = deferred<Meeting>();
+  const lib = new MeetingLibrary(port({ analyze: () => result.promise }));
+  await lib.select("a");
+  const pending = lib.analyze([], "UTC");
+  lib.close();
+  result.resolve(meeting("a", 1));
+  await pending;
+  assert.equal(lib.snapshot().detail, null);
+  assert.equal(lib.snapshot().items.length, 0);
+});
+
+test("failed task promotion reloads the persisted approval and preserves draft", async () => {
+  const approved = {
+    ...meeting("a", 1),
+    action_reviews: [
+      {
+        key: "key",
+        state: "pending" as const,
+        span_id: null,
+        approved_task: { title: "Send proposal", notes: "", due_at: null },
+      },
+    ],
+  };
+  let gets = 0;
+  const lib = new MeetingLibrary(
+    port({
+      get: async () => (++gets === 1 ? meeting("a") : approved),
+      promoteAction: async () => {
+        throw Error("Connection interrupted");
+      },
+    }),
+  );
+  await lib.select("a");
+  lib.edit("My draft");
+  await lib.promoteAction("key");
+  assert.equal(lib.snapshot().detail?.action_reviews[0].state, "pending");
+  assert.equal(lib.snapshot().draft, "My draft");
+  assert.match(lib.snapshot().detailError, /Connection interrupted/);
 });
