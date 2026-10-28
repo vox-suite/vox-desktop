@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>com.voxagent.meeting-prototype</string>
+  <key>CFBundleName</key><string>Vox Meeting Prototype</string>
+  <key>NSMicrophoneUsageDescription</key><string>Record your microphone locally when you explicitly start the Vox meeting prototype.</string>
+  <key>NSAudioCaptureUsageDescription</key><string>Record computer audio locally when you explicitly start the Vox meeting prototype.</string>
+</dict></plist>

@@ -102,6 +102,10 @@ npm run build:app:debug  # faster, unoptimized build for local testing
 
 Without the `VOX_*` variables from the table below exported first, the build picks up whatever's in `.env` (loopback dev values). Without an Apple signing cert configured locally, the output is unsigned — same Gatekeeper quarantine step as the CI builds below applies.
 
+### Local meeting-recording prototype
+
+The isolated [meeting prototype](tools/meeting-prototype/README.md) evaluates separate microphone/system capture and local Whisper transcription on macOS and Windows. It is developer-only and does not upload audio or change the shipping desktop UI. See its README for setup, explicit recording commands, and verification limits.
+
 ### Release pipeline
 
 GitHub Actions workflow `.github/workflows/release.yml` builds installers when you push a `v*` tag or run the workflow manually.
