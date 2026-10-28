@@ -1,4 +1,8 @@
-import type { MeetingRecordingPort, RecordingStatus } from "./types.ts";
+import type {
+  MeetingRecordingPort,
+  RecordingStatus,
+  SpeechModelStatus,
+} from "./types.ts";
 const empty = (): RecordingStatus => ({
   id: null,
   phase: "",
@@ -14,6 +18,8 @@ export class RecordingSession {
     busy: false,
     error: "",
     modelReady: false,
+    model: null as SpeechModelStatus | null,
+    setupOpen: false,
   };
   private active = true;
   private polling = false;
@@ -46,6 +52,8 @@ export class RecordingSession {
       busy: false,
       error: "",
       modelReady: false,
+      model: null as SpeechModelStatus | null,
+      setupOpen: false,
     };
     this.listeners.forEach((f) => f());
     this.listeners.clear();
@@ -59,10 +67,18 @@ export class RecordingSession {
     this.polling = true;
     const epoch = this.statusEpoch;
     try {
-      const next = await this.port.status();
+      const [next, model] = await Promise.all([
+        this.port.status(),
+        this.port.modelStatus(),
+      ]);
       if (!this.active || epoch !== this.statusEpoch) return;
       const previous = this.state.status;
-      this.patch({ status: next, observedMs: Date.now() });
+      this.patch({
+        status: next,
+        observedMs: Date.now(),
+        model,
+        modelReady: model.ready,
+      });
       if (
         next.id &&
         next.phase !== previous.phase &&
@@ -106,10 +122,24 @@ export class RecordingSession {
   }
   async checkModel() {
     try {
-      this.patch({ modelReady: await this.port.modelReady() });
+      const model = await this.port.modelStatus();
+      this.patch({ model, modelReady: model.ready });
     } catch (e) {
       this.patch({ error: String(e) });
     }
+  }
+  openSetup() {
+    this.patch({ setupOpen: true });
+    void this.checkModel();
+  }
+  closeSetup() {
+    this.patch({ setupOpen: false });
+  }
+  installModel() {
+    return this.run(() => this.port.installModel());
+  }
+  cancelModel() {
+    return this.run(() => this.port.cancelModel());
   }
   chooseModel() {
     return this.run(async () => {

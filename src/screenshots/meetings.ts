@@ -183,10 +183,34 @@ export const recordingFixture = {
   ready: false,
   failStart: false,
   failStop: false,
+  modelPhase:
+    "missing" as import("@/features/meetings/types").SpeechModelStatus["phase"],
+  modelBytes: 0,
+  modelError: null as string | null,
+  failInstall: false,
+  installCalls: 0,
 };
 meetingFixturePort.recording = {
   status: async () => ({ ...recordingStatus }),
   modelReady: async () => recordingFixture.ready,
+  modelStatus: async () => ({
+    phase: recordingFixture.ready ? "ready" : recordingFixture.modelPhase,
+    ready: recordingFixture.ready,
+    downloaded_bytes: recordingFixture.modelBytes,
+    total_bytes: 147951465,
+    error: recordingFixture.modelError,
+    engine: recordingFixture.ready ? "bundled" : null,
+  }),
+  installModel: async () => {
+    recordingFixture.installCalls++;
+    if (recordingFixture.failInstall) throw Error("Download connection failed");
+    recordingFixture.modelPhase = "downloading";
+    recordingFixture.modelBytes = 25000000;
+  },
+  cancelModel: async () => {
+    recordingFixture.modelPhase = "cancelled";
+    recordingFixture.modelBytes = 0;
+  },
   chooseModel: async () => {
     recordingFixture.ready = true;
     return true;

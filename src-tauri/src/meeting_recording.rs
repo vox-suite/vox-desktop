@@ -206,7 +206,7 @@ pub fn meeting_recording_stop(
 
 #[derive(serde::Deserialize, Serialize)]
 struct ModelConfig {
-    binary: PathBuf,
+    binary: Option<PathBuf>,
     model: PathBuf,
 }
 fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -217,19 +217,43 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
         .join("meeting-model.json"))
 }
 fn config(app: &AppHandle) -> Result<ModelConfig, String> {
-    let c: ModelConfig = serde_json::from_slice(
-        &std::fs::read(config_path(app)?)
-            .map_err(|_| "Choose a local whisper.cpp executable and model first")?,
-    )
-    .map_err(|_| "Choose the local model again")?;
-    if !c.binary.is_file() || !c.model.is_file() {
-        return Err("Local speech model or executable is missing".into());
+    let path = config_path(app)?;
+    if path.exists() {
+        let c: ModelConfig =
+            serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+                .map_err(|_| "Choose the custom speech model again")?;
+        if !c.binary.as_ref().is_some_and(|p| p.is_file()) || !c.model.is_file() {
+            return Err("Custom local speech model or executable is missing".into());
+        }
+        return Ok(c);
     }
-    Ok(c)
+    let model = vox_meeting_models::verify_base(&crate::meeting_models::model_dir(app)?)
+        .map_err(|e| e.to_string())?
+        .ok_or("Install local speech in Vox first")?;
+    Ok(ModelConfig {
+        binary: None,
+        model,
+    })
+}
+pub(crate) fn selected_engine(app: &AppHandle) -> Result<&'static str, String> {
+    Ok(if config(app)?.binary.is_some() {
+        "custom"
+    } else {
+        "bundled"
+    })
+}
+pub(crate) fn activate_managed_engine(app: &AppHandle) -> Result<(), String> {
+    match std::fs::remove_file(config_path(app)?) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 #[tauri::command]
-pub fn meeting_model_ready(app: AppHandle) -> bool {
-    config(&app).is_ok()
+pub async fn meeting_model_ready(app: AppHandle) -> bool {
+    tauri::async_runtime::spawn_blocking(move || config(&app).is_ok())
+        .await
+        .unwrap_or(false)
 }
 #[tauri::command]
 pub async fn meeting_model_choose(
@@ -237,6 +261,12 @@ pub async fn meeting_model_choose(
     auth: State<'_, AuthManager>,
 ) -> Result<bool, String> {
     let initial = owner(&auth)?;
+    if app
+        .state::<crate::meeting_models::MeetingModelsState>()
+        .busy()
+    {
+        return Err("Wait for speech setup to finish".into());
+    }
     let Some(binary) = rfd::AsyncFileDialog::new()
         .set_title("Choose a trusted local whisper-cli executable")
         .pick_file()
@@ -255,8 +285,14 @@ pub async fn meeting_model_choose(
     if owner(&auth)? != initial {
         return Err("Account changed; selection cancelled".into());
     }
+    if app
+        .state::<crate::meeting_models::MeetingModelsState>()
+        .busy()
+    {
+        return Err("Wait for speech setup to finish".into());
+    }
     let c = ModelConfig {
-        binary: binary.path().canonicalize().map_err(|e| e.to_string())?,
+        binary: Some(binary.path().canonicalize().map_err(|e| e.to_string())?),
         model: model.path().canonicalize().map_err(|e| e.to_string())?,
     };
     let bytes = serde_json::to_vec(&c).map_err(|e| e.to_string())?;
@@ -273,6 +309,8 @@ pub async fn meeting_model_choose(
     file.write_all(&bytes)
         .and_then(|_| file.sync_all())
         .map_err(|e| e.to_string())?;
+    app.state::<crate::meeting_models::MeetingModelsState>()
+        .invalidate();
     Ok(true)
 }
 #[tauri::command]
@@ -284,7 +322,14 @@ pub async fn meeting_transcribe(
     let owner = owner(&auth)?;
     let account = Uuid::parse_str(&owner).map_err(|e| e.to_string())?;
     let root = root(&app)?;
-    let c = config(&app)?;
+    let config_app = app.clone();
+    let c = tauri::async_runtime::spawn_blocking(move || config(&config_app))
+        .await
+        .map_err(|e| e.to_string())??;
+    if auth.current_session().as_ref().map(|s| &s.user_id) != Some(&owner) {
+        return Err("Account changed; transcription cancelled".into());
+    }
+    let executable = std::env::current_exe().map_err(|e| e.to_string())?;
     let stop = Arc::new(AtomicBool::new(false));
     {
         let state = app.state::<RecordingState>();
@@ -343,15 +388,28 @@ pub async fn meeting_transcribe(
                 );
                 let expected_revision = store.get(id)?.revision;
                 let prefix = output.join(format!("asr-{}", Uuid::new_v4()));
-                let segments = transcript::transcribe(
-                    &c.binary,
-                    &c.model,
-                    &output.join(format!("{name}.wav")),
-                    &prefix,
-                    name,
-                    &worker_stop,
-                    Duration::from_secs(7200),
-                )?;
+                let audio = output.join(format!("{name}.wav"));
+                let segments = if let Some(binary) = &c.binary {
+                    transcript::transcribe(
+                        binary,
+                        &c.model,
+                        &audio,
+                        &prefix,
+                        name,
+                        &worker_stop,
+                        Duration::from_secs(7200),
+                    )?
+                } else {
+                    vox_meeting_recorder::embedded::supervised(
+                        &executable,
+                        &c.model,
+                        &audio,
+                        &prefix,
+                        name,
+                        &worker_stop,
+                        Duration::from_secs(7200),
+                    )?
+                };
                 let _ = std::fs::remove_file(prefix.with_extension("json"));
                 anyhow::ensure!(
                     !worker_stop.load(Ordering::SeqCst),

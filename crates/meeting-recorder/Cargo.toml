@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+default = []
+embedded = ["dep:whisper-rs"]
+
 [dependencies]
+whisper-rs = { version = "=0.16.0", optional = true, default-features = false }
 anyhow = "1"
 vox-meeting-store = { path = "../meeting-store" }
 uuid = { version = "1", features = ["v4", "serde"] }

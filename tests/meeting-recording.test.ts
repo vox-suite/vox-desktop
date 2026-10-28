@@ -21,6 +21,16 @@ function port(
     start: async () => ({ id: "a" }) as never,
     stop: async () => {},
     modelReady: async () => true,
+    modelStatus: async () => ({
+      phase: "ready",
+      ready: true,
+      downloaded_bytes: 100,
+      total_bytes: 100,
+      error: null,
+      engine: "bundled",
+    }),
+    installModel: async () => {},
+    cancelModel: async () => {},
     chooseModel: async () => true,
     transcribe: async () => {},
     ...overrides,
@@ -85,4 +95,36 @@ test("a status request started before recording cannot overwrite the new session
   await pending;
   await new Promise((r) => setImmediate(r));
   assert.equal(session.snapshot().status.phase, "recording");
+});
+
+test("model verification must finish before transcription becomes ready", async () => {
+  const session = new RecordingSession(
+    port({
+      modelStatus: async () => ({
+        phase: "verifying",
+        ready: false,
+        downloaded_bytes: 100,
+        total_bytes: 100,
+        error: null,
+        engine: null,
+      }),
+    }),
+  );
+  await session.checkModel();
+  assert.equal(session.snapshot().modelReady, false);
+  assert.equal(session.snapshot().model?.phase, "verifying");
+});
+test("installation errors remain visible and can be retried", async () => {
+  let calls = 0;
+  const session = new RecordingSession(
+    port({
+      installModel: async () => {
+        if (++calls === 1) throw Error("Download failed");
+      },
+    }),
+  );
+  await session.installModel();
+  assert.match(session.snapshot().error, /Download failed/);
+  await session.installModel();
+  assert.equal(calls, 2);
 });

@@ -1,3 +1,4 @@
+import { SpeechModelDialog } from "./speech-model-dialog";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Mic, Square, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,8 @@ export function RecordingControls({ accountId }: { accountId: string }) {
   return session ? <Controls key={accountId} session={session} /> : null;
 }
 function Controls({ session }: { session: RecordingSession }) {
-  const { status, observedMs, busy, error, modelReady } = useSyncExternalStore(
-    session.subscribe,
-    session.snapshot,
-  );
+  const { status, observedMs, busy, error, modelReady, model } =
+    useSyncExternalStore(session.subscribe, session.snapshot);
   const [open, setOpen] = useState(false),
     [title, setTitle] = useState("");
   useEffect(() => {
@@ -81,9 +80,16 @@ function Controls({ session }: { session: RecordingSession }) {
             variant="ghost"
             size="sm"
             disabled={busy}
-            onClick={() => void session.chooseModel()}
+            onClick={() => session.openSetup()}
           >
-            {modelReady ? "Change speech model" : "Set up local speech"}
+            {model &&
+            ["checking", "downloading", "verifying", "cancelling"].includes(
+              model.phase,
+            )
+              ? "Speech setup in progress"
+              : modelReady
+                ? "Speech settings"
+                : "Set up local speech"}
           </Button>
         )}
         {active ? (
@@ -121,6 +127,7 @@ function Controls({ session }: { session: RecordingSession }) {
           />
         )}
       </section>
+      <SpeechModelDialog session={session} />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -199,10 +206,10 @@ function Transcribe({
         size="sm"
         disabled={busy || active}
         onClick={() =>
-          void (modelReady ? session.transcribe(id) : session.chooseModel())
+          modelReady ? void session.transcribe(id) : session.openSetup()
         }
       >
-        {modelReady ? "Transcribe local audio" : "Choose local speech model"}
+        {modelReady ? "Transcribe local audio" : "Set up local speech"}
       </Button>
     </div>
   );

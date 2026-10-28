@@ -12,6 +12,7 @@ mod live_link;
 mod local_voice;
 mod meetings;
 mod meeting_recording;
+mod meeting_models;
 #[cfg(target_os = "macos")]
 mod macos_location;
 mod pkce;
@@ -89,6 +90,7 @@ pub fn run() {
         .manage(SessionManager::new())
         .manage(vox_meeting_recorder::ownership::AudioOwnership::default())
         .manage(meeting_recording::RecordingState::default())
+        .manage(meeting_models::MeetingModelsState::default())
         .manage(device_link::DeviceLinkState::default())
         .manage(device_link::RemoteControl::load())
         .manage(device_link::EventLog::default())
@@ -141,6 +143,9 @@ pub fn run() {
             meeting_recording::meeting_recording_status,
             meeting_recording::meeting_recording_stop,
             meeting_recording::meeting_model_ready,
+            meeting_models::meeting_model_status,
+            meeting_models::meeting_model_install,
+            meeting_models::meeting_model_cancel,
             meeting_recording::meeting_model_choose,
             meeting_recording::meeting_transcribe,
             meetings::meeting_list,
@@ -212,6 +217,7 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                app.state::<meeting_models::MeetingModelsState>().cancel();
                 let state = app.state::<meeting_recording::RecordingState>();
                 if state.must_wait_for_shutdown() {
                     api.prevent_exit();

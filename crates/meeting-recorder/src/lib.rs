@@ -6,3 +6,5 @@ pub mod supervisor;
 pub mod track;
 pub mod transcript;
 pub mod worker;
+#[cfg(feature = "embedded")]
+pub mod embedded;

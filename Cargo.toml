@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri", "crates/meeting-store", "crates/meeting-recorder"]
+members = ["src-tauri", "crates/meeting-store", "crates/meeting-recorder", "crates/meeting-models"]
 resolver = "2"
 
 [profile.release]

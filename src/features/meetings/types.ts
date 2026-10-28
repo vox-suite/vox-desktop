@@ -73,6 +73,9 @@ export type RecordingStatus = {
   system_frames: number;
 };
 export interface MeetingRecordingPort {
+  modelStatus(): Promise<SpeechModelStatus>;
+  installModel(): Promise<void>;
+  cancelModel(): Promise<void>;
   start(title: string): Promise<Meeting>;
   stop(): Promise<void>;
   status(): Promise<RecordingStatus>;
@@ -80,3 +83,21 @@ export interface MeetingRecordingPort {
   chooseModel(): Promise<boolean>;
   transcribe(id: string): Promise<void>;
 }
+
+export type SpeechModelStatus = {
+  phase:
+    | "uninitialized"
+    | "checking"
+    | "missing"
+    | "downloading"
+    | "verifying"
+    | "cancelling"
+    | "cancelled"
+    | "failed"
+    | "ready";
+  downloaded_bytes: number;
+  total_bytes: number;
+  ready: boolean;
+  engine: "bundled" | "custom" | null;
+  error: string | null;
+};

@@ -1,0 +1,15 @@
+[package]
+name = "vox-meeting-models"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1"
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+sha2 = "0.10"
+tokio = { version = "1", features = ["fs", "io-util", "time", "macros", "rt"] }
+
+[dev-dependencies]
+tempfile = "3"

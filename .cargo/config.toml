@@ -1,0 +1,3 @@
+# Bundle a CPU runtime without specializing it to the developer machine's CPU.
+[env]
+GGML_NATIVE = { value = "OFF", force = true }

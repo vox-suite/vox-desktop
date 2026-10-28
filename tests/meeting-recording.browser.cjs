@@ -14,8 +14,17 @@ const assert = require("node:assert/strict");
     await page.goto("http://127.0.0.1:1432/tests/meetings-preview.html");
     const bar = page.getByRole("region", { name: "Meeting recording" });
     await bar.getByRole("button", { name: "Set up local speech" }).click();
+    const setup = page.getByRole("dialog", {
+      name: "Local speech recognition",
+    });
+    await setup.getByText("Use existing local files", { exact: true }).click();
+    await setup
+      .getByRole("button", { name: "Choose engine and model files" })
+      .click();
+    await expect(setup.getByRole("status")).toHaveText("Local speech is ready");
+    await setup.getByRole("button", { name: "Done", exact: true }).click();
     await expect(
-      bar.getByRole("button", { name: "Change speech model" }),
+      bar.getByRole("button", { name: "Speech settings" }),
     ).toBeVisible();
     await bar
       .getByRole("button", { name: "Record meeting", exact: true })

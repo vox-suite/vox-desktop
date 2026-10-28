@@ -67,7 +67,10 @@
       "entitlements": "Entitlements.plist"
     },
     "resources": [
-      "licenses/code-graph-mcp-MIT.txt"
+      "licenses/code-graph-mcp-MIT.txt",
+      "licenses/whisper-cpp-MIT.txt",
+      "licenses/whisper-rs-Unlicense.txt",
+      "licenses/whisper-model-MIT.txt"
     ],
     "createUpdaterArtifacts": true
   },
